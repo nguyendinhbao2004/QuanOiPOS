@@ -4,8 +4,23 @@
 *.log
 *.pyc
 *.swp
+*.swo
 .buildlog/
 .history
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+.env
+
+# Flutter Version Manager
+.fvm/
+.fvmrc
 
 
 
