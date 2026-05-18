@@ -35,6 +35,119 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # =========================
+  # STATE MANAGEMENT
+  # =========================
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # =========================
+  # ROUTING
+  # =========================
+  go_router: ^16.0.0
+
+  # =========================
+  # NETWORK
+  # =========================
+  dio: ^5.8.0+1
+  pretty_dio_logger: ^1.4.0
+  connectivity_plus: ^6.1.4
+
+  # =========================
+  # LOCAL STORAGE
+  # =========================
+  shared_preferences: ^2.5.3
+  flutter_secure_storage: ^9.2.4
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  path_provider: ^2.1.5
+
+  # =========================
+  # DATABASE (Offline First)
+  # =========================
+  drift: ^2.28.0
+  sqlite3_flutter_libs: ^0.5.39
+
+  # =========================
+  # JSON / CODE GENERATION
+  # =========================
+  json_annotation: ^4.9.0
+  freezed_annotation: ^3.1.0
+
+  # =========================
+  # FUNCTIONAL PROGRAMMING
+  # =========================
+  dartz: ^0.10.1
+
+  # =========================
+  # DEPENDENCY INJECTION
+  # =========================
+  get_it: ^8.0.3
+  injectable: ^2.5.0
+
+  # =========================
+  # UI
+  # =========================
+  flutter_screenutil: ^5.9.3
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  gap: ^3.0.1
+
+  # =========================
+  # FORM VALIDATION
+  # =========================
+  formz: ^0.8.0
+
+  # =========================
+  # INTERNATIONALIZATION
+  # =========================
+  intl: ^0.20.2
+
+  # =========================
+  # LOGGING
+  # =========================
+  logger: ^2.6.0
+
+  # =========================
+  # UTILITIES
+  # =========================
+  equatable: ^2.0.7
+  collection: ^1.19.1
+  uuid: ^4.5.1
+
+  # =========================
+  # DEVICE INFO
+  # =========================
+  package_info_plus: ^8.3.0
+  device_info_plus: ^11.4.0
+
+  # =========================
+  # PERMISSIONS
+  # =========================
+  permission_handler: ^12.0.0+1
+
+  # =========================
+  # FILES
+  # =========================
+  file_picker: ^10.1.9
+  image_picker: ^1.1.2
+
+  # =========================
+  # REALTIME / SOCKET
+  # =========================
+  socket_io_client: ^3.1.2
+
+  # =========================
+  # ENVIRONMENT
+  # =========================
+  flutter_dotenv: ^5.2.1
+
+  # =========================
+  # ESC/POS PRINTERS
+  # =========================
+  esc_pos_utils_plus: ^2.0.4
+  flutter_esc_pos_network: ^1.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -45,6 +158,33 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # =========================
+  # CODE GENERATION
+  # =========================
+  build_runner: ^2.5.4
+
+  # JSON
+  json_serializable: ^6.9.5
+
+  # FREEZED
+  freezed: ^3.1.0
+
+  # RIVERPOD
+  riverpod_generator: ^2.6.5
+  riverpod_lint: ^2.6.5
+
+  # INJECTABLE
+  injectable_generator: ^2.7.0
+
+  # DRIFT
+  drift_dev: ^2.28.0
+
+  # ICONS
+  flutter_launcher_icons: ^0.14.3
+
+  # SPLASH SCREEN
+  flutter_native_splash: ^2.4.6
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
