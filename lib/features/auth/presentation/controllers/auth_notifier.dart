@@ -33,6 +33,7 @@ class AuthNotifier extends Notifier<AuthState> {
           status: AuthStatus.authenticated,
           accountType: result.accountType,
           fullName: result.fullName,
+          email: result.email,
           sessionRestored: true,
         );
       } else {
@@ -56,6 +57,7 @@ class AuthNotifier extends Notifier<AuthState> {
         status: AuthStatus.authenticated,
         accountType: result.accountType,
         fullName: result.fullName,
+        email: result.email,
         sessionRestored: false,
       );
     } catch (error) {

@@ -154,6 +154,7 @@ Super Admin can access platform-level revenue information exposed by backend ser
 
 ### FR-11 StoreUser Workspace Selection
 After StoreUser login success, app must resolve workspace entry:
+- Default landing for StoreUser is `system shell` with `Account hub` active.
 - If membership count = 0 -> show no-store state.
 - If membership count = 1 -> auto-select that store by default rule.
 - If membership count > 1 -> show store-selection UI.
@@ -179,13 +180,14 @@ When StoreUser switches store, app must refresh:
 
 ### 8.2 StoreUser Workspace Resolution Flow
 1. StoreUser login success.
-2. App fetches memberships and available stores.
-3. Branch by membership count:
+2. App routes to `system shell` with `Account hub` as default active tab.
+3. App fetches memberships and available stores.
+4. Branch by membership count:
    - 0 store: show no-store guidance state.
    - 1 store: auto-select and continue.
    - >1 store: user selects store from store picker.
-4. App resolves role for selected store.
-5. App enters role-appropriate module shell.
+5. App resolves role for selected store.
+6. App enters role-appropriate module shell.
 
 ### 8.3 Store Switching Flow
 1. StoreUser triggers switch-store action.

@@ -123,6 +123,7 @@ Triển khai UI cho account hub/store picker/role landing theo rules UI và stat
 - Phase 3 phải ổn định guard và route.
 
 ### Task Checklist
+- [ ] Khởi tạo `SystemShell` cho StoreUser với tab `Tài khoản` active mặc định sau login.
 - [ ] Màn `Store Picker` có đủ state `loading/empty/error`.
 - [ ] Hiển thị rõ `activeStore` + `activeRole` ở app shell.
 - [ ] Nút/entry đổi store đặt nhất quán trên role-home.

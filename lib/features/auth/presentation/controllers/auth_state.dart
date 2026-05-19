@@ -13,6 +13,7 @@ class AuthState {
   final AccountType? accountType;
   final String? errorMessage;
   final String? fullName;
+  final String? email;
   final bool sessionRestored;
 
   const AuthState({
@@ -20,6 +21,7 @@ class AuthState {
     this.accountType,
     this.errorMessage,
     this.fullName,
+    this.email,
     this.sessionRestored = false,
   });
 
@@ -28,6 +30,7 @@ class AuthState {
         accountType = null,
         errorMessage = null,
         fullName = null,
+        email = null,
         sessionRestored = false;
 
   const AuthState.unauthenticated()
@@ -35,6 +38,7 @@ class AuthState {
         accountType = null,
         errorMessage = null,
         fullName = null,
+        email = null,
         sessionRestored = false;
 
   bool get isLoading => status == AuthStatus.authenticating || status == AuthStatus.bootstrapping;
@@ -48,6 +52,7 @@ class AuthState {
     AccountType? accountType,
     String? errorMessage,
     String? fullName,
+    String? email,
     bool? sessionRestored,
     bool clearError = false,
   }) {
@@ -56,6 +61,7 @@ class AuthState {
       accountType: accountType ?? this.accountType,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
       sessionRestored: sessionRestored ?? this.sessionRestored,
     );
   }
