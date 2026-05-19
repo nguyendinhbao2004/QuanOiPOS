@@ -3,14 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/providers/auth_providers.dart';
 
-class SuperAdminHomePage extends ConsumerWidget {
-  const SuperAdminHomePage({super.key});
+class SystemAdminHomePage extends ConsumerWidget {
+  const SystemAdminHomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Super Admin Workspace'),
+        title: const Text('SystemAdmin Workspace'),
       ),
       body: Center(
         child: Padding(
@@ -18,7 +18,7 @@ class SuperAdminHomePage extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('SuperAdmin login success. Main features will be added here.'),
+              const Text('SystemAdmin login success. Main features will be added here.'),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => ref.read(authNotifierProvider.notifier).logout(),

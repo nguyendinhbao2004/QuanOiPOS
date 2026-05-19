@@ -85,7 +85,7 @@ Thêm điều hướng có kiểm soát context theo 2 lớp guard.
 ### Input/Output Artifact
 - Input: auth state hiện có + workspace context state.
 - Output:
-  - Account-type guard (`SuperAdmin` vs `StoreUser`).
+  - Account-type guard (`SystemAdmin` vs `StoreUser`).
   - Workspace-role guard (chặn StoreUser vào module khi chưa có `activeStore`).
   - Route contract cho:
     - `store picker`
@@ -156,11 +156,11 @@ Khóa chất lượng cho luồng workspace trước khi mở rộng module nghi
 - [ ] Test state transition: bootstrapping -> selectingStore -> ready -> error.
 - [ ] Test route guard với StoreUser chưa có `activeStore`.
 - [ ] Test đổi store khi đang đăng nhập.
-- [ ] Manual regression: SuperAdmin flow không bị ảnh hưởng.
+- [ ] Manual regression: SystemAdmin flow không bị ảnh hưởng.
 
 ### Acceptance Criteria
 - Toàn bộ nhánh chính của workspace flow được cover.
-- Không hồi quy luồng auth/super-admin hiện có.
+- Không hồi quy luồng auth/system-admin hiện có.
 
 ---
 

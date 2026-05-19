@@ -25,7 +25,7 @@ Upgrade auth flow to restore session on app launch and enforce route-level autho
 ├─────────────────────────────────────────────────────┤
 │ status: bootstrapping → unauthenticated ↔ authenticated
 │         └─→ authenticating → failure ↔ authenticated
-│ accountType: SuperAdmin | StoreUser | null          │
+│ accountType: SystemAdmin | StoreUser | null          │
 │ fullName: string | null                             │
 │ errorMessage: string | null                         │
 │ sessionRestored: bool (flag for bootstrap detect)   │
@@ -71,10 +71,10 @@ redirect(BuildContext, GoRouterState) {
     return routeRequiresAuth ? '/auth' : null;
   }
   if (authenticated) {
-    if (isSuperAdmin && routeIsSuperAdminOnly) return null;
-    if (isSuperAdmin && routeIsStoreUserOnly) return '/super-admin-home';
+    if (isSystemAdmin && routeIsSystemAdminOnly) return null;
+    if (isSystemAdmin && routeIsStoreUserOnly) return '/system-admin-home';
     if (isStoreUser && routeIsStoreUserOnly) return null;
-    if (isStoreUser && routeIsSuperAdminOnly) return '/store-home';
+    if (isStoreUser && routeIsSystemAdminOnly) return '/store-home';
   }
   return null;  // allowed
 }
@@ -104,7 +104,7 @@ redirect(BuildContext, GoRouterState) {
 
 ### Phase 5: go_router Setup
 - [ ] Create routing config file (lib/config/router_config.dart or similar)
-- [ ] Define routes (/auth, /super-admin-home, /store-home)
+- [ ] Define routes (/auth, /system-admin-home, /store-home)
 - [ ] Implement redirect guard logic
 - [ ] Update app.dart to use MaterialApp.router
 
@@ -117,7 +117,7 @@ redirect(BuildContext, GoRouterState) {
 - [ ] Run widget tests
 - [ ] Manual flow tests:
   - Fresh app open → /auth
-  - Login superAdmin → /super-admin-home
+  - Login SystemAdmin → /system-admin-home
   - App kill + reopen → should restore session and land on home
   - Web hard refresh → same session persistence check
   - Logout → back to /auth
@@ -164,6 +164,6 @@ redirect(BuildContext, GoRouterState) {
 - Deep linking while unauth → guard redirects to /auth → normal login flow
 
 ## Next Steps (After Implementation)
-1. Phase 2: Add role/store loading after SuperAdmin login (FR-03 from spec)
+1. Phase 2: Add role/store loading after SystemAdmin login (FR-03 from spec)
 2. Phase 3: Register register API and handle store selection for StoreUser
 3. Phase 4: Implement workspace_context feature for multi-store switching

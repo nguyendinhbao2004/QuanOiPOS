@@ -84,5 +84,5 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  bool get isSuperAdmin => state.accountType == AccountType.superAdmin;
+  bool get isSystemAdmin => state.accountType == AccountType.systemAdmin;
 }

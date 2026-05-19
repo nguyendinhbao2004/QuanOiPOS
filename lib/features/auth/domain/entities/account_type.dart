@@ -1,13 +1,13 @@
 enum AccountType {
-  superAdmin,
+  systemAdmin,
   storeUser,
 }
 
 extension AccountTypeX on AccountType {
   static AccountType fromApiValue(String raw) {
     switch (raw.trim().toLowerCase()) {
-      case 'superadmin':
-        return AccountType.superAdmin;
+      case 'systemadmin':
+        return AccountType.systemAdmin;
       case 'storeuser':
         return AccountType.storeUser;
       default:

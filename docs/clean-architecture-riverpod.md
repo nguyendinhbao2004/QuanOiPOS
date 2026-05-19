@@ -79,7 +79,7 @@ lib/
         mappers/
         repositories/
 
-    super_admin/
+    system_admin/
       store_management/
       user_management/
       package_management/
@@ -98,7 +98,7 @@ lib/
 ```
 
 Ghi chú:
-- `super_admin` và `store_operations` có thể tách tiếp thành sub-feature theo module nghiệp vụ.
+- `system_admin` và `store_operations` có thể tách tiếp thành sub-feature theo module nghiệp vụ.
 - Nếu feature nhỏ, có thể bắt đầu với ít thư mục hơn, nhưng vẫn giữ 3 layer chính.
 
 ## 4. Quy tắc theo layer
@@ -181,7 +181,7 @@ Theo `docs/spec.md`:
 
 - FR-01, FR-02: `features/auth` + route-level `account-type guard`
   - Resolve account type
-  - Route theo `SuperAdmin/StoreUser`
+  - Route theo `SystemAdmin/StoreUser`
 
 - FR-03, FR-04, FR-05, FR-06, FR-11, FR-12, FR-13, FR-14: `features/workspace_context`
   - Load memberships
@@ -189,7 +189,7 @@ Theo `docs/spec.md`:
   - Store selection/switching
   - Workspace context + permission context
 
-- FR-07, FR-08, FR-09, FR-10: `features/super_admin`
+- FR-07, FR-08, FR-09, FR-10: `features/system_admin`
   - `store_management`
   - `user_management`
   - `package_management`
@@ -225,7 +225,7 @@ Dựa trên hiện trạng network layer:
 
 ## 11. Navigation và Access Guard
 ### 11.1 Account-type guard
-Kiểm tra `accountType` để chặn route chéo giữa `SuperAdmin` và `StoreUser`.
+Kiểm tra `accountType` để chặn route chéo giữa `SystemAdmin` và `StoreUser`.
 
 ### 11.2 Workspace-role guard
 Chỉ áp dụng cho `StoreUser`:

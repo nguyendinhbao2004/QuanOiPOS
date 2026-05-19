@@ -13,12 +13,12 @@ The goal is to provide a shared source of truth for:
 QuanOi POS is a Flutter application focused on frontend implementation and API consumption from an existing backend.
 
 The platform supports two major actor categories:
-- Super Admin actors for platform-wide management
+- SystemAdmin actors for platform-wide management
 - Store User actors for store-level restaurant operations
 
 ## 3. Scope
 ### 3.1 In Scope
-- Account type model (SuperAdmin vs StoreUser)
+- Account type model (SystemAdmin vs StoreUser)
 - Multi-store membership model for StoreUser
 - Store-level role model and role-based capabilities
 - Post-login workspace resolution for StoreUser
@@ -33,8 +33,8 @@ The platform supports two major actor categories:
 - Operational infrastructure details
 
 ## 4. Core Actors
-### 4.1 Super Admin
-Super Admin is responsible for platform governance and business administration across all stores.
+### 4.1 SystemAdmin
+SystemAdmin is responsible for platform governance and business administration across all stores.
 
 Primary responsibilities:
 - Manage stores
@@ -53,11 +53,11 @@ A Store User:
 ## 5. Account and Access Model
 ### 5.1 Account Types
 Every account has exactly one account type:
-- SuperAdmin
+- SystemAdmin
 - StoreUser
 
 Account type determines high-level access boundaries:
-- SuperAdmin can access platform-level modules
+- SystemAdmin can access platform-level modules
 - StoreUser can access store-level modules only
 
 ### 5.2 Store Membership
@@ -118,11 +118,11 @@ Expected capability scope:
 
 ## 7. Functional Requirements
 ### FR-01 Account Type Resolution
-When a user signs in, the app must resolve and persist account type (SuperAdmin or StoreUser) from backend response data.
+When a user signs in, the app must resolve and persist account type (SystemAdmin or StoreUser) from backend response data.
 
 ### FR-02 Module Boundary by Account Type
 The app must expose only modules permitted by account type:
-- SuperAdmin: platform-wide administration modules
+- SystemAdmin: platform-wide administration modules
 - StoreUser: store-operation modules
 
 ### FR-03 Membership Loading
@@ -140,17 +140,17 @@ Permissions must be evaluated based on:
 - Active store (for StoreUser)
 - Role in active store
 
-### FR-07 Super Admin Store Management
-Super Admin can create/manage store records via available backend APIs.
+### FR-07 SystemAdmin Store Management
+SystemAdmin can create/manage store records via available backend APIs.
 
-### FR-08 Super Admin User Management
-Super Admin can manage user accounts and assign users to store scopes through supported backend operations.
+### FR-08 SystemAdmin User Management
+SystemAdmin can manage user accounts and assign users to store scopes through supported backend operations.
 
 ### FR-09 Service Package Management
-Super Admin can manage service/package offerings used by stores.
+SystemAdmin can manage service/package offerings used by stores.
 
 ### FR-10 Revenue Visibility
-Super Admin can access platform-level revenue information exposed by backend services.
+SystemAdmin can access platform-level revenue information exposed by backend services.
 
 ### FR-11 StoreUser Workspace Selection
 After StoreUser login success, app must resolve workspace entry:
@@ -175,7 +175,7 @@ When StoreUser switches store, app must refresh:
 ### 8.1 Login and Routing Flow
 1. User authenticates.
 2. App receives account profile and account type.
-3. If account type is SuperAdmin, route to platform admin workspace.
+3. If account type is SystemAdmin, route to platform admin workspace.
 4. If account type is StoreUser, continue to workspace resolution flow.
 
 ### 8.2 StoreUser Workspace Resolution Flow
@@ -196,8 +196,8 @@ When StoreUser switches store, app must refresh:
 4. App updates active store context and role context.
 5. App refreshes permissions and scoped data.
 
-### 8.4 Super Admin Management Flow (High-Level)
-1. Super Admin enters administration area.
+### 8.4 SystemAdmin Management Flow (High-Level)
+1. SystemAdmin enters administration area.
 2. User performs store/user/package management actions.
 3. App executes backend APIs and updates views.
 4. Revenue dashboards/reports are displayed from backend-provided data.
@@ -205,7 +205,7 @@ When StoreUser switches store, app must refresh:
 ## 9. Domain Entities (Conceptual)
 ### 9.1 Account
 - accountId
-- accountType (SuperAdmin | StoreUser)
+- accountType (SystemAdmin | StoreUser)
 - profile data
 - status
 
@@ -239,7 +239,7 @@ When StoreUser switches store, app must refresh:
 - store/package attribution metadata
 
 ## 10. Business Rules
-- BR-01: Only SuperAdmin can access platform governance features.
+- BR-01: Only SystemAdmin can access platform governance features.
 - BR-02: Store-level actions are always scoped to active store context.
 - BR-03: A StoreUser may have different roles across different stores.
 - BR-04: Role changes in one store must not implicitly change role in another store.
@@ -269,7 +269,7 @@ When StoreUser switches store, app must refresh:
 ## 14. Acceptance Criteria (Spec Quality)
 - AC-01: Distinguishes clearly between account type and store role.
 - AC-02: Documents multi-store behavior and switching flow for StoreUser.
-- AC-03: Covers Super Admin responsibilities: store, user, package, revenue.
+- AC-03: Covers SystemAdmin responsibilities: store, user, package, revenue.
 - AC-04: Defines post-login workspace resolution for StoreUser (0/1/multi-store).
 - AC-05: Defines `WorkspaceContext` and active-store requirement for route entry.
 

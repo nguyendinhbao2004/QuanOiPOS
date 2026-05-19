@@ -20,7 +20,7 @@ void main() {
                   email: 'admin@quanoi.test',
                   fullName: 'Admin',
                   phone: '',
-                  accountType: AccountType.superAdmin,
+                  accountType: AccountType.systemAdmin,
                   accessToken: 'access-token',
                   refreshToken: '',
                 ),
@@ -42,7 +42,7 @@ void main() {
 
     final state = container.read(authNotifierProvider);
     expect(state.status, AuthStatus.authenticated);
-    expect(state.accountType, AccountType.superAdmin);
+    expect(state.accountType, AccountType.systemAdmin);
     expect(state.sessionRestored, isTrue);
   });
 

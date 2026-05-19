@@ -5,13 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/domain/entities/account_type.dart';
 import '../features/auth/presentation/pages/auth_page.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
-import '../features/super_admin/presentation/pages/super_admin_home_page.dart';
+import '../features/system_admin/presentation/pages/system_admin_home_page.dart';
 import '../features/store_operations/presentation/pages/store_home_page.dart';
 
 /// Route names as constants
 abstract final class RouteNames {
   static const String auth = 'auth';
-  static const String superAdminHome = 'super-admin-home';
+  static const String systemAdminHome = 'system-admin-home';
   static const String storeHome = 'store-home';
   static const String splash = 'splash';
 }
@@ -41,9 +41,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AuthPage(),
       ),
       GoRoute(
-        path: '/super-admin-home',
-        name: RouteNames.superAdminHome,
-        builder: (context, state) => const SuperAdminHomePage(),
+        path: '/system-admin-home',
+        name: RouteNames.systemAdminHome,
+        builder: (context, state) => const SystemAdminHomePage(),
       ),
       GoRoute(
         path: '/store-home',
@@ -65,8 +65,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           return '/auth';
         }
 
-        return authState.accountType == AccountType.superAdmin
-            ? '/super-admin-home'
+        return authState.accountType == AccountType.systemAdmin
+            ? '/system-admin-home'
             : '/store-home';
       }
 
@@ -77,18 +77,18 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // If authenticated, prevent going back to /auth
       if (state.matchedLocation == '/auth') {
-        return authState.accountType == AccountType.superAdmin
-            ? '/super-admin-home'
+        return authState.accountType == AccountType.systemAdmin
+            ? '/system-admin-home'
             : '/store-home';
       }
 
       // Cross-account type route check
-      if (authState.accountType == AccountType.superAdmin) {
+      if (authState.accountType == AccountType.systemAdmin) {
         if (state.matchedLocation == '/store-home') {
-          return '/super-admin-home';
+          return '/system-admin-home';
         }
       } else if (authState.accountType == AccountType.storeUser) {
-        if (state.matchedLocation == '/super-admin-home') {
+        if (state.matchedLocation == '/system-admin-home') {
           return '/store-home';
         }
       }

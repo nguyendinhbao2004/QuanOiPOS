@@ -21,7 +21,7 @@ Lưu ý:
 ### 3.1 High-level flow
 1. User login thành công.
 2. Resolve `accountType`.
-3. Nếu `SuperAdmin` -> vào workspace Super Admin.
+3. Nếu `SystemAdmin` -> vào workspace SystemAdmin.
 4. Nếu `StoreUser` -> load danh sách `StoreMembership`.
 5. App xử lý rule chọn store:
    - Không có store: vào trạng thái empty + hướng dẫn liên hệ quản trị.
