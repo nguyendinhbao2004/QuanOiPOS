@@ -26,22 +26,23 @@ class AuthState {
   });
 
   const AuthState.bootstrapping()
-      : status = AuthStatus.bootstrapping,
-        accountType = null,
-        errorMessage = null,
-        fullName = null,
-        email = null,
-        sessionRestored = false;
+    : status = AuthStatus.bootstrapping,
+      accountType = null,
+      errorMessage = null,
+      fullName = null,
+      email = null,
+      sessionRestored = false;
 
   const AuthState.unauthenticated()
-      : status = AuthStatus.unauthenticated,
-        accountType = null,
-        errorMessage = null,
-        fullName = null,
-        email = null,
-        sessionRestored = false;
+    : status = AuthStatus.unauthenticated,
+      accountType = null,
+      errorMessage = null,
+      fullName = null,
+      email = null,
+      sessionRestored = false;
 
-  bool get isLoading => status == AuthStatus.authenticating || status == AuthStatus.bootstrapping;
+  bool get isLoading =>
+      status == AuthStatus.authenticating || status == AuthStatus.bootstrapping;
 
   bool get isAuthenticated => status == AuthStatus.authenticated;
 

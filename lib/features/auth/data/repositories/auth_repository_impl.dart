@@ -3,7 +3,9 @@ import '../../../../core/storage/session_snapshot_storage.dart';
 import '../../domain/entities/login_result.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_data_source.dart';
+import '../models/confirm_registration_request_model.dart';
 import '../models/login_request_model.dart';
+import '../models/register_request_model.dart';
 import '../models/session_snapshot_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
@@ -43,6 +45,31 @@ class AuthRepositoryImpl implements AuthRepository {
     await _snapshotStorage.saveSnapshot(snapshot);
 
     return entity;
+  }
+
+  @override
+  Future<void> register({
+    required String email,
+    required String password,
+    required String fullName,
+  }) {
+    return _remoteDataSource.register(
+      RegisterRequestModel(
+        email: email,
+        password: password,
+        fullName: fullName,
+      ),
+    );
+  }
+
+  @override
+  Future<void> confirmRegistration({
+    required String email,
+    required String otpCode,
+  }) {
+    return _remoteDataSource.confirmRegistration(
+      ConfirmRegistrationRequestModel(email: email, otpCode: otpCode),
+    );
   }
 
   @override

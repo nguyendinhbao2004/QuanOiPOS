@@ -1,7 +1,4 @@
-enum AccountType {
-  systemAdmin,
-  storeUser,
-}
+enum AccountType { systemAdmin, storeUser }
 
 extension AccountTypeX on AccountType {
   static AccountType fromApiValue(String raw) {

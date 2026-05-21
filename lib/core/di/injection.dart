@@ -15,15 +15,21 @@ import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_use_case.dart';
 import '../../features/auth/domain/usecases/logout_use_case.dart';
 import '../../features/auth/domain/usecases/restore_session_use_case.dart';
+import '../../features/auth/domain/usecases/register_use_case.dart';
+import '../../features/auth/domain/usecases/confirm_registration_use_case.dart';
 
 final GetIt locator = GetIt.instance;
 
 Future<void> setupDependencies({bool enableLogging = false}) async {
   // Secure storage
-  locator.registerLazySingleton<FlutterSecureStorage>(() => const FlutterSecureStorage());
+  locator.registerLazySingleton<FlutterSecureStorage>(
+    () => const FlutterSecureStorage(),
+  );
 
   // Token storage
-  locator.registerLazySingleton<TokenStorage>(() => TokenStorageImpl(locator<FlutterSecureStorage>()));
+  locator.registerLazySingleton<TokenStorage>(
+    () => TokenStorageImpl(locator<FlutterSecureStorage>()),
+  );
 
   // Session snapshot storage
   final prefs = await SharedPreferences.getInstance();
@@ -56,7 +62,19 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
       locator<SessionSnapshotStorage>(),
     ),
   );
-  locator.registerLazySingleton<LoginUseCase>(() => LoginUseCase(locator<AuthRepository>()));
-  locator.registerLazySingleton<LogoutUseCase>(() => LogoutUseCase(locator<AuthRepository>()));
-  locator.registerLazySingleton<RestoreSessionUseCase>(() => RestoreSessionUseCase(locator<AuthRepository>()));
+  locator.registerLazySingleton<LoginUseCase>(
+    () => LoginUseCase(locator<AuthRepository>()),
+  );
+  locator.registerLazySingleton<LogoutUseCase>(
+    () => LogoutUseCase(locator<AuthRepository>()),
+  );
+  locator.registerLazySingleton<RestoreSessionUseCase>(
+    () => RestoreSessionUseCase(locator<AuthRepository>()),
+  );
+  locator.registerLazySingleton<RegisterUseCase>(
+    () => RegisterUseCase(locator<AuthRepository>()),
+  );
+  locator.registerLazySingleton<ConfirmRegistrationUseCase>(
+    () => ConfirmRegistrationUseCase(locator<AuthRepository>()),
+  );
 }

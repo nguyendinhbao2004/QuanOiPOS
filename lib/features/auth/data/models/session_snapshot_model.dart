@@ -27,7 +27,9 @@ class SessionSnapshot {
       accountId: json['accountId'] as int? ?? 0,
       email: json['email'] as String? ?? '',
       fullName: json['fullName'] as String? ?? '',
-      accountType: AccountTypeX.fromApiValue(json['accountType'] as String? ?? ''),
+      accountType: AccountTypeX.fromApiValue(
+        json['accountType'] as String? ?? '',
+      ),
     );
   }
 }

@@ -6,8 +6,12 @@ import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/login_use_case.dart';
 import '../../domain/usecases/logout_use_case.dart';
 import '../../domain/usecases/restore_session_use_case.dart';
+import '../../domain/usecases/register_use_case.dart';
+import '../../domain/usecases/confirm_registration_use_case.dart';
 import '../controllers/auth_notifier.dart';
 import '../controllers/auth_state.dart';
+import '../controllers/register_notifier.dart';
+import '../controllers/register_state.dart';
 
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
   return locator<AuthRemoteDataSource>();
@@ -29,6 +33,19 @@ final restoreSessionUseCaseProvider = Provider<RestoreSessionUseCase>((ref) {
   return locator<RestoreSessionUseCase>();
 });
 
+final registerUseCaseProvider = Provider<RegisterUseCase>((ref) {
+  return locator<RegisterUseCase>();
+});
+
+final confirmRegistrationUseCaseProvider = Provider<ConfirmRegistrationUseCase>(
+  (ref) {
+    return locator<ConfirmRegistrationUseCase>();
+  },
+);
+
 final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(
   AuthNotifier.new,
 );
+
+final registerNotifierProvider =
+    NotifierProvider<RegisterNotifier, RegisterState>(RegisterNotifier.new);

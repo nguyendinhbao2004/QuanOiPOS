@@ -51,10 +51,7 @@ class _LoginFormState extends State<LoginForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Tài khoản',
-            style: AppTextStyles.labelSm,
-          ),
+          Text('Tài khoản', style: AppTextStyles.labelSm),
           const SizedBox(height: AppConstants.spacingSm),
           TextFormField(
             controller: _emailController,
@@ -71,10 +68,7 @@ class _LoginFormState extends State<LoginForm> {
             },
           ),
           const SizedBox(height: AppConstants.spacingMd),
-          Text(
-            'Mật khẩu',
-            style: AppTextStyles.labelSm,
-          ),
+          Text('Mật khẩu', style: AppTextStyles.labelSm),
           const SizedBox(height: AppConstants.spacingSm),
           TextFormField(
             controller: _passwordController,
@@ -84,9 +78,12 @@ class _LoginFormState extends State<LoginForm> {
             decoration: InputDecoration(
               hintText: 'Mật khẩu',
               suffixIcon: IconButton(
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
                 icon: Icon(
-                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  _obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                 ),
               ),
             ),
@@ -138,7 +135,9 @@ class _LoginFormState extends State<LoginForm> {
             children: [
               const Expanded(child: Divider()),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppConstants.spacingSm),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppConstants.spacingSm,
+                ),
                 child: Text(
                   'Hoặc đăng nhập với',
                   style: AppTextStyles.bodyXs.copyWith(
@@ -157,7 +156,9 @@ class _LoginFormState extends State<LoginForm> {
                 child: OutlinedButton(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Google login sẽ triển khai sau')),
+                      const SnackBar(
+                        content: Text('Google login sẽ triển khai sau'),
+                      ),
                     );
                   },
                   child: const Text('Google'),
@@ -168,7 +169,9 @@ class _LoginFormState extends State<LoginForm> {
                 child: OutlinedButton(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Facebook login sẽ triển khai sau')),
+                      const SnackBar(
+                        content: Text('Facebook login sẽ triển khai sau'),
+                      ),
                     );
                   },
                   child: const Text('Facebook'),

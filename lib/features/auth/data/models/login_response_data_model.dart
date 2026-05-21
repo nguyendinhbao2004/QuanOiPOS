@@ -30,7 +30,9 @@ class LoginResponseDataModel {
       email: rawJson['email'] as String? ?? '',
       fullName: rawJson['fullName'] as String? ?? '',
       phone: rawJson['phone'] as String? ?? '',
-      accountType: AccountTypeX.fromApiValue(rawJson['accountType'] as String? ?? ''),
+      accountType: AccountTypeX.fromApiValue(
+        rawJson['accountType'] as String? ?? '',
+      ),
       accessToken: rawJson['accessToken'] as String? ?? '',
       refreshToken: rawJson['refreshToken'] as String? ?? '',
     );

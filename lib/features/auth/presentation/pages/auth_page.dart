@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/index.dart';
 import '../controllers/auth_state.dart';
+import '../controllers/register_state.dart';
 import '../providers/auth_providers.dart';
 import '../widgets/login_form.dart';
 import '../widgets/register_form.dart';
@@ -22,6 +23,25 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<RegisterState>(registerNotifierProvider, (previous, next) {
+      if (previous?.status == RegisterStatus.success ||
+          next.status != RegisterStatus.success) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đăng ký thành công. Vui lòng đăng nhập.'),
+        ),
+      );
+
+      if (mounted) {
+        setState(() => _mode = AuthFormMode.login);
+      }
+
+      ref.read(registerNotifierProvider.notifier).reset();
+    });
+
     final authState = ref.watch(authNotifierProvider);
 
     return Scaffold(
@@ -30,10 +50,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.primaryLight,
-              AppColors.background,
-            ],
+            colors: [AppColors.primaryLight, AppColors.background],
           ),
         ),
         child: SafeArea(
@@ -63,21 +80,27 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                                 ? authState.errorMessage
                                 : null,
                             onSubmit: (email, password) async {
-                              await ref.read(authNotifierProvider.notifier).login(
-                                    email: email,
-                                    password: password,
-                                  );
+                              await ref
+                                  .read(authNotifierProvider.notifier)
+                                  .login(email: email, password: password);
                             },
                             onRegisterPressed: () {
+                              ref
+                                  .read(registerNotifierProvider.notifier)
+                                  .reset();
                               setState(() => _mode = AuthFormMode.register);
-                              ref.read(authNotifierProvider.notifier).clearError();
+                              ref
+                                  .read(authNotifierProvider.notifier)
+                                  .clearError();
                             },
                           )
                         else
                           RegisterForm(
                             onBackToLoginPressed: () {
                               setState(() => _mode = AuthFormMode.login);
-                              ref.read(authNotifierProvider.notifier).clearError();
+                              ref
+                                  .read(authNotifierProvider.notifier)
+                                  .clearError();
                             },
                           ),
                       ],
@@ -118,10 +141,7 @@ class _AuthHeader extends StatelessWidget {
                 ],
               ),
               alignment: Alignment.center,
-              child: const Text(
-                '🐵',
-                style: TextStyle(fontSize: 46),
-              ),
+              child: const Text('🐵', style: TextStyle(fontSize: 46)),
             ),
             Positioned(
               top: 2,
