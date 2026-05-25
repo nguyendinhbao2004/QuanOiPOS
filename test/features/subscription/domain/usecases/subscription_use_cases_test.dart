@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quan_oi/features/subscription/domain/entities/active_subscription.dart';
 import 'package:quan_oi/features/subscription/domain/entities/service_package.dart';
 import 'package:quan_oi/features/subscription/domain/repositories/subscription_repository.dart';
+import 'package:quan_oi/features/subscription/domain/usecases/load_active_subscription_use_case.dart';
 import 'package:quan_oi/features/subscription/domain/usecases/load_subscription_plans_use_case.dart';
 
 void main() {
@@ -14,10 +16,22 @@ void main() {
     expect(plans.single.name, 'Basic');
     expect(repository.loadPlansCalled, isTrue);
   });
+
+  test('load active subscription use case returns repository result', () async {
+    final repository = _FakeSubscriptionRepository();
+    final useCase = LoadActiveSubscriptionUseCase(repository);
+
+    final subscription = await useCase();
+
+    expect(subscription, isNotNull);
+    expect(subscription!.planName, 'Basic');
+    expect(repository.loadActiveSubscriptionCalled, isTrue);
+  });
 }
 
 class _FakeSubscriptionRepository implements SubscriptionRepository {
   bool loadPlansCalled = false;
+  bool loadActiveSubscriptionCalled = false;
 
   @override
   Future<List<ServicePackage>> loadPlans() async {
@@ -34,5 +48,27 @@ class _FakeSubscriptionRepository implements SubscriptionRepository {
         isActive: true,
       ),
     ];
+  }
+
+  @override
+  Future<ActiveSubscription?> loadActiveSubscription() async {
+    loadActiveSubscriptionCalled = true;
+    return ActiveSubscription(
+      id: 1,
+      accountId: 8,
+      planId: 1,
+      planName: 'Basic',
+      price: 99000,
+      startDate: DateTime.utc(2026, 5, 14),
+      endDate: DateTime.utc(2026, 6, 13),
+      daysRemaining: 18,
+      isActive: true,
+      isExpired: false,
+      maxStores: 1,
+      maxUsers: 5,
+      status: 'Active',
+      autoRenew: true,
+      cancelAt: null,
+    );
   }
 }

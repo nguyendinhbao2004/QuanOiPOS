@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quan_oi/features/subscription/domain/entities/active_subscription.dart';
 import 'package:quan_oi/features/subscription/domain/entities/service_package.dart';
 import 'package:quan_oi/features/subscription/domain/repositories/subscription_repository.dart';
+import 'package:quan_oi/features/subscription/domain/usecases/load_active_subscription_use_case.dart';
 import 'package:quan_oi/features/subscription/domain/usecases/load_subscription_plans_use_case.dart';
 import 'package:quan_oi/features/subscription/presentation/controllers/subscription_state.dart';
 import 'package:quan_oi/features/subscription/presentation/providers/subscription_providers.dart';
@@ -11,6 +13,8 @@ void main() {
     final repository = _FakeSubscriptionRepository();
     final container = _containerWithRepository(repository);
     addTearDown(container.dispose);
+    final subscription = _listen(container);
+    addTearDown(subscription.close);
 
     expect(
       container.read(subscriptionNotifierProvider).status,
@@ -22,6 +26,8 @@ void main() {
     final state = container.read(subscriptionNotifierProvider);
     expect(state.status, SubscriptionStatus.ready);
     expect(state.plans, hasLength(2));
+    expect(state.activeSubscription, isNotNull);
+    expect(state.activeSubscription!.planName, 'Pro');
     expect(state.errorMessage, isNull);
   });
 
@@ -31,6 +37,8 @@ void main() {
     );
     final container = _containerWithRepository(repository);
     addTearDown(container.dispose);
+    final subscription = _listen(container);
+    addTearDown(subscription.close);
 
     container.read(subscriptionNotifierProvider);
     await _flushMicrotasks();
@@ -44,6 +52,8 @@ void main() {
     final repository = _FakeSubscriptionRepository(plans: const []);
     final container = _containerWithRepository(repository);
     addTearDown(container.dispose);
+    final subscription = _listen(container);
+    addTearDown(subscription.close);
 
     container.read(subscriptionNotifierProvider);
     await _flushMicrotasks();
@@ -51,6 +61,89 @@ void main() {
     final state = container.read(subscriptionNotifierProvider);
     expect(state.status, SubscriptionStatus.ready);
     expect(state.plans, isEmpty);
+  });
+
+  test('subscription notifier supports no active subscription', () async {
+    final repository = _FakeSubscriptionRepository(activeSubscription: null);
+    final container = _containerWithRepository(repository);
+    addTearDown(container.dispose);
+    final subscription = _listen(container);
+    addTearDown(subscription.close);
+
+    container.read(subscriptionNotifierProvider);
+    await _flushMicrotasks();
+
+    final state = container.read(subscriptionNotifierProvider);
+    expect(state.status, SubscriptionStatus.ready);
+    expect(state.activeSubscription, isNull);
+  });
+
+  test('subscription notifier exposes error when active load fails', () async {
+    final repository = _FakeSubscriptionRepository(
+      activeLoadError: Exception('Active subscription unavailable'),
+    );
+    final container = _containerWithRepository(repository);
+    addTearDown(container.dispose);
+    final subscription = _listen(container);
+    addTearDown(subscription.close);
+
+    container.read(subscriptionNotifierProvider);
+    await _flushMicrotasks();
+
+    final state = container.read(subscriptionNotifierProvider);
+    expect(state.status, SubscriptionStatus.error);
+    expect(state.errorMessage, 'Active subscription unavailable');
+  });
+
+  test(
+    'subscription notifier clears stale active subscription on reload',
+    () async {
+      final repository = _FakeSubscriptionRepository();
+      final container = _containerWithRepository(repository);
+      addTearDown(container.dispose);
+      final subscription = _listen(container);
+      addTearDown(subscription.close);
+
+      await _flushMicrotasks();
+      expect(
+        container.read(subscriptionNotifierProvider).activeSubscription,
+        isNotNull,
+      );
+
+      repository.activeSubscription = null;
+      await container.read(subscriptionNotifierProvider.notifier).loadPlans();
+
+      expect(
+        container.read(subscriptionNotifierProvider).activeSubscription,
+        isNull,
+      );
+    },
+  );
+
+  test('subscription notifier auto disposes between listeners', () async {
+    final repository = _FakeSubscriptionRepository();
+    final container = _containerWithRepository(repository);
+    addTearDown(container.dispose);
+
+    final firstSubscription = _listen(container);
+    await _flushMicrotasks();
+    expect(
+      container.read(subscriptionNotifierProvider).activeSubscription,
+      isNotNull,
+    );
+
+    firstSubscription.close();
+    await container.pump();
+
+    repository.activeSubscription = null;
+    final secondSubscription = _listen(container);
+    addTearDown(secondSubscription.close);
+    await _flushMicrotasks();
+
+    expect(
+      container.read(subscriptionNotifierProvider).activeSubscription,
+      isNull,
+    );
   });
 }
 
@@ -62,6 +155,9 @@ ProviderContainer _containerWithRepository(
       loadSubscriptionPlansUseCaseProvider.overrideWithValue(
         LoadSubscriptionPlansUseCase(repository),
       ),
+      loadActiveSubscriptionUseCaseProvider.overrideWithValue(
+        LoadActiveSubscriptionUseCase(repository),
+      ),
     ],
   );
 }
@@ -71,13 +167,24 @@ Future<void> _flushMicrotasks() async {
   await Future<void>.delayed(Duration.zero);
 }
 
+ProviderSubscription<SubscriptionState> _listen(ProviderContainer container) {
+  return container.listen<SubscriptionState>(
+    subscriptionNotifierProvider,
+    (previous, next) {},
+  );
+}
+
 class _FakeSubscriptionRepository implements SubscriptionRepository {
   final Exception? loadError;
+  final Exception? activeLoadError;
   final List<ServicePackage> plans;
+  ActiveSubscription? activeSubscription;
 
-  const _FakeSubscriptionRepository({
+  _FakeSubscriptionRepository({
     this.loadError,
+    this.activeLoadError,
     this.plans = _defaultPlans,
+    this.activeSubscription = _defaultActiveSubscription,
   });
 
   @override
@@ -88,6 +195,16 @@ class _FakeSubscriptionRepository implements SubscriptionRepository {
     }
 
     return plans;
+  }
+
+  @override
+  Future<ActiveSubscription?> loadActiveSubscription() async {
+    final error = activeLoadError;
+    if (error != null) {
+      throw error;
+    }
+
+    return activeSubscription;
   }
 }
 
@@ -113,3 +230,21 @@ const _defaultPlans = [
     isActive: true,
   ),
 ];
+
+const _defaultActiveSubscription = ActiveSubscription(
+  id: 2,
+  accountId: 8,
+  planId: 2,
+  planName: 'Pro',
+  price: 299000,
+  startDate: null,
+  endDate: null,
+  daysRemaining: 18,
+  isActive: true,
+  isExpired: false,
+  maxStores: 5,
+  maxUsers: 50,
+  status: 'Active',
+  autoRenew: true,
+  cancelAt: null,
+);

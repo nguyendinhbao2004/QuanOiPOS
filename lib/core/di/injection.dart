@@ -23,6 +23,7 @@ import '../../features/auth/domain/usecases/confirm_forgot_password_use_case.dar
 import '../../features/subscription/data/datasources/subscription_remote_data_source.dart';
 import '../../features/subscription/data/repositories/subscription_repository_impl.dart';
 import '../../features/subscription/domain/repositories/subscription_repository.dart';
+import '../../features/subscription/domain/usecases/load_active_subscription_use_case.dart';
 import '../../features/subscription/domain/usecases/load_subscription_plans_use_case.dart';
 
 final GetIt locator = GetIt.instance;
@@ -107,5 +108,8 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<LoadSubscriptionPlansUseCase>(
     () => LoadSubscriptionPlansUseCase(locator<SubscriptionRepository>()),
+  );
+  locator.registerLazySingleton<LoadActiveSubscriptionUseCase>(
+    () => LoadActiveSubscriptionUseCase(locator<SubscriptionRepository>()),
   );
 }

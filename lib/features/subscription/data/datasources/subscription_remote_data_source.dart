@@ -1,4 +1,5 @@
 import '../../../../core/network/dio/dio_client.dart';
+import '../models/active_subscription_model.dart';
 import '../models/service_package_model.dart';
 
 class SubscriptionRemoteDataSource {
@@ -21,6 +22,24 @@ class SubscriptionRemoteDataSource {
     }
 
     return response.data!;
+  }
+
+  Future<ActiveSubscriptionModel?> getActiveSubscription() async {
+    final response = await _dioClient.getResponse<ActiveSubscriptionModel?>(
+      '/subscriptions/active',
+      dataFromJson: (json) =>
+          json == null ? null : ActiveSubscriptionModel.fromJson(json),
+    );
+
+    if (!response.succeeded) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Load active subscription failed',
+      );
+    }
+
+    return response.data;
   }
 
   Never _throwRequestFailure(

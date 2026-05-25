@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/injection.dart';
 import '../../data/datasources/subscription_remote_data_source.dart';
 import '../../domain/repositories/subscription_repository.dart';
+import '../../domain/usecases/load_active_subscription_use_case.dart';
 import '../../domain/usecases/load_subscription_plans_use_case.dart';
 import '../controllers/subscription_notifier.dart';
 import '../controllers/subscription_state.dart';
@@ -21,7 +22,12 @@ final loadSubscriptionPlansUseCaseProvider =
       return locator<LoadSubscriptionPlansUseCase>();
     });
 
+final loadActiveSubscriptionUseCaseProvider =
+    Provider<LoadActiveSubscriptionUseCase>((ref) {
+      return locator<LoadActiveSubscriptionUseCase>();
+    });
+
 final subscriptionNotifierProvider =
-    NotifierProvider<SubscriptionNotifier, SubscriptionState>(
+    NotifierProvider.autoDispose<SubscriptionNotifier, SubscriptionState>(
       SubscriptionNotifier.new,
     );

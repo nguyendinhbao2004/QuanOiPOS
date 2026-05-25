@@ -167,7 +167,7 @@ class _ReadyStateView extends StatelessWidget {
               AccountMenuItemData(
                 title: 'Gói dịch vụ của tôi',
                 leadingIcon: Icons.inventory_2_outlined,
-                trailingMeta: 'Chưa mua',
+                trailingMeta: 'Xem chi tiết',
                 onTap: () => context.pushNamed(RouteNames.storeSubscription),
               ),
               AccountMenuItemData(

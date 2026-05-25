@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/core/network/dio/dio_client.dart';
 import 'package:quan_oi/features/subscription/data/datasources/subscription_remote_data_source.dart';
+import 'package:quan_oi/features/subscription/data/models/active_subscription_model.dart';
 import 'package:quan_oi/features/subscription/data/models/service_package_model.dart';
 
 void main() {
@@ -40,6 +41,32 @@ void main() {
     });
   });
 
+  group('ActiveSubscriptionModel', () {
+    test('maps active subscription payload from backend', () {
+      final subscription = ActiveSubscriptionModel.fromJson(
+        _activeSubscriptionData,
+      );
+
+      expect(subscription.id, 2);
+      expect(subscription.accountId, 8);
+      expect(subscription.planId, 3);
+      expect(subscription.planName, 'Enterprise');
+      expect(subscription.price, 999000);
+      expect(subscription.daysRemaining, 18);
+      expect(subscription.isActive, isTrue);
+      expect(subscription.isExpired, isFalse);
+      expect(subscription.maxStores, 999);
+      expect(subscription.maxUsers, 999);
+      expect(subscription.status, 'Active');
+      expect(subscription.autoRenew, isTrue);
+      expect(subscription.cancelAt, isNull);
+
+      final entity = subscription.toEntity();
+      expect(entity.planName, 'Enterprise');
+      expect(entity.endDate, isNotNull);
+    });
+  });
+
   group('SubscriptionRemoteDataSource', () {
     test('loads plans from /subscription-plans', () async {
       String? requestedPath;
@@ -70,6 +97,64 @@ void main() {
       expect(requestedPath, '/subscription-plans');
       expect(plans, hasLength(3));
       expect(plans.first.name, 'Basic');
+    });
+
+    test('loads active subscription from /subscriptions/active', () async {
+      String? requestedPath;
+      final dio = Dio();
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            requestedPath = options.path;
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                data: {
+                  'succeeded': true,
+                  'message': 'Lấy gói thành công',
+                  'data': _activeSubscriptionData,
+                  'errors': <String>[],
+                },
+              ),
+            );
+          },
+        ),
+      );
+
+      final dataSource = SubscriptionRemoteDataSource(DioClient(dio));
+
+      final subscription = await dataSource.getActiveSubscription();
+
+      expect(requestedPath, '/subscriptions/active');
+      expect(subscription, isNotNull);
+      expect(subscription!.planName, 'Enterprise');
+    });
+
+    test('loads null active subscription when user has no package', () async {
+      final dio = Dio();
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                data: {
+                  'succeeded': true,
+                  'message': 'Không có gói nào',
+                  'data': null,
+                  'errors': <String>[],
+                },
+              ),
+            );
+          },
+        ),
+      );
+
+      final dataSource = SubscriptionRemoteDataSource(DioClient(dio));
+
+      final subscription = await dataSource.getActiveSubscription();
+
+      expect(subscription, isNull);
     });
   });
 }
@@ -118,3 +203,21 @@ const _subscriptionPlansData = [
     'isDeleted': false,
   },
 ];
+
+const _activeSubscriptionData = {
+  'id': 2,
+  'accountId': 8,
+  'planId': 3,
+  'planName': 'Enterprise',
+  'price': 999000,
+  'startDate': '2026-05-14T06:06:44.031744Z',
+  'endDate': '2026-06-13T06:06:44.031744Z',
+  'daysRemaining': 18,
+  'isActive': true,
+  'isExpired': false,
+  'maxStores': 999,
+  'maxUsers': 999,
+  'status': 'Active',
+  'autoRenew': true,
+  'cancelAt': null,
+};

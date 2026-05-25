@@ -6,8 +6,10 @@ import 'package:quan_oi/features/auth/domain/entities/account_type.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_notifier.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
+import 'package:quan_oi/features/subscription/domain/entities/active_subscription.dart';
 import 'package:quan_oi/features/subscription/domain/entities/service_package.dart';
 import 'package:quan_oi/features/subscription/domain/repositories/subscription_repository.dart';
+import 'package:quan_oi/features/subscription/domain/usecases/load_active_subscription_use_case.dart';
 import 'package:quan_oi/features/subscription/domain/usecases/load_subscription_plans_use_case.dart';
 import 'package:quan_oi/features/subscription/presentation/providers/subscription_providers.dart';
 
@@ -64,6 +66,42 @@ void main() {
     );
   });
 
+  testWidgets('StoreUser sees active subscription card when subscribed', (
+    tester,
+  ) async {
+    final container = _buildContainer(
+      AccountType.storeUser,
+      activeSubscription: _activeSubscription,
+    );
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    router.go('/store-subscription');
+    await tester.pumpAndSettle();
+
+    expect(find.text('GÓI ĐANG HOẠT ĐỘNG'), findsOneWidget);
+    expect(find.text('Pro'), findsWidgets);
+    expect(find.text('Hạn sử dụng: 13/06/2026'), findsOneWidget);
+    expect(find.text('18 ngày còn lại'), findsOneWidget);
+    expect(find.text('Tự động gia hạn'), findsOneWidget);
+    expect(find.text('Nâng cấp gói'), findsOneWidget);
+
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -700));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('subscription_plan_page_view')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('SystemAdmin is redirected away from subscription route', (
     tester,
   ) async {
@@ -86,8 +124,13 @@ void main() {
   });
 }
 
-ProviderContainer _buildContainer(AccountType accountType) {
-  final repository = _FakeSubscriptionRepository();
+ProviderContainer _buildContainer(
+  AccountType accountType, {
+  ActiveSubscription? activeSubscription,
+}) {
+  final repository = _FakeSubscriptionRepository(
+    activeSubscription: activeSubscription,
+  );
 
   return ProviderContainer(
     overrides: [
@@ -103,6 +146,9 @@ ProviderContainer _buildContainer(AccountType accountType) {
       ),
       loadSubscriptionPlansUseCaseProvider.overrideWithValue(
         LoadSubscriptionPlansUseCase(repository),
+      ),
+      loadActiveSubscriptionUseCaseProvider.overrideWithValue(
+        LoadActiveSubscriptionUseCase(repository),
       ),
     ],
   );
@@ -120,6 +166,10 @@ class _FixedAuthNotifier extends AuthNotifier {
 }
 
 class _FakeSubscriptionRepository implements SubscriptionRepository {
+  final ActiveSubscription? activeSubscription;
+
+  const _FakeSubscriptionRepository({this.activeSubscription});
+
   @override
   Future<List<ServicePackage>> loadPlans() async {
     return const [
@@ -141,4 +191,27 @@ class _FakeSubscriptionRepository implements SubscriptionRepository {
       ),
     ];
   }
+
+  @override
+  Future<ActiveSubscription?> loadActiveSubscription() async {
+    return activeSubscription;
+  }
 }
+
+final _activeSubscription = ActiveSubscription(
+  id: 2,
+  accountId: 8,
+  planId: 2,
+  planName: 'Pro',
+  price: 299000,
+  startDate: DateTime.utc(2026, 5, 14),
+  endDate: DateTime.utc(2026, 6, 13),
+  daysRemaining: 18,
+  isActive: true,
+  isExpired: false,
+  maxStores: 5,
+  maxUsers: 50,
+  status: 'Active',
+  autoRenew: true,
+  cancelAt: null,
+);
