@@ -29,6 +29,7 @@ import '../../features/workspace_context/data/datasources/workspace_remote_data_
 import '../../features/workspace_context/data/repositories/workspace_repository_impl.dart';
 import '../../features/workspace_context/domain/repositories/workspace_repository.dart';
 import '../../features/workspace_context/domain/usecases/load_my_stores_use_case.dart';
+import '../../features/workspace_context/domain/usecases/load_store_access_context_use_case.dart';
 
 final GetIt locator = GetIt.instance;
 
@@ -126,5 +127,8 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<LoadMyStoresUseCase>(
     () => LoadMyStoresUseCase(locator<WorkspaceRepository>()),
+  );
+  locator.registerLazySingleton<LoadStoreAccessContextUseCase>(
+    () => LoadStoreAccessContextUseCase(locator<WorkspaceRepository>()),
   );
 }

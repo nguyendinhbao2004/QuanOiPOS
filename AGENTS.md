@@ -24,9 +24,11 @@ Chỉ khi agent được giao dựng hoặc chỉnh UI Flutter thì mới đọc
 Khi agent được giao tạo mới hoặc chỉnh sửa feature, state management, repository, use case hoặc DI thì bắt buộc đọc thêm file [docs/clean-architecture-riverpod.md](docs/clean-architecture-riverpod.md).
 
 ## What to do before implementing a feature
-1. Đọc [docs/specd.md](docs/specd.md) để bám đúng scope nghiệp vụ và role/access model.
+1. Đọc [docs/spec.md](docs/spec.md) để bám đúng scope nghiệp vụ và role/access model.
 2. Đọc [docs/clean-architecture-riverpod.md](docs/clean-architecture-riverpod.md) để đặt đúng layer theo Clean Architecture và Riverpod convention.
-3. Xác định feature thuộc layer nào: UI, domain, data, network, storage hay DI.
-4. Tìm implementation sẵn có trước khi thêm mới.
-5. Chỉ tách abstraction khi pattern lặp hoặc có khả năng tái sử dụng thật.
-6. Giữ thay đổi nhỏ, đúng scope, và dễ review.
+3. Khi làm store module hoặc permission-based access control, đọc thêm [docs/store-permission-access.md](docs/store-permission-access.md).
+4. Khi dựng/chỉnh UI store workspace, đọc thêm [docs/store-ui-patterns.md](docs/store-ui-patterns.md).
+5. Xác định feature thuộc layer nào: UI, domain, data, network, storage hay DI.
+6. Tìm implementation sẵn có trước khi thêm mới.
+7. Chỉ tách abstraction khi pattern lặp hoặc có khả năng tái sử dụng thật.
+8. Giữ thay đổi nhỏ, đúng scope, và dễ review.

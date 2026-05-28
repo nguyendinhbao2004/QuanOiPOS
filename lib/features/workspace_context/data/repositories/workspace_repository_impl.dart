@@ -1,4 +1,6 @@
+import '../../domain/entities/store_access_context.dart';
 import '../../domain/entities/store.dart';
+import '../../domain/entities/store_permission.dart';
 import '../../domain/repositories/workspace_repository.dart';
 import '../datasources/workspace_remote_data_source.dart';
 
@@ -14,5 +16,25 @@ class WorkspaceRepositoryImpl implements WorkspaceRepository {
         .where((store) => !store.isDeleted)
         .map((store) => store.toEntity())
         .toList();
+  }
+
+  @override
+  Future<Store> loadStoreById(int storeId) async {
+    final store = await _remoteDataSource.getStoreById(storeId);
+    return store.toEntity();
+  }
+
+  @override
+  Future<List<StorePermission>> loadMyStorePermissions(int storeId) async {
+    final permissions = await _remoteDataSource.getMyStorePermissions(storeId);
+    return permissions.map((permission) => permission.toEntity()).toList();
+  }
+
+  @override
+  Future<StoreAccessContext> loadStoreAccessContext(int storeId) async {
+    final store = await loadStoreById(storeId);
+    final permissions = await loadMyStorePermissions(storeId);
+
+    return StoreAccessContext(store: store, permissions: permissions);
   }
 }

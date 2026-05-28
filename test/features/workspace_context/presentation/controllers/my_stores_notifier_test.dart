@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
+import 'package:quan_oi/features/workspace_context/domain/entities/store_access_context.dart';
+import 'package:quan_oi/features/workspace_context/domain/entities/store_permission.dart';
 import 'package:quan_oi/features/workspace_context/domain/repositories/workspace_repository.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_my_stores_use_case.dart';
 import 'package:quan_oi/features/workspace_context/presentation/controllers/my_stores_state.dart';
@@ -135,6 +137,24 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
     }
 
     return stores;
+  }
+
+  @override
+  Future<Store> loadStoreById(int storeId) async {
+    return stores.firstWhere((store) => store.id == storeId);
+  }
+
+  @override
+  Future<List<StorePermission>> loadMyStorePermissions(int storeId) async {
+    return const [];
+  }
+
+  @override
+  Future<StoreAccessContext> loadStoreAccessContext(int storeId) async {
+    return StoreAccessContext(
+      store: await loadStoreById(storeId),
+      permissions: await loadMyStorePermissions(storeId),
+    );
   }
 }
 

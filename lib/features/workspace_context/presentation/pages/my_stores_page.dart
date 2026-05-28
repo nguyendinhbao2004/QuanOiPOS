@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../config/router_config.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/index.dart';
 import '../../domain/entities/store.dart';
@@ -50,9 +52,9 @@ class MyStoresPage extends ConsumerWidget {
                   .updateSearchQuery(query),
               onRefresh: () =>
                   ref.read(myStoresNotifierProvider.notifier).loadStores(),
-              onAccessStore: () => _showComingSoon(
-                context,
-                'Truy cập cửa hàng sẽ được triển khai sau',
+              onAccessStore: (storeId) => context.pushNamed(
+                RouteNames.storeOverview,
+                pathParameters: {'storeId': storeId.toString()},
               ),
             ),
           },
@@ -72,7 +74,7 @@ class _MyStoresContent extends StatelessWidget {
   final MyStoresState state;
   final ValueChanged<String> onSearchChanged;
   final Future<void> Function() onRefresh;
-  final VoidCallback onAccessStore;
+  final ValueChanged<int> onAccessStore;
 
   const _MyStoresContent({
     required this.state,
@@ -119,7 +121,7 @@ class _MyStoresContent extends StatelessWidget {
 
 class _StoreCard extends StatelessWidget {
   final Store store;
-  final VoidCallback onAccessStore;
+  final ValueChanged<int> onAccessStore;
 
   const _StoreCard({required this.store, required this.onAccessStore});
 
@@ -186,7 +188,9 @@ class _StoreCard extends StatelessWidget {
             const SizedBox(height: AppConstants.spacingMd),
             ElevatedButton.icon(
               key: Key('access_store_${store.id}'),
-              onPressed: store.status.canAccess ? onAccessStore : null,
+              onPressed: store.status.canAccess
+                  ? () => onAccessStore(store.id)
+                  : null,
               icon: const Icon(Icons.chevron_right_rounded),
               label: const Text('Truy cập'),
             ),

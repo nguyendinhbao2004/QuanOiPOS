@@ -10,8 +10,11 @@ import 'package:quan_oi/features/auth/presentation/controllers/auth_notifier.dar
 import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
+import 'package:quan_oi/features/workspace_context/domain/entities/store_access_context.dart';
+import 'package:quan_oi/features/workspace_context/domain/entities/store_permission.dart';
 import 'package:quan_oi/features/workspace_context/domain/repositories/workspace_repository.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_my_stores_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/load_store_access_context_use_case.dart';
 import 'package:quan_oi/features/workspace_context/presentation/pages/my_stores_page.dart';
 import 'package:quan_oi/features/workspace_context/presentation/providers/workspace_context_providers.dart';
 
@@ -43,6 +46,15 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Hoạt động'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('access_store_2')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tổng quan hôm nay'), findsOneWidget);
+    expect(
+      find.text('Bạn chưa tạo hóa đơn để phân tích lãi lỗ'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('SystemAdmin is redirected away from my stores route', (
@@ -64,6 +76,27 @@ void main() {
 
     expect(find.text('SystemAdmin Workspace'), findsOneWidget);
     expect(find.text('Danh sách cửa hàng'), findsNothing);
+  });
+
+  testWidgets('SystemAdmin is redirected away from store overview route', (
+    tester,
+  ) async {
+    final container = _buildContainer(AccountType.systemAdmin);
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/stores/2');
+    await tester.pumpAndSettle();
+
+    expect(find.text('SystemAdmin Workspace'), findsOneWidget);
+    expect(find.text('Tổng quan hôm nay'), findsNothing);
   });
 
   testWidgets('my stores page enables access only for active stores', (
@@ -89,14 +122,6 @@ void main() {
     expect(activeButton.onPressed, isNotNull);
     expect(inactiveButton.onPressed, isNull);
     expect(closedButton.onPressed, isNull);
-
-    await tester.tap(find.byKey(const Key('access_store_2')));
-    await tester.pump();
-
-    expect(
-      find.text('Truy cập cửa hàng sẽ được triển khai sau'),
-      findsOneWidget,
-    );
   });
 
   testWidgets('my stores page shows empty and search-empty states', (
@@ -185,6 +210,9 @@ ProviderContainer _buildContainer(
       loadMyStoresUseCaseProvider.overrideWithValue(
         LoadMyStoresUseCase(repository),
       ),
+      loadStoreAccessContextUseCaseProvider.overrideWithValue(
+        LoadStoreAccessContextUseCase(repository),
+      ),
     ],
   );
 }
@@ -224,6 +252,24 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
     }
 
     return stores;
+  }
+
+  @override
+  Future<Store> loadStoreById(int storeId) async {
+    return stores.firstWhere((store) => store.id == storeId);
+  }
+
+  @override
+  Future<List<StorePermission>> loadMyStorePermissions(int storeId) async {
+    return const [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')];
+  }
+
+  @override
+  Future<StoreAccessContext> loadStoreAccessContext(int storeId) async {
+    return StoreAccessContext(
+      store: await loadStoreById(storeId),
+      permissions: await loadMyStorePermissions(storeId),
+    );
   }
 }
 
