@@ -25,6 +25,11 @@ import '../../features/subscription/data/repositories/subscription_repository_im
 import '../../features/subscription/domain/repositories/subscription_repository.dart';
 import '../../features/subscription/domain/usecases/load_active_subscription_use_case.dart';
 import '../../features/subscription/domain/usecases/load_subscription_plans_use_case.dart';
+import '../../features/store_operations/table_management/data/datasources/table_management_remote_data_source.dart';
+import '../../features/store_operations/table_management/data/repositories/table_management_repository_impl.dart';
+import '../../features/store_operations/table_management/domain/repositories/table_management_repository.dart';
+import '../../features/store_operations/table_management/domain/usecases/load_areas_use_case.dart';
+import '../../features/store_operations/table_management/domain/usecases/load_table_groups_use_case.dart';
 import '../../features/workspace_context/data/datasources/workspace_remote_data_source.dart';
 import '../../features/workspace_context/data/repositories/workspace_repository_impl.dart';
 import '../../features/workspace_context/domain/repositories/workspace_repository.dart';
@@ -130,5 +135,21 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<LoadStoreAccessContextUseCase>(
     () => LoadStoreAccessContextUseCase(locator<WorkspaceRepository>()),
+  );
+
+  // Table management
+  locator.registerLazySingleton<TableManagementRemoteDataSource>(
+    () => TableManagementRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<TableManagementRepository>(
+    () => TableManagementRepositoryImpl(
+      locator<TableManagementRemoteDataSource>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadAreasUseCase>(
+    () => LoadAreasUseCase(locator<TableManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadTableGroupsUseCase>(
+    () => LoadTableGroupsUseCase(locator<TableManagementRepository>()),
   );
 }

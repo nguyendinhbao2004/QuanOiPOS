@@ -140,6 +140,7 @@ class _ReadyView extends ConsumerWidget {
             const _ProfitAnalysisCard(),
             const SizedBox(height: AppConstants.spacingLg),
             _FeatureGrid(
+              storeId: accessContext.store.id,
               canUpdateStore: state.can(AppPermissionCodes.storeUpdate),
               canViewArea: state.can(AppPermissionCodes.areaView),
             ),
@@ -221,10 +222,15 @@ class _ProfitAnalysisCard extends StatelessWidget {
 }
 
 class _FeatureGrid extends StatelessWidget {
+  final int storeId;
   final bool canUpdateStore;
   final bool canViewArea;
 
-  const _FeatureGrid({required this.canUpdateStore, required this.canViewArea});
+  const _FeatureGrid({
+    required this.storeId,
+    required this.canUpdateStore,
+    required this.canViewArea,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -236,10 +242,14 @@ class _FeatureGrid extends StatelessWidget {
       const _FeatureItemData('Khuyến mãi', Icons.local_offer_outlined),
       const _FeatureItemData('Kho ứng dụng', Icons.apps_rounded),
       _FeatureItemData(
-        'Khu vực',
+        'Quản lý bàn',
         Icons.table_restaurant_outlined,
         isEnabled: canViewArea,
-        disabledMessage: 'Bạn chưa có quyền xem khu vực',
+        disabledMessage: 'Bạn chưa có quyền xem quản lý bàn',
+        onTap: () => context.goNamed(
+          RouteNames.storeTableManagement,
+          pathParameters: {'storeId': storeId.toString()},
+        ),
       ),
       _FeatureItemData(
         'Cài đặt',
@@ -279,7 +289,7 @@ class _FeatureTile extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: item.isEnabled
-            ? () => _showComingSoon(context, item.title)
+            ? (item.onTap ?? () => _showComingSoon(context, item.title))
             : null,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         child: Padding(
@@ -431,12 +441,14 @@ class _FeatureItemData {
   final IconData icon;
   final bool isEnabled;
   final String? disabledMessage;
+  final VoidCallback? onTap;
 
   const _FeatureItemData(
     this.title,
     this.icon, {
     this.isEnabled = false,
     this.disabledMessage,
+    this.onTap,
   });
 }
 

@@ -40,8 +40,8 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Tổng quan'), findsOneWidget);
-    expect(find.text('Khu vực'), findsOneWidget);
-    expect(find.text('Bạn chưa có quyền xem khu vực'), findsNothing);
+    expect(find.text('Quản lý bàn'), findsOneWidget);
+    expect(find.text('Bạn chưa có quyền xem quản lý bàn'), findsNothing);
   });
 
   testWidgets('store overview blocks dashboard without DASHBOARD.VIEW', (
@@ -70,7 +70,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Bạn chưa có quyền xem khu vực'), findsOneWidget);
+    expect(find.text('Bạn chưa có quyền xem quản lý bàn'), findsOneWidget);
     expect(find.text('Bạn chưa có quyền cập nhật cửa hàng'), findsWidgets);
   });
 
