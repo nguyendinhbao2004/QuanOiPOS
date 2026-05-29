@@ -80,6 +80,22 @@ class TableManagementNotifier
     await load();
   }
 
+  Future<void> createTable({
+    required int areaId,
+    required String name,
+    required int capacity,
+  }) async {
+    _ensureAllowed(_access.canCreateTable, 'Bạn chưa có quyền thêm bàn');
+
+    await ref.read(createTableUseCaseProvider)(
+      storeId: _access.storeId,
+      areaId: areaId,
+      name: name,
+      capacity: capacity,
+    );
+    await load();
+  }
+
   Future<void> updateArea({
     required int areaId,
     required String name,

@@ -13,7 +13,7 @@ class AreaTableSection extends StatelessWidget {
   final List<DiningTable> tables;
   final bool canViewTables;
   final bool canCreateTable;
-  final VoidCallback onAddTableTap;
+  final ValueChanged<Area> onAddTableTap;
   final ValueChanged<DiningTable> onTableTap;
 
   const AreaTableSection({
@@ -64,7 +64,7 @@ class AreaTableSection extends StatelessWidget {
               if (index == tables.length) {
                 return AddTableTile(
                   isEnabled: canCreateTable,
-                  onTap: onAddTableTap,
+                  onTap: () => onAddTableTap(area),
                 );
               }
 

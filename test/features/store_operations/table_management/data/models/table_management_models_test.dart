@@ -3,6 +3,7 @@ import 'package:quan_oi/features/store_operations/table_management/data/models/a
 import 'package:quan_oi/features/store_operations/table_management/data/models/area_request_models.dart';
 import 'package:quan_oi/features/store_operations/table_management/data/models/dining_table_model.dart';
 import 'package:quan_oi/features/store_operations/table_management/data/models/table_area_group_model.dart';
+import 'package:quan_oi/features/store_operations/table_management/data/models/table_request_models.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/entities/table_status.dart';
 
 void main() {
@@ -81,6 +82,30 @@ void main() {
   });
 
   group('DiningTableModel', () {
+    test('parses created table response data', () {
+      final table = DiningTableModel.fromJson({
+        'id': 6,
+        'storeId': 5,
+        'areaId': 6,
+        'name': 'Bàn 3',
+        'capacity': 4,
+        'status': 'Available',
+        'createdAt': '2026-05-29T08:38:20.585544Z',
+        'createdBy': null,
+        'updatedAt': null,
+        'updatedBy': null,
+        'isDeleted': false,
+      });
+
+      expect(table.id, 6);
+      expect(table.storeId, 5);
+      expect(table.areaId, 6);
+      expect(table.name, 'Bàn 3');
+      expect(table.capacity, 4);
+      expect(table.status, TableStatus.available);
+      expect(table.createdAt, isNotNull);
+    });
+
     test('maps known and unknown statuses', () {
       expect(
         DiningTableModel.statusFromJson('Available'),
@@ -89,6 +114,20 @@ void main() {
       expect(DiningTableModel.statusFromJson('Occupied'), TableStatus.occupied);
       expect(DiningTableModel.statusFromJson('Reserved'), TableStatus.reserved);
       expect(DiningTableModel.statusFromJson('Cleaning'), TableStatus.unknown);
+    });
+  });
+
+  group('Table request models', () {
+    test('serializes create table payload', () {
+      expect(
+        const CreateTableRequestModel(
+          storeId: 5,
+          areaId: 6,
+          name: 'Bàn 3',
+          capacity: 4,
+        ).toJson(),
+        {'storeId': 5, 'areaId': 6, 'name': 'Bàn 3', 'capacity': 4},
+      );
     });
   });
 

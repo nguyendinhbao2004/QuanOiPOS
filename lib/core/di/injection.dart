@@ -29,6 +29,7 @@ import '../../features/store_operations/table_management/data/datasources/table_
 import '../../features/store_operations/table_management/data/repositories/table_management_repository_impl.dart';
 import '../../features/store_operations/table_management/domain/repositories/table_management_repository.dart';
 import '../../features/store_operations/table_management/domain/usecases/create_area_use_case.dart';
+import '../../features/store_operations/table_management/domain/usecases/create_table_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/delete_area_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/load_areas_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/load_table_groups_use_case.dart';
@@ -158,6 +159,9 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<CreateAreaUseCase>(
     () => CreateAreaUseCase(locator<TableManagementRepository>()),
+  );
+  locator.registerLazySingleton<CreateTableUseCase>(
+    () => CreateTableUseCase(locator<TableManagementRepository>()),
   );
   locator.registerLazySingleton<UpdateAreaUseCase>(
     () => UpdateAreaUseCase(locator<TableManagementRepository>()),

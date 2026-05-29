@@ -1,4 +1,5 @@
 import '../entities/area.dart';
+import '../entities/dining_table.dart';
 import '../entities/table_area_group.dart';
 
 abstract class TableManagementRepository {
@@ -13,6 +14,13 @@ abstract class TableManagementRepository {
     required int storeId,
     required String name,
     required String description,
+  });
+
+  Future<DiningTable> createTable({
+    required int storeId,
+    required int areaId,
+    required String name,
+    required int capacity,
   });
 
   Future<Area> updateArea({

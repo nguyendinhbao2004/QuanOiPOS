@@ -4,6 +4,7 @@ import '../../../../../core/di/injection.dart';
 import '../../data/datasources/table_management_remote_data_source.dart';
 import '../../domain/repositories/table_management_repository.dart';
 import '../../domain/usecases/create_area_use_case.dart';
+import '../../domain/usecases/create_table_use_case.dart';
 import '../../domain/usecases/delete_area_use_case.dart';
 import '../../domain/usecases/load_areas_use_case.dart';
 import '../../domain/usecases/load_table_groups_use_case.dart';
@@ -33,6 +34,10 @@ final loadTableGroupsUseCaseProvider = Provider<LoadTableGroupsUseCase>((ref) {
 
 final createAreaUseCaseProvider = Provider<CreateAreaUseCase>((ref) {
   return locator<CreateAreaUseCase>();
+});
+
+final createTableUseCaseProvider = Provider<CreateTableUseCase>((ref) {
+  return locator<CreateTableUseCase>();
 });
 
 final updateAreaUseCaseProvider = Provider<UpdateAreaUseCase>((ref) {

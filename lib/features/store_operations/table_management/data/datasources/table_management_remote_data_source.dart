@@ -1,6 +1,8 @@
 import '../../../../../core/network/dio/dio_client.dart';
 import '../models/area_model.dart';
 import '../models/area_request_models.dart';
+import '../models/dining_table_model.dart';
+import '../models/table_request_models.dart';
 import '../models/table_area_group_model.dart';
 
 class TableManagementRemoteDataSource {
@@ -58,6 +60,24 @@ class TableManagementRemoteDataSource {
         response.message,
         response.errors,
         'Không thể thêm khu vực',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<DiningTableModel> createTable(CreateTableRequestModel request) async {
+    final response = await _dioClient.postResponse<DiningTableModel>(
+      '/tables',
+      data: request.toJson(),
+      dataFromJson: DiningTableModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể thêm bàn',
       );
     }
 

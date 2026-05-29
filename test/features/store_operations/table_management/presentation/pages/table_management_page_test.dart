@@ -8,6 +8,7 @@ import 'package:quan_oi/features/store_operations/table_management/domain/entiti
 import 'package:quan_oi/features/store_operations/table_management/domain/entities/table_status.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/repositories/table_management_repository.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/create_area_use_case.dart';
+import 'package:quan_oi/features/store_operations/table_management/domain/usecases/create_table_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/delete_area_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/load_areas_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/load_table_groups_use_case.dart';
@@ -15,6 +16,7 @@ import 'package:quan_oi/features/store_operations/table_management/domain/usecas
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/update_area_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/presentation/pages/table_management_page.dart';
 import 'package:quan_oi/features/store_operations/table_management/presentation/providers/table_management_providers.dart';
+import 'package:quan_oi/features/store_operations/table_management/presentation/widgets/add_table_tile.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_access_context.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_permission.dart';
@@ -298,6 +300,116 @@ void main() {
     expect(tableRepository.createAreaCallCount, 1);
     expect(tableRepository.loadAreasCallCount, greaterThan(1));
   });
+
+  testWidgets('add table sheet prefills area and validates required fields', (
+    tester,
+  ) async {
+    final tableRepository = _FakeTableManagementRepository();
+
+    await _pumpPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 2, code: 'AREA.VIEW'),
+        StorePermission(permissionId: 3, code: 'TABLE.VIEW'),
+        StorePermission(permissionId: 4, code: 'TABLE.CREATE'),
+      ],
+      tableRepository: tableRepository,
+    );
+    await tester.pumpAndSettle();
+
+    final addTableTile = await _scrollToFirstAddTableTile(tester);
+    await tester.tap(addTableTile);
+    await tester.pumpAndSettle();
+
+    final areaField = tester.widget<TextFormField>(
+      find.byKey(const Key('table_form_area_field')),
+    );
+    expect(areaField.initialValue, 'Bên trong');
+
+    await tester.tap(find.byKey(const Key('table_form_submit_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Vui lòng nhập tên bàn'), findsOneWidget);
+    expect(find.text('Vui lòng nhập số chỗ'), findsOneWidget);
+    expect(tableRepository.createTableCallCount, 0);
+  });
+
+  testWidgets('creating table calls API with selected area and reloads data', (
+    tester,
+  ) async {
+    final tableRepository = _FakeTableManagementRepository();
+
+    await _pumpPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 2, code: 'AREA.VIEW'),
+        StorePermission(permissionId: 3, code: 'TABLE.VIEW'),
+        StorePermission(permissionId: 4, code: 'TABLE.CREATE'),
+      ],
+      tableRepository: tableRepository,
+    );
+    await tester.pumpAndSettle();
+
+    final initialLoadCount = tableRepository.loadTableGroupsCallCount;
+
+    final addTableTile = await _scrollToFirstAddTableTile(tester);
+    await tester.tap(addTableTile);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('table_form_name_field')),
+      'Bàn 9',
+    );
+    await tester.enterText(
+      find.byKey(const Key('table_form_capacity_field')),
+      '4',
+    );
+    await tester.tap(find.byKey(const Key('table_form_submit_button')));
+    await tester.pumpAndSettle();
+
+    expect(tableRepository.createTableCallCount, 1);
+    expect(tableRepository.lastCreatedTableStoreId, 5);
+    expect(tableRepository.lastCreatedTableAreaId, 6);
+    expect(tableRepository.lastCreatedTableName, 'Bàn 9');
+    expect(tableRepository.lastCreatedTableCapacity, 4);
+    expect(
+      tableRepository.loadTableGroupsCallCount,
+      greaterThan(initialLoadCount),
+    );
+    expect(find.text('Thêm bàn thành công!'), findsOneWidget);
+  });
+
+  testWidgets('add table tile is disabled without TABLE.CREATE', (
+    tester,
+  ) async {
+    final tableRepository = _FakeTableManagementRepository();
+
+    await _pumpPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 2, code: 'AREA.VIEW'),
+        StorePermission(permissionId: 3, code: 'TABLE.VIEW'),
+      ],
+      tableRepository: tableRepository,
+    );
+    await tester.pumpAndSettle();
+
+    final addTableTile = await _scrollToFirstAddTableTile(tester);
+
+    final addTile = tester.widget<AddTableTile>(addTableTile);
+    expect(addTile.isEnabled, isFalse);
+
+    await tester.tap(addTableTile);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('table_form_submit_button')), findsNothing);
+    expect(tableRepository.createTableCallCount, 0);
+  });
+}
+
+Future<Finder> _scrollToFirstAddTableTile(WidgetTester tester) async {
+  await tester.drag(find.byType(ListView).first, const Offset(0, -500));
+  await tester.pumpAndSettle();
+  return find.byType(AddTableTile).first;
 }
 
 Future<void> _pumpPage(
@@ -324,6 +436,9 @@ Future<void> _pumpPage(
         ),
         createAreaUseCaseProvider.overrideWithValue(
           CreateAreaUseCase(tableRepository),
+        ),
+        createTableUseCaseProvider.overrideWithValue(
+          CreateTableUseCase(tableRepository),
         ),
         updateAreaUseCaseProvider.overrideWithValue(
           UpdateAreaUseCase(tableRepository),
@@ -376,10 +491,15 @@ class _FakeTableManagementRepository implements TableManagementRepository {
   int loadAreasCallCount = 0;
   int loadTableGroupsCallCount = 0;
   int createAreaCallCount = 0;
+  int createTableCallCount = 0;
   int updateAreaCallCount = 0;
   int updateAreaDisplayOrderCallCount = 0;
   int deleteAreaCallCount = 0;
   int? lastAreaId;
+  int? lastCreatedTableStoreId;
+  int? lastCreatedTableAreaId;
+  String? lastCreatedTableName;
+  int? lastCreatedTableCapacity;
 
   @override
   Future<List<Area>> loadAreas(int storeId) async {
@@ -416,6 +536,30 @@ class _FakeTableManagementRepository implements TableManagementRepository {
       description: description,
       displayOrder: 3,
       isActive: true,
+      isDeleted: false,
+    );
+  }
+
+  @override
+  Future<DiningTable> createTable({
+    required int storeId,
+    required int areaId,
+    required String name,
+    required int capacity,
+  }) async {
+    createTableCallCount += 1;
+    lastCreatedTableStoreId = storeId;
+    lastCreatedTableAreaId = areaId;
+    lastCreatedTableName = name;
+    lastCreatedTableCapacity = capacity;
+
+    return DiningTable(
+      id: 99,
+      storeId: storeId,
+      areaId: areaId,
+      name: name,
+      capacity: capacity,
+      status: TableStatus.available,
       isDeleted: false,
     );
   }

@@ -8,6 +8,7 @@ import '../../../../../core/constants/app_permission_codes.dart';
 import '../../../../../core/theme/index.dart';
 import '../../../../workspace_context/presentation/controllers/store_access_state.dart';
 import '../../../../workspace_context/presentation/providers/workspace_context_providers.dart';
+import '../../domain/entities/area.dart';
 import '../../domain/entities/dining_table.dart';
 import '../../domain/entities/table_area_group.dart';
 import '../controllers/table_management_state.dart';
@@ -16,6 +17,7 @@ import '../widgets/area_filter_chips.dart';
 import '../widgets/area_management_bottom_sheet.dart';
 import '../widgets/area_table_section.dart';
 import '../widgets/quick_action_grid.dart';
+import '../widgets/table_form_bottom_sheet.dart';
 import '../widgets/table_management_header.dart';
 import '../widgets/table_status_tabs.dart';
 
@@ -88,6 +90,7 @@ class _AccessReadyView extends ConsumerWidget {
       canCreateArea: accessState.can(AppPermissionCodes.areaCreate),
       canUpdateArea: accessState.can(AppPermissionCodes.areaUpdate),
       canDeleteArea: accessState.can(AppPermissionCodes.areaDelete),
+      canCreateTable: accessState.can(AppPermissionCodes.tableCreate),
     );
     final state = ref.watch(tableManagementNotifierProvider(access));
     final notifier = ref.read(tableManagementNotifierProvider(access).notifier);
@@ -129,11 +132,10 @@ class _AccessReadyView extends ConsumerWidget {
             ),
             TableManagementStatus.ready => _ReadyContent(
               state: state,
-              canCreateTable: accessState.can(AppPermissionCodes.tableCreate),
               access: access,
               onRefresh: notifier.load,
               onAreaSelected: notifier.selectArea,
-              onAddTableTap: () => _showComingSoon(context, 'Thêm bàn mới'),
+              onAddTableTap: (area) => _showTableForm(context, access, area),
               onTableTap: (table) => _showComingSoon(context, table.name),
             ),
           },
@@ -145,16 +147,14 @@ class _AccessReadyView extends ConsumerWidget {
 
 class _ReadyContent extends StatelessWidget {
   final TableManagementState state;
-  final bool canCreateTable;
   final TableManagementAccess access;
   final Future<void> Function() onRefresh;
   final ValueChanged<int?> onAreaSelected;
-  final VoidCallback onAddTableTap;
+  final ValueChanged<Area> onAddTableTap;
   final ValueChanged<DiningTable> onTableTap;
 
   const _ReadyContent({
     required this.state,
-    required this.canCreateTable,
     required this.access,
     required this.onRefresh,
     required this.onAreaSelected,
@@ -206,7 +206,7 @@ class _ReadyContent extends StatelessWidget {
                 area: section.area,
                 tables: section.tables,
                 canViewTables: state.canViewTables,
-                canCreateTable: canCreateTable,
+                canCreateTable: access.canCreateTable,
                 onAddTableTap: onAddTableTap,
                 onTableTap: onTableTap,
               ),
@@ -395,6 +395,42 @@ void _showComingSoon(BuildContext context, String feature) {
   ScaffoldMessenger.of(
     context,
   ).showSnackBar(SnackBar(content: Text('$feature sẽ được triển khai sau')));
+}
+
+Future<void> _showTableForm(
+  BuildContext context,
+  TableManagementAccess access,
+  Area area,
+) async {
+  final container = ProviderScope.containerOf(context, listen: false);
+  final notifier = container.read(
+    tableManagementNotifierProvider(access).notifier,
+  );
+
+  final created = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return TableFormBottomSheet(
+        area: area,
+        onSubmit: (name, capacity) {
+          return notifier.createTable(
+            areaId: area.id,
+            name: name,
+            capacity: capacity,
+          );
+        },
+      );
+    },
+  );
+
+  if (created == true && context.mounted) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Thêm bàn thành công!')));
+  }
 }
 
 Future<void> _showAreaManagement(

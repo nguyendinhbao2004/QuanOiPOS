@@ -13,6 +13,7 @@ class TableManagementAccess {
   final bool canCreateArea;
   final bool canUpdateArea;
   final bool canDeleteArea;
+  final bool canCreateTable;
 
   const TableManagementAccess({
     required this.storeId,
@@ -21,6 +22,7 @@ class TableManagementAccess {
     required this.canCreateArea,
     required this.canUpdateArea,
     required this.canDeleteArea,
+    required this.canCreateTable,
   });
 
   @override
@@ -33,7 +35,8 @@ class TableManagementAccess {
             canViewTables == other.canViewTables &&
             canCreateArea == other.canCreateArea &&
             canUpdateArea == other.canUpdateArea &&
-            canDeleteArea == other.canDeleteArea;
+            canDeleteArea == other.canDeleteArea &&
+            canCreateTable == other.canCreateTable;
   }
 
   @override
@@ -44,6 +47,7 @@ class TableManagementAccess {
     canCreateArea,
     canUpdateArea,
     canDeleteArea,
+    canCreateTable,
   );
 }
 

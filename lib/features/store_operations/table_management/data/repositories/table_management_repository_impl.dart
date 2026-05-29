@@ -1,8 +1,10 @@
 import '../../domain/entities/area.dart';
+import '../../domain/entities/dining_table.dart';
 import '../../domain/entities/table_area_group.dart';
 import '../../domain/repositories/table_management_repository.dart';
 import '../datasources/table_management_remote_data_source.dart';
 import '../models/area_request_models.dart';
+import '../models/table_request_models.dart';
 
 class TableManagementRepositoryImpl implements TableManagementRepository {
   final TableManagementRemoteDataSource _remoteDataSource;
@@ -78,6 +80,25 @@ class TableManagementRepositoryImpl implements TableManagementRepository {
     );
 
     return area.toEntity();
+  }
+
+  @override
+  Future<DiningTable> createTable({
+    required int storeId,
+    required int areaId,
+    required String name,
+    required int capacity,
+  }) async {
+    final table = await _remoteDataSource.createTable(
+      CreateTableRequestModel(
+        storeId: storeId,
+        areaId: areaId,
+        name: name,
+        capacity: capacity,
+      ),
+    );
+
+    return table.toEntity();
   }
 
   @override
