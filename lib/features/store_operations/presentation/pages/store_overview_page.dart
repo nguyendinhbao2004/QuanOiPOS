@@ -142,6 +142,7 @@ class _ReadyView extends ConsumerWidget {
             _FeatureGrid(
               storeId: accessContext.store.id,
               canUpdateStore: state.can(AppPermissionCodes.storeUpdate),
+              canViewInventory: state.can(AppPermissionCodes.inventoryView),
               canViewArea: state.can(AppPermissionCodes.areaView),
             ),
           ],
@@ -224,11 +225,13 @@ class _ProfitAnalysisCard extends StatelessWidget {
 class _FeatureGrid extends StatelessWidget {
   final int storeId;
   final bool canUpdateStore;
+  final bool canViewInventory;
   final bool canViewArea;
 
   const _FeatureGrid({
     required this.storeId,
     required this.canUpdateStore,
+    required this.canViewInventory,
     required this.canViewArea,
   });
 
@@ -240,7 +243,12 @@ class _FeatureGrid extends StatelessWidget {
       const _FeatureItemData('Báo cáo', Icons.bar_chart_rounded),
       const _FeatureItemData('Thu chi', Icons.payments_outlined),
       const _FeatureItemData('Khuyến mãi', Icons.local_offer_outlined),
-      const _FeatureItemData('Kho ứng dụng', Icons.apps_rounded),
+      _FeatureItemData(
+        'Quản lý kho',
+        Icons.apps_rounded,
+        isEnabled: canViewInventory,
+        disabledMessage: 'Bạn chưa có quyền xem quản lý kho',
+      ),
       _FeatureItemData(
         'Quản lý bàn',
         Icons.table_restaurant_outlined,

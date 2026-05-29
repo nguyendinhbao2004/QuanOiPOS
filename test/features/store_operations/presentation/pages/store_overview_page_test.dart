@@ -30,7 +30,8 @@ void main() {
         permissions: [
           StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW'),
           StorePermission(permissionId: 3, code: 'STORE.UPDATE'),
-          StorePermission(permissionId: 4, code: 'AREA.VIEW'),
+          StorePermission(permissionId: 4, code: 'INVENTORY.VIEW'),
+          StorePermission(permissionId: 5, code: 'AREA.VIEW'),
         ],
       ),
     );
@@ -44,6 +45,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Tổng quan'), findsOneWidget);
+    expect(find.text('Bạn chưa có quyền xem quản lý kho'), findsNothing);
     expect(find.text('Quản lý bàn'), findsOneWidget);
     expect(find.text('Bạn chưa có quyền xem quản lý bàn'), findsNothing);
   });
@@ -75,7 +77,26 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Bạn chưa có quyền xem quản lý bàn'), findsOneWidget);
+    expect(find.text('Bạn chưa có quyền xem quản lý kho'), findsOneWidget);
     expect(find.text('Bạn chưa có quyền cập nhật cửa hàng'), findsWidgets);
+  });
+
+  testWidgets('store overview enables inventory with INVENTORY.VIEW', (
+    tester,
+  ) async {
+    await _pumpOverview(
+      tester,
+      const _FakeWorkspaceRepository(
+        permissions: [
+          StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW'),
+          StorePermission(permissionId: 2, code: 'INVENTORY.VIEW'),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quản lý kho'), findsOneWidget);
+    expect(find.text('Bạn chưa có quyền xem quản lý kho'), findsNothing);
   });
 
   testWidgets('store header opens switcher bottom sheet with active store', (
