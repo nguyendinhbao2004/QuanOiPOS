@@ -6,6 +6,8 @@ import '../storage/token_storage.dart';
 import '../storage/token_storage_impl.dart';
 import '../storage/session_snapshot_storage.dart';
 import '../storage/session_snapshot_storage_impl.dart';
+import '../storage/last_active_store_storage.dart';
+import '../storage/last_active_store_storage_impl.dart';
 import '../network/dio/dio_factory.dart';
 import '../network/dio/dio_client.dart';
 import '../session/session_invalidator.dart';
@@ -39,8 +41,11 @@ import '../../features/store_operations/table_management/domain/usecases/update_
 import '../../features/workspace_context/data/datasources/workspace_remote_data_source.dart';
 import '../../features/workspace_context/data/repositories/workspace_repository_impl.dart';
 import '../../features/workspace_context/domain/repositories/workspace_repository.dart';
+import '../../features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
+import '../../features/workspace_context/domain/usecases/load_last_active_store_use_case.dart';
 import '../../features/workspace_context/domain/usecases/load_my_stores_use_case.dart';
 import '../../features/workspace_context/domain/usecases/load_store_access_context_use_case.dart';
+import '../../features/workspace_context/domain/usecases/save_last_active_store_use_case.dart';
 
 final GetIt locator = GetIt.instance;
 
@@ -60,6 +65,9 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<SharedPreferences>(() => prefs);
   locator.registerLazySingleton<SessionSnapshotStorage>(
     () => SessionSnapshotStorageImpl(locator<SharedPreferences>()),
+  );
+  locator.registerLazySingleton<LastActiveStoreStorage>(
+    () => LastActiveStoreStorageImpl(locator<SharedPreferences>()),
   );
 
   // Logger
@@ -141,6 +149,15 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<LoadStoreAccessContextUseCase>(
     () => LoadStoreAccessContextUseCase(locator<WorkspaceRepository>()),
+  );
+  locator.registerLazySingleton<LoadLastActiveStoreUseCase>(
+    () => LoadLastActiveStoreUseCase(locator<LastActiveStoreStorage>()),
+  );
+  locator.registerLazySingleton<SaveLastActiveStoreUseCase>(
+    () => SaveLastActiveStoreUseCase(locator<LastActiveStoreStorage>()),
+  );
+  locator.registerLazySingleton<ClearLastActiveStoreUseCase>(
+    () => ClearLastActiveStoreUseCase(locator<LastActiveStoreStorage>()),
   );
 
   // Table management

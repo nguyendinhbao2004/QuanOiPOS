@@ -47,7 +47,6 @@ class TableManagementNotifier
       final tableGroups = _access.canViewTables
           ? await ref.read(loadTableGroupsUseCaseProvider)(
               storeId: _access.storeId,
-              areaId: state.selectedAreaId,
             )
           : const <TableAreaGroup>[];
 
@@ -188,7 +187,7 @@ class TableManagementNotifier
     await load();
   }
 
-  Future<void> selectArea(int? areaId) async {
+  void selectArea(int? areaId) {
     if (state.selectedAreaId == areaId) {
       return;
     }
@@ -197,12 +196,6 @@ class TableManagementNotifier
       selectedAreaId: areaId,
       clearSelectedArea: areaId == null,
     );
-
-    if (!_access.canViewTables) {
-      return;
-    }
-
-    await load();
   }
 
   void setStatusFilter(TableStatusFilter filter) {

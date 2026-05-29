@@ -52,14 +52,29 @@ class MyStoresPage extends ConsumerWidget {
                   .updateSearchQuery(query),
               onRefresh: () =>
                   ref.read(myStoresNotifierProvider.notifier).loadStores(),
-              onAccessStore: (storeId) => context.pushNamed(
-                RouteNames.storeOverview,
-                pathParameters: {'storeId': storeId.toString()},
-              ),
+              onAccessStore: (storeId) => _openStore(context, ref, storeId),
             ),
           },
         ),
       ),
+    );
+  }
+
+  Future<void> _openStore(
+    BuildContext context,
+    WidgetRef ref,
+    int storeId,
+  ) async {
+    try {
+      await ref.read(lastActiveStoreNotifierProvider.notifier).save(storeId);
+    } catch (_) {
+      // Last-store persistence should not block opening the store.
+    }
+
+    if (!context.mounted) return;
+    context.goNamed(
+      RouteNames.storeOverview,
+      pathParameters: {'storeId': storeId.toString()},
     );
   }
 
@@ -74,7 +89,7 @@ class _MyStoresContent extends StatelessWidget {
   final MyStoresState state;
   final ValueChanged<String> onSearchChanged;
   final Future<void> Function() onRefresh;
-  final ValueChanged<int> onAccessStore;
+  final Future<void> Function(int storeId) onAccessStore;
 
   const _MyStoresContent({
     required this.state,

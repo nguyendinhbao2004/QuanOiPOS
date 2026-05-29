@@ -8,18 +8,16 @@ class StoreWorkspaceHeader extends StatelessWidget {
   final Store store;
   final String subtitle;
   final VoidCallback onStoreTap;
-  final VoidCallback? onSettingsTap;
+  final VoidCallback onAccountTap;
   final VoidCallback onNotificationTap;
-  final bool canUpdateStore;
 
   const StoreWorkspaceHeader({
     super.key,
     required this.store,
     required this.subtitle,
     required this.onStoreTap,
-    required this.onSettingsTap,
+    required this.onAccountTap,
     required this.onNotificationTap,
-    required this.canUpdateStore,
   });
 
   @override
@@ -87,11 +85,9 @@ class StoreWorkspaceHeader extends StatelessWidget {
         ),
         const SizedBox(width: AppConstants.spacingSm),
         IconButton(
-          tooltip: canUpdateStore
-              ? 'Cài đặt cửa hàng'
-              : 'Bạn chưa có quyền cập nhật cửa hàng',
-          onPressed: canUpdateStore ? onSettingsTap : null,
-          icon: const Icon(Icons.settings_outlined),
+          tooltip: 'Tài khoản',
+          onPressed: onAccountTap,
+          icon: const Icon(Icons.person_outline_rounded),
         ),
         IconButton(
           tooltip: 'Thông báo',

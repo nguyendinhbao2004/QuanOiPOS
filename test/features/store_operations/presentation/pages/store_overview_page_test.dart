@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/config/router_config.dart';
+import 'package:quan_oi/core/storage/last_active_store_storage.dart';
 import 'package:quan_oi/core/theme/index.dart';
 import 'package:quan_oi/features/auth/domain/entities/account_type.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_notifier.dart';
@@ -12,8 +13,11 @@ import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_access_context.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_permission.dart';
 import 'package:quan_oi/features/workspace_context/domain/repositories/workspace_repository.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/load_last_active_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_my_stores_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_store_access_context_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/save_last_active_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/presentation/providers/workspace_context_providers.dart';
 
 void main() {
@@ -133,7 +137,11 @@ void main() {
       final repository = const _FakeWorkspaceRepository(
         permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
       );
-      final container = _buildRouterContainer(repository);
+      final lastActiveStoreStorage = _FakeLastActiveStoreStorage();
+      final container = _buildRouterContainer(
+        repository,
+        lastActiveStoreStorage: lastActiveStoreStorage,
+      );
       addTearDown(container.dispose);
 
       final router = container.read(routerProvider);
@@ -159,8 +167,77 @@ void main() {
 
       expect(find.text('Buffet Poseidon'), findsOneWidget);
       expect(find.text('FPT Shipper Vip'), findsNothing);
+      expect(lastActiveStoreStorage.lastStoreId, 2);
     },
   );
+
+  testWidgets('store header account icon navigates back to account hub', (
+    tester,
+  ) async {
+    final repository = const _FakeWorkspaceRepository(
+      permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
+    );
+    final container = _buildRouterContainer(repository);
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/stores/5');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.person_outline_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Xin chào, Test User'), findsOneWidget);
+    expect(find.text('Tổng quan hôm nay'), findsNothing);
+  });
+
+  testWidgets('store load error offers navigation back to my stores', (
+    tester,
+  ) async {
+    final repository = _FakeWorkspaceRepository(
+      permissions: const [
+        StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW'),
+      ],
+      accessError: Exception(
+        'Tai khoan nguoi dung khong du quyen de thuc hien yeu cau nay!',
+      ),
+    );
+    final container = _buildRouterContainer(repository);
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/stores/5');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Tai khoan nguoi dung khong du quyen de thuc hien yeu cau nay!',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Thử lại'), findsOneWidget);
+    expect(find.text('Về danh sách cửa hàng'), findsOneWidget);
+
+    await tester.tap(find.text('Về danh sách cửa hàng'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Danh sách cửa hàng'), findsOneWidget);
+    expect(find.text('FPT Shipper Vip'), findsOneWidget);
+  });
 
   testWidgets('inactive store is disabled in switcher', (tester) async {
     await _pumpOverview(
@@ -206,6 +283,7 @@ Future<void> _pumpOverview(
         loadMyStoresUseCaseProvider.overrideWithValue(
           LoadMyStoresUseCase(repository),
         ),
+        ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
       ],
       child: MaterialApp(
         theme: AppTheme.light,
@@ -215,7 +293,12 @@ Future<void> _pumpOverview(
   );
 }
 
-ProviderContainer _buildRouterContainer(_FakeWorkspaceRepository repository) {
+ProviderContainer _buildRouterContainer(
+  _FakeWorkspaceRepository repository, {
+  _FakeLastActiveStoreStorage? lastActiveStoreStorage,
+}) {
+  final storeStorage = lastActiveStoreStorage ?? _FakeLastActiveStoreStorage();
+
   return ProviderContainer(
     overrides: [
       authNotifierProvider.overrideWith(
@@ -234,8 +317,23 @@ ProviderContainer _buildRouterContainer(_FakeWorkspaceRepository repository) {
       loadMyStoresUseCaseProvider.overrideWithValue(
         LoadMyStoresUseCase(repository),
       ),
+      ..._lastActiveStoreOverrides(storeStorage),
     ],
   );
+}
+
+List<Override> _lastActiveStoreOverrides(_FakeLastActiveStoreStorage storage) {
+  return [
+    loadLastActiveStoreUseCaseProvider.overrideWithValue(
+      LoadLastActiveStoreUseCase(storage),
+    ),
+    saveLastActiveStoreUseCaseProvider.overrideWithValue(
+      SaveLastActiveStoreUseCase(storage),
+    ),
+    clearLastActiveStoreUseCaseProvider.overrideWithValue(
+      ClearLastActiveStoreUseCase(storage),
+    ),
+  ];
 }
 
 class _FixedAuthNotifier extends AuthNotifier {
@@ -251,8 +349,9 @@ class _FixedAuthNotifier extends AuthNotifier {
 
 class _FakeWorkspaceRepository implements WorkspaceRepository {
   final List<StorePermission> permissions;
+  final Exception? accessError;
 
-  const _FakeWorkspaceRepository({required this.permissions});
+  const _FakeWorkspaceRepository({required this.permissions, this.accessError});
 
   @override
   Future<List<Store>> loadMyStores() async {
@@ -271,10 +370,37 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
 
   @override
   Future<StoreAccessContext> loadStoreAccessContext(int storeId) async {
+    final error = accessError;
+    if (error != null) {
+      throw error;
+    }
+
     return StoreAccessContext(
       store: await loadStoreById(storeId),
       permissions: await loadMyStorePermissions(storeId),
     );
+  }
+}
+
+class _FakeLastActiveStoreStorage implements LastActiveStoreStorage {
+  int? lastStoreId;
+
+  _FakeLastActiveStoreStorage({int? initialStoreId})
+    : lastStoreId = initialStoreId;
+
+  @override
+  Future<int?> getLastActiveStoreId() async {
+    return lastStoreId;
+  }
+
+  @override
+  Future<void> saveLastActiveStoreId(int storeId) async {
+    lastStoreId = storeId;
+  }
+
+  @override
+  Future<void> clearLastActiveStoreId() async {
+    lastStoreId = null;
   }
 }
 

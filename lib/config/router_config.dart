@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +13,9 @@ import '../features/store_operations/presentation/pages/store_overview_page.dart
 import '../features/store_operations/table_management/presentation/pages/table_management_page.dart';
 import '../features/store_operations/table_management/presentation/pages/table_settings_page.dart';
 import '../features/subscription/presentation/pages/store_subscription_page.dart';
+import '../features/workspace_context/presentation/controllers/last_active_store_state.dart';
 import '../features/workspace_context/presentation/pages/my_stores_page.dart';
+import '../features/workspace_context/presentation/providers/workspace_context_providers.dart';
 
 /// Route names as constants
 abstract final class RouteNames {
@@ -116,6 +120,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
     redirect: (BuildContext context, GoRouterState state) {
       final authState = ref.read(authNotifierProvider);
+      final lastActiveStoreState = ref.read(lastActiveStoreNotifierProvider);
 
       // While bootstrapping, show splash
       if (authState.isBootstrapping) {
@@ -130,7 +135,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
         return authState.accountType == AccountType.systemAdmin
             ? '/system-admin-home'
-            : '/store-home';
+            : _storeUserLanding(lastActiveStoreState);
       }
 
       // If unauthenticated, force to auth unless already there
@@ -142,7 +147,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (state.matchedLocation == '/auth') {
         return authState.accountType == AccountType.systemAdmin
             ? '/system-admin-home'
-            : '/store-home';
+            : _storeUserLanding(lastActiveStoreState, fromAuthRoute: true);
       }
 
       // Cross-account type route check
@@ -165,9 +170,32 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 
   ref.listen(authNotifierProvider, (previous, next) {
+    if (previous?.isAuthenticated == true && !next.isAuthenticated) {
+      unawaited(ref.read(lastActiveStoreNotifierProvider.notifier).clear());
+    }
+    router.refresh();
+  });
+
+  ref.listen(lastActiveStoreNotifierProvider, (previous, next) {
     router.refresh();
   });
 
   ref.onDispose(router.dispose);
   return router;
 });
+
+String? _storeUserLanding(
+  LastActiveStoreState lastActiveStoreState, {
+  bool fromAuthRoute = false,
+}) {
+  if (lastActiveStoreState.isBootstrapping) {
+    return fromAuthRoute ? '/' : null;
+  }
+
+  final lastStoreId = lastActiveStoreState.lastStoreId;
+  if (lastStoreId != null) {
+    return '/stores/$lastStoreId';
+  }
+
+  return '/store-home';
+}

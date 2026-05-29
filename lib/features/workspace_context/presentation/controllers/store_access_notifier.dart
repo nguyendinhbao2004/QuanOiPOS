@@ -27,17 +27,20 @@ class StoreAccessNotifier
     try {
       final useCase = ref.read(loadStoreAccessContextUseCaseProvider);
       final context = await useCase(_storeId);
+      await _saveLastActiveStore();
       state = state.copyWith(
         status: StoreAccessStatus.ready,
         context: context,
         clearError: true,
       );
     } on StoreAccessDeniedException catch (error) {
+      await _clearLastActiveStore();
       state = state.copyWith(
         status: StoreAccessStatus.forbidden,
         errorMessage: error.message,
       );
     } catch (error) {
+      await _clearLastActiveStore();
       state = state.copyWith(
         status: StoreAccessStatus.error,
         errorMessage: _cleanError(error),
@@ -47,5 +50,21 @@ class StoreAccessNotifier
 
   String _cleanError(Object error) {
     return error.toString().replaceFirst('Exception: ', '');
+  }
+
+  Future<void> _saveLastActiveStore() async {
+    try {
+      await ref.read(lastActiveStoreNotifierProvider.notifier).save(_storeId);
+    } catch (_) {
+      // Last-store persistence is a UX shortcut and should not block access.
+    }
+  }
+
+  Future<void> _clearLastActiveStore() async {
+    try {
+      await ref.read(lastActiveStoreNotifierProvider.notifier).clear();
+    } catch (_) {
+      // Ignore persistence failures and keep the access error visible.
+    }
   }
 }

@@ -15,6 +15,7 @@ import '../controllers/table_management_state.dart';
 import '../providers/table_management_providers.dart';
 import '../widgets/area_filter_chips.dart';
 import '../widgets/area_form_bottom_sheet.dart';
+import '../widgets/area_management_bottom_sheet.dart';
 import '../widgets/table_form_bottom_sheet.dart';
 
 class TableSettingsPage extends ConsumerWidget {
@@ -200,7 +201,7 @@ class _SettingsContent extends ConsumerWidget {
                 areas: state.areas,
                 selectedAreaId: state.selectedAreaId,
                 onSelected: onAreaSelected,
-                onManageAreasTap: () => _showComingSoon(context, 'Khu vực'),
+                onManageAreasTap: () => _showAreaManagement(context, access),
               ),
               const SizedBox(height: AppConstants.spacingLg),
               if (state.areas.isEmpty)
@@ -635,6 +636,24 @@ Future<void> _showAreaForm(
             description: description,
           );
         },
+      );
+    },
+  );
+}
+
+Future<void> _showAreaManagement(
+  BuildContext context,
+  TableManagementAccess access,
+) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return FractionallySizedBox(
+        heightFactor: 0.72,
+        child: AreaManagementBottomSheet(access: access),
       );
     },
   );

@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/config/router_config.dart';
+import 'package:quan_oi/core/storage/last_active_store_storage.dart';
 import 'package:quan_oi/features/auth/domain/entities/account_type.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_notifier.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/load_last_active_store_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/save_last_active_store_use_case.dart';
+import 'package:quan_oi/features/workspace_context/presentation/providers/workspace_context_providers.dart';
 import 'package:quan_oi/features/subscription/domain/entities/active_subscription.dart';
 import 'package:quan_oi/features/subscription/domain/entities/service_package.dart';
 import 'package:quan_oi/features/subscription/domain/repositories/subscription_repository.dart';
@@ -152,8 +157,23 @@ ProviderContainer _buildContainer(
       loadActiveSubscriptionUseCaseProvider.overrideWithValue(
         LoadActiveSubscriptionUseCase(repository),
       ),
+      ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
     ],
   );
+}
+
+List<Override> _lastActiveStoreOverrides(_FakeLastActiveStoreStorage storage) {
+  return [
+    loadLastActiveStoreUseCaseProvider.overrideWithValue(
+      LoadLastActiveStoreUseCase(storage),
+    ),
+    saveLastActiveStoreUseCaseProvider.overrideWithValue(
+      SaveLastActiveStoreUseCase(storage),
+    ),
+    clearLastActiveStoreUseCaseProvider.overrideWithValue(
+      ClearLastActiveStoreUseCase(storage),
+    ),
+  ];
 }
 
 class _FixedAuthNotifier extends AuthNotifier {
@@ -197,6 +217,28 @@ class _FakeSubscriptionRepository implements SubscriptionRepository {
   @override
   Future<ActiveSubscription?> loadActiveSubscription() async {
     return activeSubscription;
+  }
+}
+
+class _FakeLastActiveStoreStorage implements LastActiveStoreStorage {
+  int? lastStoreId;
+
+  _FakeLastActiveStoreStorage({int? initialStoreId})
+    : lastStoreId = initialStoreId;
+
+  @override
+  Future<int?> getLastActiveStoreId() async {
+    return lastStoreId;
+  }
+
+  @override
+  Future<void> saveLastActiveStoreId(int storeId) async {
+    lastStoreId = storeId;
+  }
+
+  @override
+  Future<void> clearLastActiveStoreId() async {
+    lastStoreId = null;
   }
 }
 

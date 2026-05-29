@@ -40,6 +40,7 @@ class StoreOverviewPage extends ConsumerWidget {
             onRetry: () => ref
                 .read(storeAccessNotifierProvider(storeId).notifier)
                 .loadAccess(),
+            onBackToStores: () => context.goNamed(RouteNames.myStores),
           ),
           StoreAccessStatus.ready => _ReadyView(state: state),
         },
@@ -129,10 +130,9 @@ class _ReadyView extends ConsumerWidget {
                   ? 'Chào $greetingTarget'
                   : accessContext.store.address,
               onStoreTap: () =>
-                  _showStoreSwitcher(context, accessContext.store.id),
-              onSettingsTap: () => _showComingSoon(context, 'Cài đặt cửa hàng'),
+                  _showStoreSwitcher(context, ref, accessContext.store.id),
+              onAccountTap: () => context.goNamed(RouteNames.storeHome),
               onNotificationTap: () => _showComingSoon(context, 'Thông báo'),
-              canUpdateStore: state.can(AppPermissionCodes.storeUpdate),
             ),
             const SizedBox(height: AppConstants.spacingLg),
             const _SearchField(),
@@ -386,8 +386,13 @@ class _BlockedView extends StatelessWidget {
 class _ErrorView extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
+  final VoidCallback onBackToStores;
 
-  const _ErrorView({required this.message, required this.onRetry});
+  const _ErrorView({
+    required this.message,
+    required this.onRetry,
+    required this.onBackToStores,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -415,6 +420,15 @@ class _ErrorView extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: onRetry,
                 child: const Text('Thử lại'),
+              ),
+            ),
+            const SizedBox(height: AppConstants.spacingSm),
+            SizedBox(
+              width: 220,
+              child: OutlinedButton.icon(
+                onPressed: onBackToStores,
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: const Text('Về danh sách cửa hàng'),
               ),
             ),
           ],
@@ -458,7 +472,11 @@ void _showComingSoon(BuildContext context, String feature) {
   ).showSnackBar(SnackBar(content: Text('$feature sẽ được triển khai sau')));
 }
 
-Future<void> _showStoreSwitcher(BuildContext context, int activeStoreId) async {
+Future<void> _showStoreSwitcher(
+  BuildContext context,
+  WidgetRef ref,
+  int activeStoreId,
+) async {
   final selectedStoreId = await showModalBottomSheet<int>(
     context: context,
     isScrollControlled: true,
@@ -477,6 +495,16 @@ Future<void> _showStoreSwitcher(BuildContext context, int activeStoreId) async {
       selectedStoreId == activeStoreId) {
     return;
   }
+
+  try {
+    await ref
+        .read(lastActiveStoreNotifierProvider.notifier)
+        .save(selectedStoreId);
+  } catch (_) {
+    // Last-store persistence should not block switching stores.
+  }
+
+  if (!context.mounted) return;
 
   context.goNamed(
     RouteNames.storeOverview,

@@ -4,17 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/config/router_config.dart';
+import 'package:quan_oi/core/storage/last_active_store_storage.dart';
 import 'package:quan_oi/core/theme/index.dart';
 import 'package:quan_oi/features/auth/domain/entities/account_type.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_notifier.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/load_last_active_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_access_context.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_permission.dart';
 import 'package:quan_oi/features/workspace_context/domain/repositories/workspace_repository.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_my_stores_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_store_access_context_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/save_last_active_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/presentation/pages/my_stores_page.dart';
 import 'package:quan_oi/features/workspace_context/presentation/providers/workspace_context_providers.dart';
 
@@ -22,7 +26,11 @@ void main() {
   testWidgets('StoreUser can open my stores route from account menu', (
     tester,
   ) async {
-    final container = _buildContainer(AccountType.storeUser);
+    final lastActiveStoreStorage = _FakeLastActiveStoreStorage();
+    final container = _buildContainer(
+      AccountType.storeUser,
+      lastActiveStoreStorage: lastActiveStoreStorage,
+    );
     addTearDown(container.dispose);
 
     final router = container.read(routerProvider);
@@ -55,12 +63,65 @@ void main() {
       find.text('Bạn chưa tạo hóa đơn để phân tích lãi lỗ'),
       findsOneWidget,
     );
+    expect(lastActiveStoreStorage.lastStoreId, 2);
   });
+
+  testWidgets('StoreUser opens last active store from root route', (
+    tester,
+  ) async {
+    final container = _buildContainer(
+      AccountType.storeUser,
+      lastActiveStoreStorage: _FakeLastActiveStoreStorage(initialStoreId: 2),
+    );
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tổng quan hôm nay'), findsOneWidget);
+    expect(
+      find.text('Buffet Poseidon Vincom Plaza Lê Văn Việt'),
+      findsOneWidget,
+    );
+    expect(find.text('Xin chào, Test User'), findsNothing);
+  });
+
+  testWidgets(
+    'StoreUser opens account hub from root without last active store',
+    (tester) async {
+      final container = _buildContainer(AccountType.storeUser);
+      addTearDown(container.dispose);
+
+      final router = container.read(routerProvider);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Xin chào, Test User'), findsOneWidget);
+      expect(find.text('Tổng quan hôm nay'), findsNothing);
+    },
+  );
 
   testWidgets('SystemAdmin is redirected away from my stores route', (
     tester,
   ) async {
-    final container = _buildContainer(AccountType.systemAdmin);
+    final container = _buildContainer(
+      AccountType.systemAdmin,
+      lastActiveStoreStorage: _FakeLastActiveStoreStorage(initialStoreId: 2),
+    );
     addTearDown(container.dispose);
 
     final router = container.read(routerProvider);
@@ -81,7 +142,10 @@ void main() {
   testWidgets('SystemAdmin is redirected away from store overview route', (
     tester,
   ) async {
-    final container = _buildContainer(AccountType.systemAdmin);
+    final container = _buildContainer(
+      AccountType.systemAdmin,
+      lastActiveStoreStorage: _FakeLastActiveStoreStorage(initialStoreId: 2),
+    );
     addTearDown(container.dispose);
 
     final router = container.read(routerProvider);
@@ -183,6 +247,7 @@ Future<void> _pumpMyStoresPage(
         loadMyStoresUseCaseProvider.overrideWithValue(
           LoadMyStoresUseCase(repository),
         ),
+        ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
       ],
       child: MaterialApp(theme: AppTheme.light, home: const MyStoresPage()),
     ),
@@ -192,8 +257,10 @@ Future<void> _pumpMyStoresPage(
 ProviderContainer _buildContainer(
   AccountType accountType, {
   List<Store> stores = _defaultStores,
+  _FakeLastActiveStoreStorage? lastActiveStoreStorage,
 }) {
   final repository = _FakeWorkspaceRepository(stores: stores);
+  final storeStorage = lastActiveStoreStorage ?? _FakeLastActiveStoreStorage();
 
   return ProviderContainer(
     overrides: [
@@ -213,8 +280,23 @@ ProviderContainer _buildContainer(
       loadStoreAccessContextUseCaseProvider.overrideWithValue(
         LoadStoreAccessContextUseCase(repository),
       ),
+      ..._lastActiveStoreOverrides(storeStorage),
     ],
   );
+}
+
+List<Override> _lastActiveStoreOverrides(_FakeLastActiveStoreStorage storage) {
+  return [
+    loadLastActiveStoreUseCaseProvider.overrideWithValue(
+      LoadLastActiveStoreUseCase(storage),
+    ),
+    saveLastActiveStoreUseCaseProvider.overrideWithValue(
+      SaveLastActiveStoreUseCase(storage),
+    ),
+    clearLastActiveStoreUseCaseProvider.overrideWithValue(
+      ClearLastActiveStoreUseCase(storage),
+    ),
+  ];
 }
 
 class _FixedAuthNotifier extends AuthNotifier {
@@ -270,6 +352,28 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
       store: await loadStoreById(storeId),
       permissions: await loadMyStorePermissions(storeId),
     );
+  }
+}
+
+class _FakeLastActiveStoreStorage implements LastActiveStoreStorage {
+  int? lastStoreId;
+
+  _FakeLastActiveStoreStorage({int? initialStoreId})
+    : lastStoreId = initialStoreId;
+
+  @override
+  Future<int?> getLastActiveStoreId() async {
+    return lastStoreId;
+  }
+
+  @override
+  Future<void> saveLastActiveStoreId(int storeId) async {
+    lastStoreId = storeId;
+  }
+
+  @override
+  Future<void> clearLastActiveStoreId() async {
+    lastStoreId = null;
   }
 }
 

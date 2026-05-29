@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:quan_oi/core/storage/last_active_store_storage.dart';
 import 'package:quan_oi/core/theme/index.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/entities/area.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/entities/dining_table.dart';
@@ -16,6 +17,7 @@ import 'package:quan_oi/features/store_operations/table_management/domain/usecas
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/update_area_display_order_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/update_area_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/update_table_use_case.dart';
+import 'package:quan_oi/features/store_operations/table_management/presentation/controllers/table_management_state.dart';
 import 'package:quan_oi/features/store_operations/table_management/presentation/pages/table_management_page.dart';
 import 'package:quan_oi/features/store_operations/table_management/presentation/pages/table_settings_page.dart';
 import 'package:quan_oi/features/store_operations/table_management/presentation/providers/table_management_providers.dart';
@@ -24,8 +26,11 @@ import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_access_context.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_permission.dart';
 import 'package:quan_oi/features/workspace_context/domain/repositories/workspace_repository.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/load_last_active_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_my_stores_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_store_access_context_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/save_last_active_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/presentation/providers/workspace_context_providers.dart';
 
 void main() {
@@ -90,7 +95,9 @@ void main() {
     expect(find.text('Bàn 2'), findsOneWidget);
   });
 
-  testWidgets('selecting an area refetches tables with areaId', (tester) async {
+  testWidgets('selecting an area filters locally without refetching', (
+    tester,
+  ) async {
     final tableRepository = _FakeTableManagementRepository();
 
     await _pumpPage(
@@ -103,13 +110,59 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final initialLoadCount = tableRepository.loadTableGroupsCallCount;
+    expect(initialLoadCount, 1);
+    expect(tableRepository.lastAreaId, isNull);
+
     await tester.tap(find.text('Sân vườn'));
     await tester.pumpAndSettle();
 
-    expect(tableRepository.lastAreaId, 7);
+    expect(tableRepository.loadTableGroupsCallCount, initialLoadCount);
+    expect(tableRepository.lastAreaId, isNull);
     expect(find.text('Bàn 3'), findsOneWidget);
     expect(find.text('Bàn 1'), findsNothing);
   });
+
+  test(
+    'manual reload after selecting an area fetches full table groups',
+    () async {
+      final tableRepository = _FakeTableManagementRepository();
+      final workspaceRepository = _FakeWorkspaceRepository(const [
+        StorePermission(permissionId: 2, code: 'AREA.VIEW'),
+        StorePermission(permissionId: 3, code: 'TABLE.VIEW'),
+      ]);
+      final container = ProviderContainer(
+        overrides: _overrides(workspaceRepository, tableRepository),
+      );
+      addTearDown(container.dispose);
+
+      const access = TableManagementAccess(
+        storeId: 5,
+        canViewAreas: true,
+        canViewTables: true,
+        canCreateArea: false,
+        canUpdateArea: false,
+        canDeleteArea: false,
+        canCreateTable: false,
+        canUpdateTable: false,
+      );
+      final provider = tableManagementNotifierProvider(access);
+
+      container.read(provider);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(tableRepository.loadTableGroupsCallCount, 1);
+      expect(tableRepository.lastAreaId, isNull);
+
+      container.read(provider.notifier).selectArea(7);
+      await container.read(provider.notifier).load();
+
+      expect(tableRepository.loadTableGroupsCallCount, 2);
+      expect(tableRepository.lastAreaId, isNull);
+      expect(container.read(provider).selectedAreaId, 7);
+    },
+  );
 
   testWidgets('more menu opens when user has area and table CRUD permissions', (
     tester,
@@ -247,6 +300,78 @@ void main() {
     );
     expect(tableEditButton.onPressed, isNotNull);
   });
+
+  testWidgets('settings manage areas button opens area management sheet', (
+    tester,
+  ) async {
+    final tableRepository = _FakeTableManagementRepository();
+
+    await _pumpSettingsPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 2, code: 'AREA.VIEW'),
+        StorePermission(permissionId: 3, code: 'AREA.CREATE'),
+        StorePermission(permissionId: 4, code: 'AREA.UPDATE'),
+      ],
+      tableRepository: tableRepository,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('manage_areas_button')));
+    await tester.pumpAndSettle();
+
+    final sheet = find.byKey(const Key('area_management_sheet'));
+    expect(sheet, findsOneWidget);
+    expect(
+      find.descendant(of: sheet, matching: find.text('Khu vực')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: sheet,
+        matching: find.byKey(const Key('area_management_search_field')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: sheet,
+        matching: find.byKey(const Key('add_area_button')),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Khu vực sẽ được triển khai sau'), findsNothing);
+  });
+
+  testWidgets(
+    'settings area management sheet disables actions without CRUD permissions',
+    (tester) async {
+      final tableRepository = _FakeTableManagementRepository();
+
+      await _pumpSettingsPage(
+        tester,
+        permissions: const [
+          StorePermission(permissionId: 2, code: 'AREA.VIEW'),
+        ],
+        tableRepository: tableRepository,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('manage_areas_button')));
+      await tester.pumpAndSettle();
+
+      final addButton = tester.widget<IconButton>(
+        find.byKey(const Key('add_area_button')),
+      );
+      final editButton = tester.widget<TextButton>(
+        find.byKey(const Key('edit_areas_button')),
+      );
+
+      expect(find.byKey(const Key('area_management_sheet')), findsOneWidget);
+      expect(addButton.onPressed, isNull);
+      expect(editButton.onPressed, isNull);
+    },
+  );
 
   testWidgets('settings page blocks table edit without TABLE.UPDATE', (
     tester,
@@ -737,6 +862,7 @@ Future<void> _pumpPage(
         deleteAreaUseCaseProvider.overrideWithValue(
           DeleteAreaUseCase(tableRepository),
         ),
+        ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
       ],
       child: MaterialApp(
         theme: AppTheme.light,
@@ -829,6 +955,21 @@ List<Override> _overrides(
     deleteAreaUseCaseProvider.overrideWithValue(
       DeleteAreaUseCase(tableRepository),
     ),
+    ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
+  ];
+}
+
+List<Override> _lastActiveStoreOverrides(_FakeLastActiveStoreStorage storage) {
+  return [
+    loadLastActiveStoreUseCaseProvider.overrideWithValue(
+      LoadLastActiveStoreUseCase(storage),
+    ),
+    saveLastActiveStoreUseCaseProvider.overrideWithValue(
+      SaveLastActiveStoreUseCase(storage),
+    ),
+    clearLastActiveStoreUseCaseProvider.overrideWithValue(
+      ClearLastActiveStoreUseCase(storage),
+    ),
   ];
 }
 
@@ -858,6 +999,28 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
       store: await loadStoreById(storeId),
       permissions: await loadMyStorePermissions(storeId),
     );
+  }
+}
+
+class _FakeLastActiveStoreStorage implements LastActiveStoreStorage {
+  int? lastStoreId;
+
+  _FakeLastActiveStoreStorage({int? initialStoreId})
+    : lastStoreId = initialStoreId;
+
+  @override
+  Future<int?> getLastActiveStoreId() async {
+    return lastStoreId;
+  }
+
+  @override
+  Future<void> saveLastActiveStoreId(int storeId) async {
+    lastStoreId = storeId;
+  }
+
+  @override
+  Future<void> clearLastActiveStoreId() async {
+    lastStoreId = null;
   }
 }
 
