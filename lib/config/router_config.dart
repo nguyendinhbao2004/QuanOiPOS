@@ -4,10 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/theme/index.dart';
 import '../features/auth/domain/entities/account_type.dart';
 import '../features/auth/presentation/pages/auth_page.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
 import '../features/system_admin/presentation/pages/system_admin_home_page.dart';
+import '../features/store_operations/presentation/pages/operation_regulations_page.dart';
+import '../features/store_operations/presentation/pages/privacy_policy_page.dart';
 import '../features/store_operations/presentation/pages/store_home_page.dart';
 import '../features/store_operations/presentation/pages/store_overview_page.dart';
 import '../features/store_operations/table_management/presentation/pages/table_management_page.dart';
@@ -27,6 +30,8 @@ abstract final class RouteNames {
   static const String storeTableSettings = 'store-table-settings';
   static const String myStores = 'my-stores';
   static const String storeSubscription = 'store-subscription';
+  static const String operationRegulations = 'operation-regulations';
+  static const String privacyPolicy = 'privacy-policy';
   static const String splash = 'splash';
 }
 
@@ -40,12 +45,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         name: RouteNames.splash,
-        builder: (context, state) {
-          // Temporary splash while bootstrapping
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        },
+        builder: (context, state) => const _BootstrapSplashPage(),
       ),
       GoRoute(
         path: '/auth',
@@ -113,6 +113,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const StoreSubscriptionPage(),
       ),
       GoRoute(
+        path: '/operation-regulations',
+        name: RouteNames.operationRegulations,
+        builder: (context, state) => const OperationRegulationsPage(),
+      ),
+      GoRoute(
+        path: '/privacy-policy',
+        name: RouteNames.privacyPolicy,
+        builder: (context, state) => const PrivacyPolicyPage(),
+      ),
+      GoRoute(
         path: '/my-stores',
         name: RouteNames.myStores,
         builder: (context, state) => const MyStoresPage(),
@@ -154,6 +164,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (authState.accountType == AccountType.systemAdmin) {
         if (state.matchedLocation == '/store-home' ||
             state.matchedLocation == '/store-subscription' ||
+            state.matchedLocation == '/operation-regulations' ||
+            state.matchedLocation == '/privacy-policy' ||
             state.matchedLocation == '/my-stores' ||
             state.matchedLocation.startsWith('/stores/')) {
           return '/system-admin-home';
@@ -198,4 +210,20 @@ String? _storeUserLanding(
   }
 
   return '/store-home';
+}
+
+class _BootstrapSplashPage extends StatelessWidget {
+  const _BootstrapSplashPage();
+
+  static const _splashAsset = 'assets/images/splash_screen.png';
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: SizedBox.expand(
+        child: Image(image: AssetImage(_splashAsset), fit: BoxFit.cover),
+      ),
+    );
+  }
 }

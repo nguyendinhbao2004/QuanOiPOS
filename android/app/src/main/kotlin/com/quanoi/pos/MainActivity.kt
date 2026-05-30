@@ -1,4 +1,4 @@
-package com.example.quan_oi
+package com.quanoi.pos
 
 import io.flutter.embedding.android.FlutterActivity
 

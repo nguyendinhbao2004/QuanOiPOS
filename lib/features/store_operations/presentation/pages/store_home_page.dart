@@ -174,6 +174,18 @@ class _ReadyStateView extends StatelessWidget {
                 onTap: onStoreTap,
               ),
               AccountMenuItemData(
+                title: 'Quy chế hoạt động',
+                leadingIcon: Icons.description_outlined,
+                trailingMeta: 'Xem tài liệu',
+                onTap: () => context.pushNamed(RouteNames.operationRegulations),
+              ),
+              AccountMenuItemData(
+                title: 'Chính sách bảo mật',
+                leadingIcon: Icons.privacy_tip_outlined,
+                trailingMeta: 'Xem tài liệu',
+                onTap: () => context.pushNamed(RouteNames.privacyPolicy),
+              ),
+              AccountMenuItemData(
                 title: 'Bảo mật',
                 leadingIcon: Icons.shield_outlined,
                 onTap: () => onFeatureTap('Bảo mật'),

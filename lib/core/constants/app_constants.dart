@@ -1,7 +1,7 @@
-/// Hằng số dùng chung toàn ứng dụng QuanOi POS.
+/// Hằng số dùng chung toàn ứng dụng Quán Ơi.
 abstract final class AppConstants {
   // ─── App info ──────────────────────────────────────────────────────────────
-  static const String appName = 'QuanOi POS';
+  static const String appName = 'Quán Ơi';
   static const String appVersion = '1.0.0';
   static const String supportPhone = '1900 xxxx';
   static const String branchName = 'QUANOI-01';

@@ -1,11 +1,11 @@
 {
-    "name": "quan_oi",
-    "short_name": "quan_oi",
+    "name": "Quán Ơi",
+    "short_name": "Quán Ơi",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFF7E8",
+    "theme_color": "#EF604A",
+    "description": "Quán Ơi restaurant POS app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

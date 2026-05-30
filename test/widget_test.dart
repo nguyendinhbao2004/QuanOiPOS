@@ -8,28 +8,39 @@ import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
 
 void main() {
-  testWidgets('App bootstrap shows loading during auth initialization', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          authNotifierProvider.overrideWith(_WidgetTestAuthNotifier.new),
-        ],
-        child: const MyApp(),
-      ),
-    );
+  testWidgets(
+    'App bootstrap shows full-screen splash during auth initialization',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith(_WidgetTestAuthNotifier.new),
+          ],
+          child: const MyApp(),
+        ),
+      );
 
-    // Initial state should show splash/loading
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      // Initial state should show the full-screen Flutter splash.
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Image &&
+              widget.image is AssetImage &&
+              (widget.image as AssetImage).assetName ==
+                  'assets/images/splash_screen.png' &&
+              widget.fit == BoxFit.cover,
+        ),
+        findsOneWidget,
+      );
 
-    // Pump to let async initialization complete
-    await tester.pumpAndSettle();
+      // Pump to let async initialization complete
+      await tester.pumpAndSettle();
 
-    // After bootstrap, should show auth page
-    expect(find.text('ĐĂNG NHẬP NGAY'), findsOneWidget);
-    expect(find.text('Đăng ký ngay'), findsOneWidget);
-  });
+      // After bootstrap, should show auth page
+      expect(find.text('ĐĂNG NHẬP NGAY'), findsOneWidget);
+      expect(find.text('Đăng ký ngay'), findsOneWidget);
+    },
+  );
 }
 
 class _WidgetTestAuthNotifier extends AuthNotifier {
