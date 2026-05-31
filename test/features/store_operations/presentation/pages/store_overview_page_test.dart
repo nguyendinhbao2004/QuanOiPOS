@@ -77,26 +77,62 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Bạn chưa có quyền xem quản lý bàn'), findsOneWidget);
-    expect(find.text('Bạn chưa có quyền xem quản lý kho'), findsOneWidget);
+    expect(find.text('Bạn chưa có quyền xem quản lý kho'), findsNothing);
     expect(find.text('Bạn chưa có quyền cập nhật cửa hàng'), findsWidgets);
   });
 
-  testWidgets('store overview enables inventory with INVENTORY.VIEW', (
+  testWidgets('store overview enables inventory without INVENTORY.VIEW', (
     tester,
   ) async {
     await _pumpOverview(
       tester,
       const _FakeWorkspaceRepository(
-        permissions: [
-          StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW'),
-          StorePermission(permissionId: 2, code: 'INVENTORY.VIEW'),
-        ],
+        permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
       ),
     );
     await tester.pumpAndSettle();
 
     expect(find.text('Quản lý kho'), findsOneWidget);
     expect(find.text('Bạn chưa có quyền xem quản lý kho'), findsNothing);
+  });
+
+  testWidgets('inventory tile navigates to inventory management actions', (
+    tester,
+  ) async {
+    final repository = const _FakeWorkspaceRepository(
+      permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
+    );
+    final container = _buildRouterContainer(repository);
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/stores/5');
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -900));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Quản lý kho'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quản lý kho'), findsOneWidget);
+    expect(find.text('Nhập kho'), findsOneWidget);
+    expect(find.text('Xuất kho'), findsOneWidget);
+    expect(find.text('Sổ kho'), findsOneWidget);
+    expect(find.text('Kiểm kho'), findsOneWidget);
+    expect(find.text('Tồn kho'), findsOneWidget);
+    expect(find.text('In mã vạch'), findsOneWidget);
+
+    await tester.tap(find.text('Nhập kho'));
+    await tester.pump();
+
+    expect(find.text('Nhập kho sẽ được triển khai sau'), findsOneWidget);
   });
 
   testWidgets('store header opens switcher bottom sheet with active store', (

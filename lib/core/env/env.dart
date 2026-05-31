@@ -10,7 +10,7 @@ class Env {
     final uri = Uri.tryParse(rawBaseUrl);
     if (uri == null || !uri.hasAuthority) return rawBaseUrl;
 
-    if (defaultTargetPlatform == TargetPlatform.android &&
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android &&
         (uri.host == 'localhost' || uri.host == '127.0.0.1')) {
       return uri.replace(host: '10.0.2.2').toString();
     }
