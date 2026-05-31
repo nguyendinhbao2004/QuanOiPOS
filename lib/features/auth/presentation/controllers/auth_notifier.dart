@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/account_type.dart';
+import '../../domain/entities/current_user_profile.dart';
 import '../providers/auth_providers.dart';
 import 'auth_state.dart';
 
@@ -41,6 +42,7 @@ class AuthNotifier extends Notifier<AuthState> {
           accountType: result.accountType,
           fullName: result.fullName,
           email: result.email,
+          phone: result.phone,
           sessionRestored: true,
         );
       } else {
@@ -65,6 +67,7 @@ class AuthNotifier extends Notifier<AuthState> {
         accountType: result.accountType,
         fullName: result.fullName,
         email: result.email,
+        phone: result.phone,
         sessionRestored: false,
       );
     } catch (error) {
@@ -106,6 +109,20 @@ class AuthNotifier extends Notifier<AuthState> {
         state = state.copyWith(status: AuthStatus.unauthenticated);
       }
     }
+  }
+
+  void syncCurrentUserProfile(CurrentUserProfile profile) {
+    if (!state.isAuthenticated) {
+      return;
+    }
+
+    state = state.copyWith(
+      accountType: profile.accountType,
+      fullName: profile.fullName,
+      email: profile.email,
+      phone: profile.phone,
+      clearError: true,
+    );
   }
 
   bool get isSystemAdmin => state.accountType == AccountType.systemAdmin;

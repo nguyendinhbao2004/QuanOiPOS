@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quan_oi/features/auth/domain/entities/account_type.dart';
+import 'package:quan_oi/features/auth/domain/entities/current_user_profile.dart';
 import 'package:quan_oi/features/auth/domain/entities/login_result.dart';
 import 'package:quan_oi/features/auth/domain/repositories/auth_repository.dart';
 import 'package:quan_oi/features/auth/domain/usecases/logout_use_case.dart';
@@ -169,6 +170,27 @@ class _FakeAuthRepository implements AuthRepository {
     required String email,
     required String otpCode,
     required String newPassword,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CurrentUserProfile> getCurrentUserProfile() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CurrentUserProfile> updateCurrentUserProfile({
+    required String fullName,
+    required String phone,
   }) {
     throw UnimplementedError();
   }

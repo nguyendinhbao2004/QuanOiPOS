@@ -15,10 +15,13 @@ import 'package:dio/dio.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/domain/usecases/change_password_use_case.dart';
 import '../../features/auth/domain/usecases/login_use_case.dart';
+import '../../features/auth/domain/usecases/load_current_user_profile_use_case.dart';
 import '../../features/auth/domain/usecases/logout_use_case.dart';
 import '../../features/auth/domain/usecases/restore_session_use_case.dart';
 import '../../features/auth/domain/usecases/register_use_case.dart';
+import '../../features/auth/domain/usecases/update_current_user_profile_use_case.dart';
 import '../../features/auth/domain/usecases/confirm_registration_use_case.dart';
 import '../../features/auth/domain/usecases/forgot_password_use_case.dart';
 import '../../features/auth/domain/usecases/confirm_forgot_password_use_case.dart';
@@ -121,6 +124,15 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<ConfirmForgotPasswordUseCase>(
     () => ConfirmForgotPasswordUseCase(locator<AuthRepository>()),
+  );
+  locator.registerLazySingleton<ChangePasswordUseCase>(
+    () => ChangePasswordUseCase(locator<AuthRepository>()),
+  );
+  locator.registerLazySingleton<LoadCurrentUserProfileUseCase>(
+    () => LoadCurrentUserProfileUseCase(locator<AuthRepository>()),
+  );
+  locator.registerLazySingleton<UpdateCurrentUserProfileUseCase>(
+    () => UpdateCurrentUserProfileUseCase(locator<AuthRepository>()),
   );
 
   // Subscription

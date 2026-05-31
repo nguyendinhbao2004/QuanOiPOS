@@ -4,17 +4,24 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/session/session_invalidator.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/usecases/change_password_use_case.dart';
+import '../../domain/usecases/load_current_user_profile_use_case.dart';
 import '../../domain/usecases/login_use_case.dart';
 import '../../domain/usecases/logout_use_case.dart';
 import '../../domain/usecases/restore_session_use_case.dart';
 import '../../domain/usecases/register_use_case.dart';
+import '../../domain/usecases/update_current_user_profile_use_case.dart';
 import '../../domain/usecases/confirm_registration_use_case.dart';
 import '../../domain/usecases/forgot_password_use_case.dart';
 import '../../domain/usecases/confirm_forgot_password_use_case.dart';
 import '../controllers/auth_notifier.dart';
 import '../controllers/auth_state.dart';
+import '../controllers/change_password_notifier.dart';
+import '../controllers/change_password_state.dart';
 import '../controllers/forgot_password_notifier.dart';
 import '../controllers/forgot_password_state.dart';
+import '../controllers/profile_notifier.dart';
+import '../controllers/profile_state.dart';
 import '../controllers/register_notifier.dart';
 import '../controllers/register_state.dart';
 
@@ -61,6 +68,20 @@ final confirmForgotPasswordUseCaseProvider =
       return locator<ConfirmForgotPasswordUseCase>();
     });
 
+final changePasswordUseCaseProvider = Provider<ChangePasswordUseCase>((ref) {
+  return locator<ChangePasswordUseCase>();
+});
+
+final loadCurrentUserProfileUseCaseProvider =
+    Provider<LoadCurrentUserProfileUseCase>((ref) {
+      return locator<LoadCurrentUserProfileUseCase>();
+    });
+
+final updateCurrentUserProfileUseCaseProvider =
+    Provider<UpdateCurrentUserProfileUseCase>((ref) {
+      return locator<UpdateCurrentUserProfileUseCase>();
+    });
+
 final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(
   AuthNotifier.new,
 );
@@ -72,3 +93,12 @@ final forgotPasswordNotifierProvider =
     NotifierProvider<ForgotPasswordNotifier, ForgotPasswordState>(
       ForgotPasswordNotifier.new,
     );
+
+final changePasswordNotifierProvider =
+    NotifierProvider<ChangePasswordNotifier, ChangePasswordState>(
+      ChangePasswordNotifier.new,
+    );
+
+final profileNotifierProvider = NotifierProvider<ProfileNotifier, ProfileState>(
+  ProfileNotifier.new,
+);

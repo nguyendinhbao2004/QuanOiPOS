@@ -119,6 +119,7 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
                   _AccountHubState.ready => _ReadyStateView(
                     fullName: fullName,
                     email: email,
+                    onProfileTap: () => context.pushNamed(RouteNames.profile),
                     onStoreTap: () => _onStoreMenuTap(context),
                     onFeedbackTap: () => _openStoreReview(context),
                     onFeatureTap: (feature) =>
@@ -177,6 +178,7 @@ class _ErrorStateView extends StatelessWidget {
 class _ReadyStateView extends StatelessWidget {
   final String fullName;
   final String email;
+  final VoidCallback onProfileTap;
   final VoidCallback onStoreTap;
   final VoidCallback onFeedbackTap;
   final void Function(String feature) onFeatureTap;
@@ -185,6 +187,7 @@ class _ReadyStateView extends StatelessWidget {
   const _ReadyStateView({
     required this.fullName,
     required this.email,
+    required this.onProfileTap,
     required this.onStoreTap,
     required this.onFeedbackTap,
     required this.onFeatureTap,
@@ -200,7 +203,7 @@ class _ReadyStateView extends StatelessWidget {
           UserProfileCard(
             fullName: fullName,
             email: email,
-            onTap: () => onFeatureTap('Hồ sơ tài khoản'),
+            onTap: onProfileTap,
           ),
           const SizedBox(height: AppConstants.spacingMd),
           AccountMenuSection(
@@ -242,9 +245,9 @@ class _ReadyStateView extends StatelessWidget {
                 onTap: onFeedbackTap,
               ),
               AccountMenuItemData(
-                title: 'Bảo mật',
-                leadingIcon: Icons.shield_outlined,
-                onTap: () => onFeatureTap('Bảo mật'),
+                title: 'Đổi mật khẩu',
+                leadingIcon: Icons.lock_reset_outlined,
+                onTap: () => context.pushNamed(RouteNames.changePassword),
               ),
               AccountMenuItemData(
                 title: 'Cài đặt ứng dụng',

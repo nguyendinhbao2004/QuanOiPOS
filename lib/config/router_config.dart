@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/index.dart';
 import '../features/auth/domain/entities/account_type.dart';
 import '../features/auth/presentation/pages/auth_page.dart';
+import '../features/auth/presentation/pages/change_password_page.dart';
+import '../features/auth/presentation/pages/profile_page.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
 import '../features/system_admin/presentation/pages/system_admin_home_page.dart';
 import '../features/store_operations/presentation/pages/about_app_page.dart';
@@ -44,6 +46,8 @@ abstract final class RouteNames {
   static const String operationRegulations = 'operation-regulations';
   static const String privacyPolicy = 'privacy-policy';
   static const String aboutApp = 'about-app';
+  static const String changePassword = 'change-password';
+  static const String profile = 'profile';
   static const String splash = 'splash';
 }
 
@@ -213,6 +217,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/about-app',
         name: RouteNames.aboutApp,
         builder: (context, state) => const AboutAppPage(),
+      ),
+      GoRoute(
+        path: '/change-password',
+        name: RouteNames.changePassword,
+        builder: (context, state) => const ChangePasswordPage(),
+      ),
+      GoRoute(
+        path: '/profile',
+        name: RouteNames.profile,
+        builder: (context, state) => const ProfilePage(),
       ),
       GoRoute(
         path: '/my-stores',

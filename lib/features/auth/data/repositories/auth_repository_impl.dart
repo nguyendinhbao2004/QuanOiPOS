@@ -1,14 +1,17 @@
 import '../../../../core/storage/token_storage.dart';
 import '../../../../core/storage/session_snapshot_storage.dart';
+import '../../domain/entities/current_user_profile.dart';
 import '../../domain/entities/login_result.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_data_source.dart';
+import '../models/change_password_request_model.dart';
 import '../models/confirm_forgot_password_request_model.dart';
 import '../models/confirm_registration_request_model.dart';
 import '../models/forgot_password_request_model.dart';
 import '../models/login_request_model.dart';
 import '../models/register_request_model.dart';
 import '../models/session_snapshot_model.dart';
+import '../models/update_current_user_profile_request_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
@@ -42,6 +45,7 @@ class AuthRepositoryImpl implements AuthRepository {
       accountId: entity.accountId,
       email: entity.email,
       fullName: entity.fullName,
+      phone: entity.phone,
       accountType: entity.accountType,
     );
     await _snapshotStorage.saveSnapshot(snapshot);
@@ -97,6 +101,39 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _remoteDataSource.changePassword(
+      ChangePasswordRequestModel(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      ),
+    );
+  }
+
+  @override
+  Future<CurrentUserProfile> getCurrentUserProfile() async {
+    final response = await _remoteDataSource.getCurrentUserProfile();
+    final entity = response.toEntity();
+    await _saveProfileSnapshot(entity);
+    return entity;
+  }
+
+  @override
+  Future<CurrentUserProfile> updateCurrentUserProfile({
+    required String fullName,
+    required String phone,
+  }) async {
+    await _remoteDataSource.updateCurrentUserProfile(
+      UpdateCurrentUserProfileRequestModel(fullName: fullName, phone: phone),
+    );
+
+    return getCurrentUserProfile();
+  }
+
+  @override
   Future<void> logout() async {
     await _tokenStorage.clear();
     await _snapshotStorage.clearSnapshot();
@@ -123,10 +160,22 @@ class AuthRepositoryImpl implements AuthRepository {
       accountId: snapshot.accountId,
       email: snapshot.email,
       fullName: snapshot.fullName,
-      phone: '',
+      phone: snapshot.phone,
       accountType: snapshot.accountType,
       accessToken: token,
       refreshToken: '',
+    );
+  }
+
+  Future<void> _saveProfileSnapshot(CurrentUserProfile profile) {
+    return _snapshotStorage.saveSnapshot(
+      SessionSnapshot(
+        accountId: profile.accountId,
+        email: profile.email,
+        fullName: profile.fullName,
+        phone: profile.phone,
+        accountType: profile.accountType,
+      ),
     );
   }
 }

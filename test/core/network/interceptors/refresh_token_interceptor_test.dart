@@ -130,6 +130,33 @@ void main() {
       expect(tokenStorage.clearCount, 0);
     });
 
+    test('does not refresh or invalidate session for login 401', () async {
+      var invalidated = false;
+      final subscription = sessionInvalidator.stream.listen((_) {
+        invalidated = true;
+      });
+      addTearDown(subscription.cancel);
+
+      adapter.enqueue('/auth/login', (options) {
+        expect(options.headers['Authorization'], 'Bearer expired-access');
+        return _jsonResponse({
+          'succeeded': false,
+          'message': 'Sai tài khoản hoặc mật khẩu',
+          'errors': <String>[],
+        }, 401);
+      });
+
+      await expectLater(
+        dio.post<dynamic>('/auth/login'),
+        throwsA(isA<DioException>()),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(adapter.paths, ['/auth/login']);
+      expect(tokenStorage.clearCount, 0);
+      expect(invalidated, isFalse);
+    });
+
     test(
       'does not retry forever when retried request still returns 401',
       () async {

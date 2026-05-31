@@ -1,4 +1,5 @@
 import '../entities/login_result.dart';
+import '../entities/current_user_profile.dart';
 
 abstract class AuthRepository {
   Future<LoginResult> login({required String email, required String password});
@@ -20,6 +21,18 @@ abstract class AuthRepository {
     required String email,
     required String otpCode,
     required String newPassword,
+  });
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+
+  Future<CurrentUserProfile> getCurrentUserProfile();
+
+  Future<CurrentUserProfile> updateCurrentUserProfile({
+    required String fullName,
+    required String phone,
   });
 
   Future<void> logout();

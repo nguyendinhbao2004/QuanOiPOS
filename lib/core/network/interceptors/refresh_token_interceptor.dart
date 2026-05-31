@@ -4,6 +4,13 @@ import '../../storage/token_storage.dart';
 
 class RefreshTokenInterceptor extends Interceptor {
   static const _refreshPath = '/auth/refresh';
+  static const _publicAuthPaths = {
+    '/auth/login',
+    '/auth/register',
+    '/auth/confirm-registration',
+    '/auth/forgot-password',
+    '/auth/confirm-forgot-password',
+  };
   static const _hasRetriedAfterRefreshKey = 'has_retried_after_refresh';
 
   final Dio dio;
@@ -26,7 +33,7 @@ class RefreshTokenInterceptor extends Interceptor {
     final status = err.response?.statusCode;
     final requestOptions = err.requestOptions;
 
-    if (status != 401 || _isRefreshRequest(requestOptions)) {
+    if (status != 401 || _shouldSkipRefresh(requestOptions)) {
       return handler.next(err);
     }
 
@@ -63,6 +70,23 @@ class RefreshTokenInterceptor extends Interceptor {
   bool _isRefreshRequest(RequestOptions requestOptions) {
     final uri = Uri.tryParse(requestOptions.path);
     return requestOptions.path == _refreshPath || uri?.path == _refreshPath;
+  }
+
+  bool _isPublicAuthRequest(RequestOptions requestOptions) {
+    final uri = Uri.tryParse(requestOptions.path);
+    final path = uri?.path ?? requestOptions.path;
+    return _publicAuthPaths.contains(path);
+  }
+
+  bool _hasBearerToken(RequestOptions requestOptions) {
+    final authorization = requestOptions.headers['Authorization'];
+    return authorization is String && authorization.trim().isNotEmpty;
+  }
+
+  bool _shouldSkipRefresh(RequestOptions requestOptions) {
+    return _isRefreshRequest(requestOptions) ||
+        _isPublicAuthRequest(requestOptions) ||
+        !_hasBearerToken(requestOptions);
   }
 
   Future<String?> _refreshAccessToken() {

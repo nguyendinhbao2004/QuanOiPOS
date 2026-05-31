@@ -1,10 +1,13 @@
 import '../../../../core/network/dio/dio_client.dart';
+import '../models/change_password_request_model.dart';
 import '../models/confirm_forgot_password_request_model.dart';
 import '../models/confirm_registration_request_model.dart';
+import '../models/current_user_profile_model.dart';
 import '../models/forgot_password_request_model.dart';
 import '../models/login_request_model.dart';
 import '../models/login_response_data_model.dart';
 import '../models/register_request_model.dart';
+import '../models/update_current_user_profile_request_model.dart';
 
 class AuthRemoteDataSource {
   final DioClient _dioClient;
@@ -85,6 +88,51 @@ class AuthRemoteDataSource {
       response.message,
       response.errors,
       'Forgot password confirmation failed',
+    );
+  }
+
+  Future<void> changePassword(ChangePasswordRequestModel request) async {
+    final response = await _dioClient.postResponse<Object?>(
+      '/auth/change-password',
+      data: request.toJson(),
+    );
+
+    _throwIfFailed(
+      response.succeeded,
+      response.message,
+      response.errors,
+      'Change password failed',
+    );
+  }
+
+  Future<CurrentUserProfileModel> getCurrentUserProfile() async {
+    final response = await _dioClient.getResponse<Object?>('/auth/me');
+
+    if (!response.succeeded || response.data == null) {
+      final message =
+          response.message ??
+          (response.errors.isNotEmpty
+              ? response.errors.first
+              : 'Load profile failed');
+      throw Exception(message);
+    }
+
+    return CurrentUserProfileModel.fromJson(response.data);
+  }
+
+  Future<void> updateCurrentUserProfile(
+    UpdateCurrentUserProfileRequestModel request,
+  ) async {
+    final response = await _dioClient.putResponse<Object?>(
+      '/auth/me',
+      data: request.toJson(),
+    );
+
+    _throwIfFailed(
+      response.succeeded,
+      response.message,
+      response.errors,
+      'Update profile failed',
     );
   }
 

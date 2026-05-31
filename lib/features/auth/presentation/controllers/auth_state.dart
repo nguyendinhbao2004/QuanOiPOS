@@ -14,6 +14,7 @@ class AuthState {
   final String? errorMessage;
   final String? fullName;
   final String? email;
+  final String? phone;
   final bool sessionRestored;
 
   const AuthState({
@@ -22,6 +23,7 @@ class AuthState {
     this.errorMessage,
     this.fullName,
     this.email,
+    this.phone,
     this.sessionRestored = false,
   });
 
@@ -31,6 +33,7 @@ class AuthState {
       errorMessage = null,
       fullName = null,
       email = null,
+      phone = null,
       sessionRestored = false;
 
   const AuthState.unauthenticated()
@@ -39,6 +42,7 @@ class AuthState {
       errorMessage = null,
       fullName = null,
       email = null,
+      phone = null,
       sessionRestored = false;
 
   bool get isLoading =>
@@ -54,6 +58,7 @@ class AuthState {
     String? errorMessage,
     String? fullName,
     String? email,
+    String? phone,
     bool? sessionRestored,
     bool clearError = false,
   }) {
@@ -63,6 +68,7 @@ class AuthState {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       fullName: fullName ?? this.fullName,
       email: email ?? this.email,
+      phone: phone ?? this.phone,
       sessionRestored: sessionRestored ?? this.sessionRestored,
     );
   }
