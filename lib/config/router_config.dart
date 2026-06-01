@@ -12,6 +12,7 @@ import '../features/auth/presentation/pages/profile_page.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
 import '../features/system_admin/presentation/pages/system_admin_home_page.dart';
 import '../features/store_operations/presentation/pages/about_app_page.dart';
+import '../features/store_operations/presentation/pages/app_settings_page.dart';
 import '../features/store_operations/presentation/pages/operation_regulations_page.dart';
 import '../features/store_operations/presentation/pages/privacy_policy_page.dart';
 import '../features/store_operations/presentation/pages/store_home_page.dart';
@@ -43,6 +44,7 @@ abstract final class RouteNames {
   static const String storeTableSettings = 'store-table-settings';
   static const String myStores = 'my-stores';
   static const String storeSubscription = 'store-subscription';
+  static const String appSettings = 'app-settings';
   static const String operationRegulations = 'operation-regulations';
   static const String privacyPolicy = 'privacy-policy';
   static const String aboutApp = 'about-app';
@@ -204,6 +206,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const StoreSubscriptionPage(),
       ),
       GoRoute(
+        path: '/app-settings',
+        name: RouteNames.appSettings,
+        builder: (context, state) => const AppSettingsPage(),
+      ),
+      GoRoute(
         path: '/operation-regulations',
         name: RouteNames.operationRegulations,
         builder: (context, state) => const OperationRegulationsPage(),
@@ -270,6 +277,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (authState.accountType == AccountType.systemAdmin) {
         if (state.matchedLocation == '/store-home' ||
             state.matchedLocation == '/store-subscription' ||
+            state.matchedLocation == '/app-settings' ||
             state.matchedLocation == '/operation-regulations' ||
             state.matchedLocation == '/privacy-policy' ||
             state.matchedLocation == '/about-app' ||

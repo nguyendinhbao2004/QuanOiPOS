@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:in_app_review/in_app_review.dart';
 
 import '../../../../config/router_config.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -54,45 +52,6 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
     context.pushNamed(RouteNames.myStores);
   }
 
-  Future<void> _openStoreReview(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-
-    if (kIsWeb) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Tính năng đánh giá chưa hỗ trợ trên web'),
-        ),
-      );
-      return;
-    }
-
-    if (defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.macOS) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Chưa cấu hình App Store ID')),
-      );
-      return;
-    }
-
-    if (defaultTargetPlatform != TargetPlatform.android) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Tính năng đánh giá chưa hỗ trợ trên nền tảng này'),
-        ),
-      );
-      return;
-    }
-
-    try {
-      await InAppReview.instance.openStoreListing();
-    } catch (_) {
-      if (!context.mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Không thể mở trang đánh giá ứng dụng')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
@@ -121,9 +80,8 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
                     email: email,
                     onProfileTap: () => context.pushNamed(RouteNames.profile),
                     onStoreTap: () => _onStoreMenuTap(context),
-                    onFeedbackTap: () => _openStoreReview(context),
-                    onFeatureTap: (feature) =>
-                        _showComingSoon(context, feature: feature),
+                    onAppSettingsTap: () =>
+                        context.pushNamed(RouteNames.appSettings),
                     onLogout: () =>
                         ref.read(authNotifierProvider.notifier).logout(),
                   ),
@@ -180,8 +138,7 @@ class _ReadyStateView extends StatelessWidget {
   final String email;
   final VoidCallback onProfileTap;
   final VoidCallback onStoreTap;
-  final VoidCallback onFeedbackTap;
-  final void Function(String feature) onFeatureTap;
+  final VoidCallback onAppSettingsTap;
   final VoidCallback onLogout;
 
   const _ReadyStateView({
@@ -189,8 +146,7 @@ class _ReadyStateView extends StatelessWidget {
     required this.email,
     required this.onProfileTap,
     required this.onStoreTap,
-    required this.onFeedbackTap,
-    required this.onFeatureTap,
+    required this.onAppSettingsTap,
     required this.onLogout,
   });
 
@@ -221,30 +177,6 @@ class _ReadyStateView extends StatelessWidget {
                 onTap: onStoreTap,
               ),
               AccountMenuItemData(
-                title: 'Quy chế hoạt động',
-                leadingIcon: Icons.description_outlined,
-                trailingMeta: '',
-                onTap: () => context.pushNamed(RouteNames.operationRegulations),
-              ),
-              AccountMenuItemData(
-                title: 'Chính sách bảo mật',
-                leadingIcon: Icons.privacy_tip_outlined,
-                trailingMeta: '',
-                onTap: () => context.pushNamed(RouteNames.privacyPolicy),
-              ),
-              AccountMenuItemData(
-                title: 'Về ứng dụng',
-                leadingIcon: Icons.info_outline_rounded,
-                trailingMeta: 'Xem thông tin',
-                onTap: () => context.pushNamed(RouteNames.aboutApp),
-              ),
-              AccountMenuItemData(
-                title: 'Đóng góp ý kiến',
-                leadingIcon: Icons.star_rate_outlined,
-                trailingMeta: 'Đánh giá app',
-                onTap: onFeedbackTap,
-              ),
-              AccountMenuItemData(
                 title: 'Đổi mật khẩu',
                 leadingIcon: Icons.lock_reset_outlined,
                 onTap: () => context.pushNamed(RouteNames.changePassword),
@@ -252,7 +184,7 @@ class _ReadyStateView extends StatelessWidget {
               AccountMenuItemData(
                 title: 'Cài đặt ứng dụng',
                 leadingIcon: Icons.settings_outlined,
-                onTap: () => onFeatureTap('Cài đặt ứng dụng'),
+                onTap: onAppSettingsTap,
               ),
             ],
           ),
