@@ -86,10 +86,70 @@ void main() {
     expect(find.text('Thanh toán gói dịch vụ thất bại'), findsOneWidget);
     expect(observer.popCount, 1);
   });
+
+  testWidgets('checkout cancel URL cancels pending payment and pops', (
+    tester,
+  ) async {
+    final notifier = _CheckoutTestSubscriptionNotifier(
+      const SubscriptionState(status: SubscriptionStatus.waitingForPayment),
+    );
+    final observer = _PopCountingNavigatorObserver();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [subscriptionNotifierProvider.overrideWith(() => notifier)],
+        child: MaterialApp(
+          navigatorObservers: [observer],
+          home: const _CheckoutTestHost(
+            navigationUrlForTesting: 'quanoi://subscription/cancel',
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open checkout'));
+    await tester.pumpAndSettle();
+
+    expect(notifier.cancelPendingPaymentCallCount, 1);
+    expect(find.text('Fake PayOS WebView'), findsNothing);
+    expect(find.text('Thanh toán đã hủy'), findsOneWidget);
+    expect(observer.popCount, 1);
+  });
+
+  testWidgets('checkout success URL refreshes without cancelling payment', (
+    tester,
+  ) async {
+    final notifier = _CheckoutTestSubscriptionNotifier(
+      const SubscriptionState(status: SubscriptionStatus.waitingForPayment),
+    );
+    final observer = _PopCountingNavigatorObserver();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [subscriptionNotifierProvider.overrideWith(() => notifier)],
+        child: MaterialApp(
+          navigatorObservers: [observer],
+          home: const _CheckoutTestHost(
+            navigationUrlForTesting: 'quanoi://subscription/success',
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open checkout'));
+    await tester.pumpAndSettle();
+
+    expect(notifier.refreshAfterPaymentReturnCallCount, 1);
+    expect(notifier.cancelPendingPaymentCallCount, 0);
+    expect(find.text('Fake PayOS WebView'), findsNothing);
+    expect(observer.popCount, 1);
+  });
 }
 
 class _CheckoutTestHost extends StatelessWidget {
-  const _CheckoutTestHost();
+  final String? navigationUrlForTesting;
+
+  const _CheckoutTestHost({this.navigationUrlForTesting});
 
   @override
   Widget build(BuildContext context) {
@@ -103,11 +163,12 @@ class _CheckoutTestHost extends StatelessWidget {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => const SubscriptionCheckoutPage(
+                    builder: (_) => SubscriptionCheckoutPage(
                       paymentLink: 'https://pay.payos.vn/web/test',
-                      webViewForTesting: Center(
+                      webViewForTesting: const Center(
                         child: Text('Fake PayOS WebView'),
                       ),
+                      navigationUrlForTesting: navigationUrlForTesting,
                     ),
                   ),
                 );
@@ -123,6 +184,8 @@ class _CheckoutTestHost extends StatelessWidget {
 
 class _CheckoutTestSubscriptionNotifier extends SubscriptionNotifier {
   final SubscriptionState _initialState;
+  int cancelPendingPaymentCallCount = 0;
+  int refreshAfterPaymentReturnCallCount = 0;
 
   _CheckoutTestSubscriptionNotifier(this._initialState);
 
@@ -133,6 +196,22 @@ class _CheckoutTestSubscriptionNotifier extends SubscriptionNotifier {
 
   void emit(SubscriptionState value) {
     state = value;
+  }
+
+  @override
+  Future<void> cancelPendingPayment() async {
+    cancelPendingPaymentCallCount += 1;
+    state = state.copyWith(
+      status: SubscriptionStatus.paymentFailed,
+      errorMessage: 'Thanh toán đã hủy',
+      clearPendingPurchase: true,
+      clearCheckoutUrl: true,
+    );
+  }
+
+  @override
+  Future<void> refreshAfterPaymentReturn() async {
+    refreshAfterPaymentReturnCallCount += 1;
   }
 }
 

@@ -92,9 +92,6 @@ class _StoreSubscriptionPageState extends ConsumerState<StoreSubscriptionPage>
               onContinuePayment: () => ref
                   .read(subscriptionNotifierProvider.notifier)
                   .continuePendingPayment(),
-              onRefreshPayment: () => ref
-                  .read(subscriptionNotifierProvider.notifier)
-                  .refreshAfterPaymentReturn(),
             ),
           },
         ),
@@ -108,38 +105,24 @@ class _SubscriptionContent extends StatelessWidget {
   final Future<void> Function() onRetry;
   final Future<void> Function(ServicePackage plan) onPurchase;
   final VoidCallback onContinuePayment;
-  final Future<void> Function() onRefreshPayment;
 
   const _SubscriptionContent({
     required this.state,
     required this.onRetry,
     required this.onPurchase,
     required this.onContinuePayment,
-    required this.onRefreshPayment,
   });
 
   @override
   Widget build(BuildContext context) {
-    final activePlan = _findActivePlan(state.activeSubscription, state.plans);
-
     return Padding(
       padding: const EdgeInsets.all(AppConstants.spacingMd),
       child: ListView(
         children: [
-          if (state.activeSubscription != null) ...[
-            _ActiveSubscriptionCard(
-              subscription: state.activeSubscription!,
-              plan: activePlan,
-            ),
-            const SizedBox(height: AppConstants.spacingLg),
-          ],
           if (state.pendingPurchase != null) ...[
             _PendingPaymentCard(
               pendingPurchase: state.pendingPurchase!,
-              isRefreshing:
-                  state.status == SubscriptionStatus.paymentCompletedRefreshing,
               onContinuePayment: onContinuePayment,
-              onRefreshPayment: onRefreshPayment,
             ),
             const SizedBox(height: AppConstants.spacingLg),
           ],
@@ -174,235 +157,6 @@ class _SubscriptionContent extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  ServicePackage? _findActivePlan(
-    ActiveSubscription? activeSubscription,
-    List<ServicePackage> plans,
-  ) {
-    if (activeSubscription == null) {
-      return null;
-    }
-
-    for (final plan in plans) {
-      if (plan.id == activeSubscription.planId.toString()) {
-        return plan;
-      }
-    }
-
-    return null;
-  }
-}
-
-class _ActiveSubscriptionCard extends StatelessWidget {
-  final ActiveSubscription subscription;
-  final ServicePackage? plan;
-
-  const _ActiveSubscriptionCard({
-    required this.subscription,
-    required this.plan,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final features = plan?.features.take(3).toList() ?? const <String>[];
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.spacingLg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: _StatusChip(
-                label: subscription.isExpired
-                    ? 'GÓI ĐÃ HẾT HẠN'
-                    : 'GÓI ĐANG HOẠT ĐỘNG',
-                color: subscription.isExpired
-                    ? AppColors.error
-                    : AppColors.success,
-              ),
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        subscription.planName,
-                        style: AppTextStyles.h2.copyWith(
-                          fontWeight: FontWeight.w700,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: AppConstants.spacingXs),
-                      _InlineInfo(
-                        icon: Icons.calendar_today_outlined,
-                        text:
-                            'Hạn sử dụng: ${_dateLabel(subscription.endDate)}',
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppConstants.spacingSm),
-                _StatusChip(
-                  label: _statusLabel(subscription),
-                  color: subscription.isExpired
-                      ? AppColors.error
-                      : AppColors.primary,
-                ),
-              ],
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppConstants.spacingMd),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(AppConstants.spacingSm),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Text.rich(
-                TextSpan(
-                  text: _priceLabel(subscription.price),
-                  style: AppTextStyles.h2.copyWith(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: subscription.price <= 0 ? '' : '/tháng',
-                      style: AppTextStyles.bodySm.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
-            Row(
-              children: [
-                Expanded(
-                  child: _PlanLimitTile(
-                    icon: Icons.storefront_outlined,
-                    label: _limitLabel(subscription.maxStores, 'cửa hàng'),
-                    helper: 'Cửa hàng',
-                  ),
-                ),
-                const SizedBox(width: AppConstants.spacingMd),
-                Expanded(
-                  child: _PlanLimitTile(
-                    icon: Icons.groups_outlined,
-                    label: _limitLabel(subscription.maxUsers, 'người dùng'),
-                    helper: 'Người dùng',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
-            Wrap(
-              spacing: AppConstants.spacingSm,
-              runSpacing: AppConstants.spacingSm,
-              children: [
-                _InfoChip(
-                  icon: Icons.timer_outlined,
-                  label: '${subscription.daysRemaining} ngày còn lại',
-                ),
-                _InfoChip(
-                  icon: subscription.autoRenew
-                      ? Icons.autorenew_outlined
-                      : Icons.event_busy_outlined,
-                  label: subscription.autoRenew
-                      ? 'Tự động gia hạn'
-                      : 'Không tự động gia hạn',
-                ),
-              ],
-            ),
-            if (features.isNotEmpty) ...[
-              const SizedBox(height: AppConstants.spacingLg),
-              Text(
-                'Tính năng đi kèm',
-                style: AppTextStyles.labelXs.copyWith(
-                  color: AppColors.textMuted,
-                ),
-              ),
-              const SizedBox(height: AppConstants.spacingSm),
-              ...features.map(
-                (feature) => Padding(
-                  padding: const EdgeInsets.only(
-                    bottom: AppConstants.spacingSm,
-                  ),
-                  child: _FeatureRow(feature: feature),
-                ),
-              ),
-            ],
-            const SizedBox(height: AppConstants.spacingMd),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _showUpgradeComingSoon(context),
-                icon: const Icon(Icons.trending_up_outlined),
-                label: const Text('Nâng cấp gói'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static String _statusLabel(ActiveSubscription subscription) {
-    if (subscription.isExpired) {
-      return 'Hết hạn';
-    }
-
-    if (subscription.status.trim().isNotEmpty) {
-      return subscription.status;
-    }
-
-    return subscription.isActive ? 'Active' : 'Tạm dừng';
-  }
-
-  static String _dateLabel(DateTime? date) {
-    if (date == null) {
-      return '--';
-    }
-
-    return DateFormat('dd/MM/yyyy').format(date.toLocal());
-  }
-
-  static String _priceLabel(double price) {
-    if (price <= 0) {
-      return 'Miễn phí';
-    }
-
-    return NumberFormat.currency(
-      locale: 'vi_VN',
-      symbol: 'đ',
-      decimalDigits: 0,
-    ).format(price);
-  }
-
-  static String _limitLabel(int value, String unit) {
-    if (value >= 999) {
-      return 'Không giới hạn $unit';
-    }
-
-    return '$value $unit';
-  }
-
-  void _showUpgradeComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Tính năng nâng cấp gói sẽ được triển khai sau'),
       ),
     );
   }
@@ -554,6 +308,15 @@ class _ServicePackageCardState extends State<_ServicePackageCard> {
     return widget.activeSubscription?.planId.toString() == package.id;
   }
 
+  bool get isCurrentActivePlan {
+    final subscription = widget.activeSubscription;
+    return subscription != null &&
+        subscription.planId.toString() == package.id &&
+        subscription.isActive &&
+        !subscription.isExpired &&
+        subscription.status == 'Active';
+  }
+
   bool get hasDifferentActivePlan {
     final subscription = widget.activeSubscription;
     return subscription != null &&
@@ -594,7 +357,10 @@ class _ServicePackageCardState extends State<_ServicePackageCard> {
                   ),
                 ),
                 const SizedBox(width: AppConstants.spacingSm),
-                _PlanBadge(package: package),
+                _PlanBadge(
+                  package: package,
+                  isCurrentActivePlan: isCurrentActivePlan,
+                ),
               ],
             ),
             const SizedBox(height: AppConstants.spacingLg),
@@ -764,15 +530,11 @@ class _ServicePackageCardState extends State<_ServicePackageCard> {
 
 class _PendingPaymentCard extends StatelessWidget {
   final PendingSubscriptionPurchase pendingPurchase;
-  final bool isRefreshing;
   final VoidCallback onContinuePayment;
-  final Future<void> Function() onRefreshPayment;
 
   const _PendingPaymentCard({
     required this.pendingPurchase,
-    required this.isRefreshing,
     required this.onContinuePayment,
-    required this.onRefreshPayment,
   });
 
   @override
@@ -808,26 +570,15 @@ class _PendingPaymentCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: AppConstants.spacingLg),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: isRefreshing ? null : onRefreshPayment,
-                    icon: const Icon(Icons.refresh_outlined),
-                    label: const Text('Tải lại'),
-                  ),
-                ),
-                const SizedBox(width: AppConstants.spacingMd),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: pendingPurchase.paymentLink.isEmpty
-                        ? null
-                        : onContinuePayment,
-                    icon: const Icon(Icons.payment_outlined),
-                    label: const Text('Tiếp tục'),
-                  ),
-                ),
-              ],
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: pendingPurchase.paymentLink.isEmpty
+                    ? null
+                    : onContinuePayment,
+                icon: const Icon(Icons.payment_outlined),
+                label: const Text('Tiếp tục'),
+              ),
             ),
           ],
         ),
@@ -910,36 +661,6 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _InfoChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppConstants.spacingSm,
-        vertical: AppConstants.spacingXs,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.borderStrong),
-        borderRadius: BorderRadius.circular(AppConstants.spacingSm),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: AppColors.textSecondary),
-          const SizedBox(width: AppConstants.spacingXs),
-          Text(label, style: AppTextStyles.bodyXs),
-        ],
-      ),
-    );
-  }
-}
-
 class _InlineInfo extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -958,47 +679,27 @@ class _InlineInfo extends StatelessWidget {
   }
 }
 
-class _FeatureRow extends StatelessWidget {
-  final String feature;
-
-  const _FeatureRow({required this.feature});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.check_circle, size: 18, color: AppColors.success),
-        const SizedBox(width: AppConstants.spacingSm),
-        Expanded(
-          child: Text(
-            feature,
-            style: AppTextStyles.bodySm.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _PlanBadge extends StatelessWidget {
   final ServicePackage package;
+  final bool isCurrentActivePlan;
 
-  const _PlanBadge({required this.package});
+  const _PlanBadge({required this.package, required this.isCurrentActivePlan});
 
   @override
   Widget build(BuildContext context) {
     final isRecommended = package.name.toLowerCase() == 'pro';
-    final label = isRecommended
+    final label = isCurrentActivePlan
+        ? 'Đang sử dụng'
+        : isRecommended
         ? 'Khuyên dùng'
         : (package.isActive ? 'Đang mở bán' : 'Tạm dừng');
-    final backgroundColor = isRecommended || package.isActive
+    final backgroundColor = isCurrentActivePlan
+        ? AppColors.success
+        : isRecommended || package.isActive
         ? AppColors.primary
         : AppColors.muted;
-    final foregroundColor = isRecommended || package.isActive
+    final foregroundColor =
+        isCurrentActivePlan || isRecommended || package.isActive
         ? AppColors.surface
         : AppColors.textSecondary;
 

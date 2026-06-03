@@ -1,11 +1,18 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/core/network/dio/dio_client.dart';
+import 'package:quan_oi/core/storage/session_snapshot_storage.dart';
+import 'package:quan_oi/features/auth/data/models/session_snapshot_model.dart';
+import 'package:quan_oi/features/auth/domain/entities/account_type.dart';
+import 'package:quan_oi/features/subscription/data/datasources/subscription_pending_purchase_storage_impl.dart';
 import 'package:quan_oi/features/subscription/data/datasources/subscription_remote_data_source.dart';
 import 'package:quan_oi/features/subscription/data/models/active_subscription_model.dart';
+import 'package:quan_oi/features/subscription/data/models/pending_subscription_purchase_model.dart';
 import 'package:quan_oi/features/subscription/data/models/purchase_subscription_request_model.dart';
 import 'package:quan_oi/features/subscription/data/models/purchase_subscription_result_model.dart';
 import 'package:quan_oi/features/subscription/data/models/service_package_model.dart';
+import 'package:quan_oi/features/subscription/data/repositories/subscription_repository_impl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('ServicePackageModel', () {
@@ -85,6 +92,79 @@ void main() {
 
       final entity = result.toEntity();
       expect(entity.toPendingPurchase().paymentId, 7);
+    });
+  });
+
+  group('SubscriptionPendingPurchaseStorage', () {
+    test('loads only pending purchase for current account', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = SubscriptionPendingPurchaseStorageImpl(preferences);
+      final snapshotStorage = _FakeSessionSnapshotStorage(_session(8));
+      final repository = SubscriptionRepositoryImpl(
+        SubscriptionRemoteDataSource(DioClient(Dio())),
+        storage,
+        snapshotStorage,
+      );
+
+      await storage.save(accountId: 8, purchase: _pendingPurchaseModel);
+
+      expect(await repository.loadPendingPurchase(), isNotNull);
+
+      snapshotStorage.snapshot = _session(9);
+
+      expect(await repository.loadPendingPurchase(), isNull);
+    });
+
+    test('clears pending purchase only for current account', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = SubscriptionPendingPurchaseStorageImpl(preferences);
+      final snapshotStorage = _FakeSessionSnapshotStorage(_session(9));
+      final repository = SubscriptionRepositoryImpl(
+        SubscriptionRemoteDataSource(DioClient(Dio())),
+        storage,
+        snapshotStorage,
+      );
+
+      await storage.save(accountId: 8, purchase: _pendingPurchaseModel);
+      await storage.save(accountId: 9, purchase: _pendingPurchaseModel);
+
+      await repository.clearPendingPurchase();
+
+      expect(await storage.load(accountId: 9), isNull);
+      expect(await storage.load(accountId: 8), isNotNull);
+    });
+
+    test('ignores legacy global pending purchase key', () async {
+      SharedPreferences.setMockInitialValues({
+        'subscription_pending_purchase': _pendingPurchaseModel.toStorage(),
+      });
+      final preferences = await SharedPreferences.getInstance();
+      final storage = SubscriptionPendingPurchaseStorageImpl(preferences);
+      final snapshotStorage = _FakeSessionSnapshotStorage(_session(8));
+      final repository = SubscriptionRepositoryImpl(
+        SubscriptionRemoteDataSource(DioClient(Dio())),
+        storage,
+        snapshotStorage,
+      );
+
+      expect(await repository.loadPendingPurchase(), isNull);
+    });
+
+    test('does not load pending purchase without current account', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = SubscriptionPendingPurchaseStorageImpl(preferences);
+      final repository = SubscriptionRepositoryImpl(
+        SubscriptionRemoteDataSource(DioClient(Dio())),
+        storage,
+        _FakeSessionSnapshotStorage(null),
+      );
+
+      await storage.save(accountId: 8, purchase: _pendingPurchaseModel);
+
+      expect(await repository.loadPendingPurchase(), isNull);
     });
   });
 
@@ -222,8 +302,81 @@ void main() {
       });
       expect(result.paymentLink, startsWith('https://pay.payos.vn'));
     });
+
+    test(
+      'cancels pending purchase from /subscriptions/id/purchase/cancel',
+      () async {
+        String? requestedPath;
+        Object? requestedData;
+        final dio = Dio();
+        dio.interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              requestedPath = options.path;
+              requestedData = options.data;
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  data: {
+                    'succeeded': true,
+                    'message': 'Đã hủy giao dịch thanh toán gói',
+                    'errors': <String>[],
+                  },
+                ),
+              );
+            },
+          ),
+        );
+
+        final dataSource = SubscriptionRemoteDataSource(DioClient(dio));
+
+        await dataSource.cancelPendingPurchase(subscriptionId: 8);
+
+        expect(requestedPath, '/subscriptions/8/purchase/cancel');
+        expect(requestedData, isNull);
+      },
+    );
   });
 }
+
+class _FakeSessionSnapshotStorage implements SessionSnapshotStorage {
+  SessionSnapshot? snapshot;
+
+  _FakeSessionSnapshotStorage(this.snapshot);
+
+  @override
+  Future<SessionSnapshot?> getSnapshot() async => snapshot;
+
+  @override
+  Future<void> saveSnapshot(SessionSnapshot snapshot) async {
+    this.snapshot = snapshot;
+  }
+
+  @override
+  Future<void> clearSnapshot() async {
+    snapshot = null;
+  }
+}
+
+SessionSnapshot _session(int accountId) {
+  return SessionSnapshot(
+    accountId: accountId,
+    email: 'user$accountId@quanoi.test',
+    fullName: 'Test User $accountId',
+    phone: '',
+    accountType: AccountType.storeUser,
+  );
+}
+
+const _pendingPurchaseModel = PendingSubscriptionPurchaseModel(
+  subscriptionId: 8,
+  paymentId: 7,
+  orderCode: 81780473152,
+  planName: 'Basic',
+  amount: 10000,
+  paymentLink: 'https://pay.payos.vn/web/test',
+  expiresAt: null,
+);
 
 const _subscriptionPlansData = [
   {

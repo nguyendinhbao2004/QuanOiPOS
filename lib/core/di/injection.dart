@@ -32,6 +32,7 @@ import '../../features/subscription/data/datasources/subscription_pending_purcha
 import '../../features/subscription/data/datasources/subscription_pending_purchase_storage_impl.dart';
 import '../../features/subscription/data/repositories/subscription_repository_impl.dart';
 import '../../features/subscription/domain/repositories/subscription_repository.dart';
+import '../../features/subscription/domain/usecases/cancel_pending_subscription_purchase_use_case.dart';
 import '../../features/subscription/domain/usecases/clear_pending_subscription_purchase_use_case.dart';
 import '../../features/subscription/domain/usecases/load_active_subscription_use_case.dart';
 import '../../features/subscription/domain/usecases/load_pending_subscription_purchase_use_case.dart';
@@ -170,6 +171,7 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
     () => SubscriptionRepositoryImpl(
       locator<SubscriptionRemoteDataSource>(),
       locator<SubscriptionPendingPurchaseStorage>(),
+      locator<SessionSnapshotStorage>(),
     ),
   );
   locator.registerLazySingleton<LoadSubscriptionPlansUseCase>(
@@ -188,6 +190,11 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<ClearPendingSubscriptionPurchaseUseCase>(
     () => ClearPendingSubscriptionPurchaseUseCase(
+      locator<SubscriptionRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<CancelPendingSubscriptionPurchaseUseCase>(
+    () => CancelPendingSubscriptionPurchaseUseCase(
       locator<SubscriptionRepository>(),
     ),
   );

@@ -210,6 +210,39 @@ class SubscriptionNotifier extends AutoDisposeNotifier<SubscriptionState> {
     _startPolling();
   }
 
+  Future<void> cancelPendingPayment() async {
+    final pendingPurchase = state.pendingPurchase;
+    if (pendingPurchase == null) {
+      _stopPolling();
+      state = state.copyWith(
+        status: SubscriptionStatus.paymentFailed,
+        errorMessage: 'Thanh toán đã hủy',
+        clearCheckoutUrl: true,
+      );
+      return;
+    }
+
+    _stopPolling();
+    state = state.copyWith(status: SubscriptionStatus.paymentFailed);
+
+    try {
+      final cancelUseCase = ref.read(
+        cancelPendingSubscriptionPurchaseUseCaseProvider,
+      );
+      await cancelUseCase(subscriptionId: pendingPurchase.subscriptionId);
+      await _refreshActiveAfterFailedPayment('Thanh toán đã hủy');
+    } catch (error) {
+      final message = _cleanError(error);
+      await ref.read(clearPendingSubscriptionPurchaseUseCaseProvider)();
+      state = state.copyWith(
+        status: SubscriptionStatus.paymentFailed,
+        errorMessage: message,
+        clearPendingPurchase: true,
+        clearCheckoutUrl: true,
+      );
+    }
+  }
+
   Future<void> refreshAfterPaymentReturn() async {
     await _refreshActiveSubscription(
       refreshingStatus: SubscriptionStatus.waitingForPayment,
@@ -241,13 +274,49 @@ class SubscriptionNotifier extends AutoDisposeNotifier<SubscriptionState> {
       return;
     }
 
-    if (payload.isFailed) {
+    if (payload.isFailedOrCancelled) {
       _stopPolling();
-      await _refreshActiveSubscription(
-        refreshingStatus: SubscriptionStatus.paymentFailed,
-        keepWaitingWhenInactive: true,
+      await _refreshActiveAfterFailedPayment(
+        payload.isCancelled ? 'Thanh toán đã hủy' : 'Thanh toán gói thất bại',
       );
-      state = state.copyWith(status: SubscriptionStatus.paymentFailed);
+    }
+  }
+
+  Future<void> _refreshActiveAfterFailedPayment(String message) async {
+    try {
+      final loadActiveSubscriptionUseCase = ref.read(
+        loadActiveSubscriptionUseCaseProvider,
+      );
+      final activeSubscription = await loadActiveSubscriptionUseCase();
+
+      await ref.read(clearPendingSubscriptionPurchaseUseCaseProvider)();
+
+      if (_isActiveSubscription(activeSubscription)) {
+        state = state.copyWith(
+          status: SubscriptionStatus.ready,
+          activeSubscription: activeSubscription,
+          clearPendingPurchase: true,
+          clearCheckoutUrl: true,
+          clearError: true,
+        );
+        return;
+      }
+
+      state = state.copyWith(
+        status: SubscriptionStatus.paymentFailed,
+        errorMessage: message,
+        clearActiveSubscription: true,
+        clearPendingPurchase: true,
+        clearCheckoutUrl: true,
+      );
+    } catch (error) {
+      await ref.read(clearPendingSubscriptionPurchaseUseCaseProvider)();
+      state = state.copyWith(
+        status: SubscriptionStatus.paymentFailed,
+        errorMessage: _cleanError(error),
+        clearPendingPurchase: true,
+        clearCheckoutUrl: true,
+      );
     }
   }
 

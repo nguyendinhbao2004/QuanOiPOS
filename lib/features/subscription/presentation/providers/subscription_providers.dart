@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/injection.dart';
 import '../../data/datasources/subscription_remote_data_source.dart';
 import '../../domain/repositories/subscription_repository.dart';
+import '../../domain/usecases/cancel_pending_subscription_purchase_use_case.dart';
 import '../../domain/usecases/clear_pending_subscription_purchase_use_case.dart';
 import '../../domain/usecases/load_active_subscription_use_case.dart';
 import '../../domain/usecases/load_pending_subscription_purchase_use_case.dart';
@@ -43,6 +44,11 @@ final loadPendingSubscriptionPurchaseUseCaseProvider =
 final clearPendingSubscriptionPurchaseUseCaseProvider =
     Provider<ClearPendingSubscriptionPurchaseUseCase>((ref) {
       return locator<ClearPendingSubscriptionPurchaseUseCase>();
+    });
+
+final cancelPendingSubscriptionPurchaseUseCaseProvider =
+    Provider<CancelPendingSubscriptionPurchaseUseCase>((ref) {
+      return locator<CancelPendingSubscriptionPurchaseUseCase>();
     });
 
 final subscriptionNotifierProvider =

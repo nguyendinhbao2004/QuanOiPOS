@@ -1,3 +1,4 @@
+import '../../../../core/storage/session_snapshot_storage.dart';
 import '../../domain/entities/active_subscription.dart';
 import '../../domain/entities/pending_subscription_purchase.dart';
 import '../../domain/entities/purchase_subscription_result.dart';
@@ -11,10 +12,12 @@ import '../models/purchase_subscription_request_model.dart';
 class SubscriptionRepositoryImpl implements SubscriptionRepository {
   final SubscriptionRemoteDataSource _remoteDataSource;
   final SubscriptionPendingPurchaseStorage _pendingPurchaseStorage;
+  final SessionSnapshotStorage _sessionSnapshotStorage;
 
   const SubscriptionRepositoryImpl(
     this._remoteDataSource,
     this._pendingPurchaseStorage,
+    this._sessionSnapshotStorage,
   );
 
   @override
@@ -48,20 +51,50 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
       ),
     );
     final entity = result.toEntity();
-    await _pendingPurchaseStorage.save(
-      PendingSubscriptionPurchaseModel.fromEntity(entity.toPendingPurchase()),
-    );
+    final accountId = await _currentAccountId();
+    if (accountId != null) {
+      await _pendingPurchaseStorage.save(
+        accountId: accountId,
+        purchase: PendingSubscriptionPurchaseModel.fromEntity(
+          entity.toPendingPurchase(),
+        ),
+      );
+    }
     return entity;
   }
 
   @override
   Future<PendingSubscriptionPurchase?> loadPendingPurchase() async {
-    final purchase = await _pendingPurchaseStorage.load();
+    final accountId = await _currentAccountId();
+    if (accountId == null) {
+      return null;
+    }
+
+    final purchase = await _pendingPurchaseStorage.load(accountId: accountId);
     return purchase?.toEntity();
   }
 
   @override
-  Future<void> clearPendingPurchase() {
-    return _pendingPurchaseStorage.clear();
+  Future<void> clearPendingPurchase() async {
+    final accountId = await _currentAccountId();
+    if (accountId == null) {
+      return;
+    }
+
+    await _pendingPurchaseStorage.clear(accountId: accountId);
+  }
+
+  @override
+  Future<void> cancelPendingPurchase({required int subscriptionId}) async {
+    await _remoteDataSource.cancelPendingPurchase(
+      subscriptionId: subscriptionId,
+    );
+    await clearPendingPurchase();
+  }
+
+  Future<int?> _currentAccountId() async {
+    final snapshot = await _sessionSnapshotStorage.getSnapshot();
+    final accountId = snapshot?.accountId ?? 0;
+    return accountId > 0 ? accountId : null;
   }
 }

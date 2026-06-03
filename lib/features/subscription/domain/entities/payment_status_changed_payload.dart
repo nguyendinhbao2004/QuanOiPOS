@@ -64,6 +64,11 @@ class PaymentStatusChangedPayload {
 
   bool get isFailed => paymentStatus == 'Failed';
 
+  bool get isCancelled =>
+      subscriptionStatus == 'Cancelled' || payosCode == 'USER_CANCELLED';
+
+  bool get isFailedOrCancelled => isFailed || isCancelled;
+
   static String _stringValue(Object? value) {
     if (value == null) {
       return '';

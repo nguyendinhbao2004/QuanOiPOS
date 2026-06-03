@@ -65,6 +65,20 @@ class SubscriptionRemoteDataSource {
     return response.data!;
   }
 
+  Future<void> cancelPendingPurchase({required int subscriptionId}) async {
+    final response = await _dioClient.postResponse<Object?>(
+      '/subscriptions/$subscriptionId/purchase/cancel',
+    );
+
+    if (!response.succeeded) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Cancel pending subscription purchase failed',
+      );
+    }
+  }
+
   Never _throwRequestFailure(
     String? message,
     List<String> errors,

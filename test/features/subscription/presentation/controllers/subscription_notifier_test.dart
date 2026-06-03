@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/subscription/domain/entities/active_subscription.dart';
+import 'package:quan_oi/features/subscription/domain/entities/payment_status_changed_payload.dart';
 import 'package:quan_oi/features/subscription/domain/entities/pending_subscription_purchase.dart';
 import 'package:quan_oi/features/subscription/domain/entities/purchase_subscription_result.dart';
 import 'package:quan_oi/features/subscription/domain/entities/service_package.dart';
 import 'package:quan_oi/features/subscription/domain/repositories/subscription_repository.dart';
+import 'package:quan_oi/features/subscription/domain/usecases/cancel_pending_subscription_purchase_use_case.dart';
 import 'package:quan_oi/features/subscription/domain/usecases/clear_pending_subscription_purchase_use_case.dart';
 import 'package:quan_oi/features/subscription/domain/usecases/load_active_subscription_use_case.dart';
 import 'package:quan_oi/features/subscription/domain/usecases/load_pending_subscription_purchase_use_case.dart';
@@ -150,6 +152,60 @@ void main() {
       isNull,
     );
   });
+
+  test(
+    'cancel pending payment clears pending purchase and checkout url',
+    () async {
+      final repository = _FakeSubscriptionRepository(
+        activeSubscription: null,
+        pendingPurchase: _defaultPendingPurchase,
+      );
+      final container = _containerWithRepository(repository);
+      addTearDown(container.dispose);
+      final subscription = _listen(container);
+      addTearDown(subscription.close);
+
+      await _flushMicrotasks();
+      expect(
+        container.read(subscriptionNotifierProvider).status,
+        SubscriptionStatus.waitingForPayment,
+      );
+
+      await container
+          .read(subscriptionNotifierProvider.notifier)
+          .cancelPendingPayment();
+
+      final state = container.read(subscriptionNotifierProvider);
+      expect(repository.cancelPendingPurchaseCallCount, 1);
+      expect(state.status, SubscriptionStatus.paymentFailed);
+      expect(state.pendingPurchase, isNull);
+      expect(state.checkoutUrl, isNull);
+      expect(state.errorMessage, 'Thanh toán đã hủy');
+    },
+  );
+
+  test('realtime cancelled payment clears pending purchase', () async {
+    final repository = _FakeSubscriptionRepository(
+      activeSubscription: null,
+      pendingPurchase: _defaultPendingPurchase,
+    );
+    final container = _containerWithRepository(repository);
+    addTearDown(container.dispose);
+    final subscription = _listen(container);
+    addTearDown(subscription.close);
+
+    await _flushMicrotasks();
+
+    await container
+        .read(subscriptionNotifierProvider.notifier)
+        .handlePaymentStatusChanged(_cancelledPaymentPayload);
+
+    final state = container.read(subscriptionNotifierProvider);
+    expect(state.status, SubscriptionStatus.paymentFailed);
+    expect(state.pendingPurchase, isNull);
+    expect(repository.pendingPurchase, isNull);
+    expect(state.errorMessage, 'Thanh toán đã hủy');
+  });
 }
 
 ProviderContainer _containerWithRepository(
@@ -171,6 +227,9 @@ ProviderContainer _containerWithRepository(
       ),
       clearPendingSubscriptionPurchaseUseCaseProvider.overrideWithValue(
         ClearPendingSubscriptionPurchaseUseCase(repository),
+      ),
+      cancelPendingSubscriptionPurchaseUseCaseProvider.overrideWithValue(
+        CancelPendingSubscriptionPurchaseUseCase(repository),
       ),
     ],
   );
@@ -194,12 +253,14 @@ class _FakeSubscriptionRepository implements SubscriptionRepository {
   final List<ServicePackage> plans;
   ActiveSubscription? activeSubscription;
   PendingSubscriptionPurchase? pendingPurchase;
+  int cancelPendingPurchaseCallCount = 0;
 
   _FakeSubscriptionRepository({
     this.loadError,
     this.activeLoadError,
     this.plans = _defaultPlans,
     this.activeSubscription = _defaultActiveSubscription,
+    this.pendingPurchase,
   });
 
   @override
@@ -251,6 +312,12 @@ class _FakeSubscriptionRepository implements SubscriptionRepository {
   Future<void> clearPendingPurchase() async {
     pendingPurchase = null;
   }
+
+  @override
+  Future<void> cancelPendingPurchase({required int subscriptionId}) async {
+    cancelPendingPurchaseCallCount += 1;
+    pendingPurchase = null;
+  }
 }
 
 const _defaultPlans = [
@@ -292,4 +359,32 @@ const _defaultActiveSubscription = ActiveSubscription(
   status: 'Active',
   autoRenew: true,
   cancelAt: null,
+);
+
+const _defaultPendingPurchase = PendingSubscriptionPurchase(
+  subscriptionId: 3,
+  paymentId: 7,
+  orderCode: 81780473152,
+  planName: 'Basic',
+  amount: 99000,
+  paymentLink: 'https://pay.payos.vn/web/test',
+  expiresAt: null,
+);
+
+const _cancelledPaymentPayload = PaymentStatusChangedPayload(
+  paymentType: 'Subscription',
+  subscriptionId: 3,
+  paymentId: 7,
+  accountId: 8,
+  amount: 99000,
+  paymentStatus: 'Failed',
+  subscriptionStatus: 'Cancelled',
+  success: false,
+  orderCode: 81780473152,
+  paymentLinkId: 'payos-link-id',
+  reference: '',
+  payosSuccess: false,
+  payosCode: 'USER_CANCELLED',
+  payosDescription: 'User cancelled payment',
+  transactionDateTime: null,
 );

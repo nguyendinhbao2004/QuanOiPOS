@@ -18,4 +18,6 @@ abstract class SubscriptionRepository {
   Future<PendingSubscriptionPurchase?> loadPendingPurchase();
 
   Future<void> clearPendingPurchase();
+
+  Future<void> cancelPendingPurchase({required int subscriptionId});
 }

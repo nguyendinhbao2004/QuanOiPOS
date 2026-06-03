@@ -16,6 +16,7 @@ import 'package:quan_oi/features/subscription/domain/entities/pending_subscripti
 import 'package:quan_oi/features/subscription/domain/entities/purchase_subscription_result.dart';
 import 'package:quan_oi/features/subscription/domain/entities/service_package.dart';
 import 'package:quan_oi/features/subscription/domain/repositories/subscription_repository.dart';
+import 'package:quan_oi/features/subscription/domain/usecases/cancel_pending_subscription_purchase_use_case.dart';
 import 'package:quan_oi/features/subscription/domain/usecases/clear_pending_subscription_purchase_use_case.dart';
 import 'package:quan_oi/features/subscription/domain/usecases/load_active_subscription_use_case.dart';
 import 'package:quan_oi/features/subscription/domain/usecases/load_pending_subscription_purchase_use_case.dart';
@@ -70,7 +71,7 @@ void main() {
     expect(find.text('MUA GÓI'), findsOneWidget);
   });
 
-  testWidgets('StoreUser sees active subscription card when subscribed', (
+  testWidgets('StoreUser sees active plan badge when subscribed', (
     tester,
   ) async {
     final container = _buildContainer(
@@ -90,22 +91,46 @@ void main() {
     router.go('/store-subscription');
     await tester.pumpAndSettle();
 
-    expect(find.text('GÓI ĐANG HOẠT ĐỘNG'), findsOneWidget);
-    expect(find.text('Pro'), findsWidgets);
-    expect(find.text('Hạn sử dụng: 13/06/2026'), findsOneWidget);
-    expect(find.text('18 ngày còn lại'), findsOneWidget);
-    expect(find.text('Tự động gia hạn'), findsOneWidget);
-    expect(find.text('Nâng cấp gói'), findsOneWidget);
-
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -700));
-    await tester.pumpAndSettle();
-
+    expect(find.text('GÓI ĐANG HOẠT ĐỘNG'), findsNothing);
+    expect(find.text('Hạn sử dụng: 13/06/2026'), findsNothing);
+    expect(find.text('18 ngày còn lại'), findsNothing);
+    expect(find.text('Tự động gia hạn'), findsNothing);
+    expect(find.text('Nâng cấp gói'), findsNothing);
     expect(
       find.byKey(const Key('subscription_plan_page_view')),
       findsOneWidget,
     );
+    expect(find.text('Đang sử dụng'), findsOneWidget);
+    expect(find.text('Khuyên dùng'), findsNothing);
     expect(find.text('Gói hiện tại'), findsOneWidget);
     expect(find.text('MUA GÓI'), findsNothing);
+  });
+
+  testWidgets('pending payment card only shows continue action', (
+    tester,
+  ) async {
+    final container = _buildContainer(
+      AccountType.storeUser,
+      pendingPurchase: _pendingPurchase,
+    );
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    router.go('/store-subscription');
+    await tester.pumpAndSettle();
+
+    expect(find.text('ĐANG CHỜ THANH TOÁN'), findsOneWidget);
+    expect(find.widgetWithText(ElevatedButton, 'Tiếp tục'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Tải lại'), findsNothing);
+
+    container.dispose();
+    await tester.pump();
   });
 
   testWidgets('SystemAdmin is redirected away from subscription route', (
@@ -133,9 +158,11 @@ void main() {
 ProviderContainer _buildContainer(
   AccountType accountType, {
   ActiveSubscription? activeSubscription,
+  PendingSubscriptionPurchase? pendingPurchase,
 }) {
   final repository = _FakeSubscriptionRepository(
     activeSubscription: activeSubscription,
+    pendingPurchase: pendingPurchase,
   );
 
   return ProviderContainer(
@@ -164,6 +191,9 @@ ProviderContainer _buildContainer(
       ),
       clearPendingSubscriptionPurchaseUseCaseProvider.overrideWithValue(
         ClearPendingSubscriptionPurchaseUseCase(repository),
+      ),
+      cancelPendingSubscriptionPurchaseUseCaseProvider.overrideWithValue(
+        CancelPendingSubscriptionPurchaseUseCase(repository),
       ),
       ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
     ],
@@ -199,7 +229,7 @@ class _FakeSubscriptionRepository implements SubscriptionRepository {
   final ActiveSubscription? activeSubscription;
   PendingSubscriptionPurchase? pendingPurchase;
 
-  _FakeSubscriptionRepository({this.activeSubscription});
+  _FakeSubscriptionRepository({this.activeSubscription, this.pendingPurchase});
 
   @override
   Future<List<ServicePackage>> loadPlans() async {
@@ -257,6 +287,11 @@ class _FakeSubscriptionRepository implements SubscriptionRepository {
   Future<void> clearPendingPurchase() async {
     pendingPurchase = null;
   }
+
+  @override
+  Future<void> cancelPendingPurchase({required int subscriptionId}) async {
+    pendingPurchase = null;
+  }
 }
 
 class _FakeLastActiveStoreStorage implements LastActiveStoreStorage {
@@ -297,4 +332,14 @@ final _activeSubscription = ActiveSubscription(
   status: 'Active',
   autoRenew: true,
   cancelAt: null,
+);
+
+const _pendingPurchase = PendingSubscriptionPurchase(
+  subscriptionId: 3,
+  paymentId: 7,
+  orderCode: 81780473152,
+  planName: 'Pro',
+  amount: 299000,
+  paymentLink: 'https://pay.payos.vn/web/test',
+  expiresAt: null,
 );

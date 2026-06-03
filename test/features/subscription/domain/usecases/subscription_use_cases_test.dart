@@ -101,4 +101,7 @@ class _FakeSubscriptionRepository implements SubscriptionRepository {
 
   @override
   Future<void> clearPendingPurchase() async {}
+
+  @override
+  Future<void> cancelPendingPurchase({required int subscriptionId}) async {}
 }

@@ -1,9 +1,12 @@
 import '../models/pending_subscription_purchase_model.dart';
 
 abstract class SubscriptionPendingPurchaseStorage {
-  Future<void> save(PendingSubscriptionPurchaseModel purchase);
+  Future<void> save({
+    required int accountId,
+    required PendingSubscriptionPurchaseModel purchase,
+  });
 
-  Future<PendingSubscriptionPurchaseModel?> load();
+  Future<PendingSubscriptionPurchaseModel?> load({required int accountId});
 
-  Future<void> clear();
+  Future<void> clear({required int accountId});
 }

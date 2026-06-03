@@ -11,11 +11,13 @@ import '../providers/subscription_providers.dart';
 class SubscriptionCheckoutPage extends ConsumerStatefulWidget {
   final String paymentLink;
   final Widget? webViewForTesting;
+  final String? navigationUrlForTesting;
 
   const SubscriptionCheckoutPage({
     super.key,
     required this.paymentLink,
     this.webViewForTesting,
+    this.navigationUrlForTesting,
   });
 
   @override
@@ -34,6 +36,10 @@ class _SubscriptionCheckoutPageState
     super.initState();
     if (widget.webViewForTesting != null) {
       _isLoading = false;
+      final navigationUrl = widget.navigationUrlForTesting;
+      if (navigationUrl != null) {
+        Future.microtask(() => _handleNavigationUrl(navigationUrl));
+      }
       return;
     }
 
@@ -94,14 +100,30 @@ class _SubscriptionCheckoutPageState
   }
 
   NavigationDecision _handleNavigationRequest(NavigationRequest request) {
-    final uri = Uri.tryParse(request.url);
+    return _handleNavigationUrl(request.url);
+  }
+
+  NavigationDecision _handleNavigationUrl(String url) {
+    final uri = Uri.tryParse(url);
     if (uri != null && uri.scheme == 'quanoi' && uri.host == 'subscription') {
-      unawaited(
-        ref
-            .read(subscriptionNotifierProvider.notifier)
-            .refreshAfterPaymentReturn(),
-      );
-      Navigator.of(context).maybePop();
+      if (uri.path == '/cancel') {
+        _closeCheckout(
+          message: 'Thanh toán đã hủy',
+          logMessage: 'Subscription checkout closed after PayOS cancel URL',
+        );
+        unawaited(
+          ref
+              .read(subscriptionNotifierProvider.notifier)
+              .cancelPendingPayment(),
+        );
+      } else {
+        unawaited(
+          ref
+              .read(subscriptionNotifierProvider.notifier)
+              .refreshAfterPaymentReturn(),
+        );
+        Navigator.of(context).maybePop();
+      }
       return NavigationDecision.prevent;
     }
 
@@ -117,6 +139,10 @@ class _SubscriptionCheckoutPageState
   }
 
   void _closeCheckout({required String message, required String logMessage}) {
+    if (_hasClosedCheckout) {
+      return;
+    }
+
     _hasClosedCheckout = true;
     debugPrint(logMessage);
     ScaffoldMessenger.of(context)
