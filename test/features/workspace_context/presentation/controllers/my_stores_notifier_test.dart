@@ -4,7 +4,9 @@ import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_access_context.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_permission.dart';
 import 'package:quan_oi/features/workspace_context/domain/repositories/workspace_repository.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/create_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_my_stores_use_case.dart';
+import 'package:quan_oi/features/workspace_context/presentation/controllers/create_store_state.dart';
 import 'package:quan_oi/features/workspace_context/presentation/controllers/my_stores_state.dart';
 import 'package:quan_oi/features/workspace_context/presentation/providers/workspace_context_providers.dart';
 
@@ -94,6 +96,71 @@ void main() {
     notifier.updateSearchQuery('khong-co');
     expect(container.read(myStoresNotifierProvider).filteredStores, isEmpty);
   });
+
+  test('create store use case returns repository store', () async {
+    final repository = _FakeWorkspaceRepository();
+    final useCase = CreateStoreUseCase(repository);
+
+    final store = await useCase(
+      storeName: 'Quan oi',
+      phone: '0900000000',
+      address: '123 Nguyen Trai',
+    );
+
+    expect(store.id, 10);
+    expect(repository.lastCreatedStoreName, 'Quan oi');
+  });
+
+  test('create store notifier submits and exposes created store', () async {
+    final repository = _FakeWorkspaceRepository();
+    final container = _containerWithRepository(repository);
+    addTearDown(container.dispose);
+    final subscription = container.listen<CreateStoreState>(
+      createStoreNotifierProvider,
+      (previous, next) {},
+    );
+    addTearDown(subscription.close);
+
+    await container
+        .read(createStoreNotifierProvider.notifier)
+        .submit(
+          storeName: ' Quan oi ',
+          phone: ' 0900000000 ',
+          address: ' 123 Nguyen Trai ',
+        );
+
+    final state = container.read(createStoreNotifierProvider);
+    expect(state.status, CreateStoreStatus.success);
+    expect(state.store?.id, 10);
+    expect(repository.lastCreatedStoreName, 'Quan oi');
+    expect(repository.lastCreatedPhone, '0900000000');
+    expect(repository.lastCreatedAddress, '123 Nguyen Trai');
+  });
+
+  test('create store notifier exposes error when submit fails', () async {
+    final repository = _FakeWorkspaceRepository(
+      createError: Exception('Bạn đã đạt giới hạn cửa hàng'),
+    );
+    final container = _containerWithRepository(repository);
+    addTearDown(container.dispose);
+    final subscription = container.listen<CreateStoreState>(
+      createStoreNotifierProvider,
+      (previous, next) {},
+    );
+    addTearDown(subscription.close);
+
+    await container
+        .read(createStoreNotifierProvider.notifier)
+        .submit(
+          storeName: 'Quan oi',
+          phone: '0900000000',
+          address: '123 Nguyen Trai',
+        );
+
+    final state = container.read(createStoreNotifierProvider);
+    expect(state.status, CreateStoreStatus.failure);
+    expect(state.errorMessage, 'Bạn đã đạt giới hạn cửa hàng');
+  });
 }
 
 ProviderContainer _containerWithRepository(
@@ -103,6 +170,9 @@ ProviderContainer _containerWithRepository(
     overrides: [
       loadMyStoresUseCaseProvider.overrideWithValue(
         LoadMyStoresUseCase(repository),
+      ),
+      createStoreUseCaseProvider.overrideWithValue(
+        CreateStoreUseCase(repository),
       ),
     ],
   );
@@ -122,10 +192,15 @@ ProviderSubscription<MyStoresState> _listen(ProviderContainer container) {
 
 class _FakeWorkspaceRepository implements WorkspaceRepository {
   final Exception? loadError;
+  final Exception? createError;
   final List<Store> stores;
+  String? lastCreatedStoreName;
+  String? lastCreatedPhone;
+  String? lastCreatedAddress;
 
-  const _FakeWorkspaceRepository({
+  _FakeWorkspaceRepository({
     this.loadError,
+    this.createError,
     this.stores = _defaultStores,
   });
 
@@ -137,6 +212,31 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
     }
 
     return stores;
+  }
+
+  @override
+  Future<Store> createStore({
+    required String storeName,
+    required String phone,
+    required String address,
+  }) async {
+    final error = createError;
+    if (error != null) {
+      throw error;
+    }
+
+    lastCreatedStoreName = storeName;
+    lastCreatedPhone = phone;
+    lastCreatedAddress = address;
+    return const Store(
+      id: 10,
+      ownerAccountId: 8,
+      storeName: 'Quan oi',
+      phone: '0900000000',
+      address: '123 Nguyen Trai',
+      status: StoreStatus.active,
+      isDeleted: false,
+    );
   }
 
   @override

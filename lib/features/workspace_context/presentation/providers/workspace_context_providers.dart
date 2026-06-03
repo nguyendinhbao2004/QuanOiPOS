@@ -5,10 +5,13 @@ import '../../../../core/storage/last_active_store_storage.dart';
 import '../../data/datasources/workspace_remote_data_source.dart';
 import '../../domain/repositories/workspace_repository.dart';
 import '../../domain/usecases/clear_last_active_store_use_case.dart';
+import '../../domain/usecases/create_store_use_case.dart';
 import '../../domain/usecases/load_last_active_store_use_case.dart';
 import '../../domain/usecases/load_my_stores_use_case.dart';
 import '../../domain/usecases/load_store_access_context_use_case.dart';
 import '../../domain/usecases/save_last_active_store_use_case.dart';
+import '../controllers/create_store_notifier.dart';
+import '../controllers/create_store_state.dart';
 import '../controllers/last_active_store_notifier.dart';
 import '../controllers/last_active_store_state.dart';
 import '../controllers/my_stores_notifier.dart';
@@ -32,6 +35,10 @@ final lastActiveStoreStorageProvider = Provider<LastActiveStoreStorage>((ref) {
 
 final loadMyStoresUseCaseProvider = Provider<LoadMyStoresUseCase>((ref) {
   return locator<LoadMyStoresUseCase>();
+});
+
+final createStoreUseCaseProvider = Provider<CreateStoreUseCase>((ref) {
+  return locator<CreateStoreUseCase>();
 });
 
 final loadStoreAccessContextUseCaseProvider =
@@ -59,6 +66,11 @@ final clearLastActiveStoreUseCaseProvider =
 final myStoresNotifierProvider =
     NotifierProvider.autoDispose<MyStoresNotifier, MyStoresState>(
       MyStoresNotifier.new,
+    );
+
+final createStoreNotifierProvider =
+    NotifierProvider.autoDispose<CreateStoreNotifier, CreateStoreState>(
+      CreateStoreNotifier.new,
     );
 
 final lastActiveStoreNotifierProvider =

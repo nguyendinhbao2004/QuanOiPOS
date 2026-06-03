@@ -5,6 +5,12 @@ import '../entities/store_permission.dart';
 abstract class WorkspaceRepository {
   Future<List<Store>> loadMyStores();
 
+  Future<Store> createStore({
+    required String storeName,
+    required String phone,
+    required String address,
+  });
+
   Future<Store> loadStoreById(int storeId);
 
   Future<List<StorePermission>> loadMyStorePermissions(int storeId);

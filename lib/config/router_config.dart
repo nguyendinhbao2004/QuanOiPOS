@@ -27,6 +27,7 @@ import '../features/store_operations/table_management/presentation/pages/table_s
 import '../features/subscription/presentation/pages/store_subscription_page.dart';
 import '../features/subscription/presentation/pages/subscription_checkout_page.dart';
 import '../features/workspace_context/presentation/controllers/last_active_store_state.dart';
+import '../features/workspace_context/presentation/pages/create_store_page.dart';
 import '../features/workspace_context/presentation/pages/my_stores_page.dart';
 import '../features/workspace_context/presentation/providers/workspace_context_providers.dart';
 
@@ -44,6 +45,7 @@ abstract final class RouteNames {
   static const String storeTableManagement = 'store-table-management';
   static const String storeTableSettings = 'store-table-settings';
   static const String myStores = 'my-stores';
+  static const String createStore = 'create-store';
   static const String storeSubscription = 'store-subscription';
   static const String subscriptionCheckout = 'subscription-checkout';
   static const String appSettings = 'app-settings';
@@ -186,6 +188,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 
           return TableManagementPage(storeId: storeId);
         },
+      ),
+      GoRoute(
+        path: '/stores/create',
+        name: RouteNames.createStore,
+        builder: (context, state) => const CreateStorePage(),
       ),
       GoRoute(
         path: '/stores/:storeId',

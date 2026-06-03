@@ -1,5 +1,6 @@
 import '../../../../core/network/dio/dio_client.dart';
 import '../../domain/exceptions/store_access_denied_exception.dart';
+import '../models/create_store_request_model.dart';
 import '../models/store_permission_model.dart';
 import '../models/store_model.dart';
 
@@ -19,6 +20,24 @@ class WorkspaceRemoteDataSource {
         response.message,
         response.errors,
         'Load my stores failed',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<StoreModel> createStore(CreateStoreRequestModel request) async {
+    final response = await _dioClient.postResponse<StoreModel?>(
+      '/stores',
+      data: request.toJson(),
+      dataFromJson: (json) => json == null ? null : StoreModel.fromJson(json),
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể tạo cửa hàng',
       );
     }
 

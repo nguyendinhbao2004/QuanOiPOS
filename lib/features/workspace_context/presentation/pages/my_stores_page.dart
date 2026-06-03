@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../config/router_config.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/index.dart';
+import '../../../subscription/domain/entities/active_subscription.dart';
+import '../../../subscription/presentation/providers/subscription_providers.dart';
 import '../../domain/entities/store.dart';
 import '../controllers/my_stores_state.dart';
 import '../providers/workspace_context_providers.dart';
@@ -23,10 +25,7 @@ class MyStoresPage extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(right: AppConstants.spacingMd),
             child: TextButton.icon(
-              onPressed: () => _showComingSoon(
-                context,
-                'Tạo cửa hàng sẽ được triển khai sau',
-              ),
+              onPressed: () => _handleCreateStoreTap(context, ref),
               icon: const Icon(Icons.add_rounded),
               label: const Text('Thêm mới'),
             ),
@@ -53,6 +52,7 @@ class MyStoresPage extends ConsumerWidget {
               onRefresh: () =>
                   ref.read(myStoresNotifierProvider.notifier).loadStores(),
               onAccessStore: (storeId) => _openStore(context, ref, storeId),
+              onCreateStore: () => _handleCreateStoreTap(context, ref),
             ),
           },
         ),
@@ -78,10 +78,37 @@ class MyStoresPage extends ConsumerWidget {
     );
   }
 
-  void _showComingSoon(BuildContext context, String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  Future<void> _handleCreateStoreTap(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    try {
+      final useCase = ref.read(loadActiveSubscriptionUseCaseProvider);
+      final subscription = await useCase();
+
+      if (!context.mounted) return;
+      if (_hasActiveSubscription(subscription)) {
+        context.pushNamed(RouteNames.createStore);
+      } else {
+        context.pushNamed(RouteNames.storeSubscription);
+      }
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_cleanError(error))));
+    }
+  }
+
+  bool _hasActiveSubscription(ActiveSubscription? subscription) {
+    return subscription != null &&
+        subscription.isActive &&
+        !subscription.isExpired &&
+        subscription.status.trim().toLowerCase() == 'active';
+  }
+
+  String _cleanError(Object error) {
+    return error.toString().replaceFirst('Exception: ', '');
   }
 }
 
@@ -90,12 +117,14 @@ class _MyStoresContent extends StatelessWidget {
   final ValueChanged<String> onSearchChanged;
   final Future<void> Function() onRefresh;
   final Future<void> Function(int storeId) onAccessStore;
+  final VoidCallback onCreateStore;
 
   const _MyStoresContent({
     required this.state,
     required this.onSearchChanged,
     required this.onRefresh,
     required this.onAccessStore,
+    required this.onCreateStore,
   });
 
   @override
@@ -118,7 +147,7 @@ class _MyStoresContent extends StatelessWidget {
           ),
           const SizedBox(height: AppConstants.spacingMd),
           if (state.stores.isEmpty)
-            const _EmptyStoresView()
+            _EmptyStoresView(onCreateStore: onCreateStore)
           else if (stores.isEmpty)
             const _EmptySearchView()
           else
@@ -340,17 +369,21 @@ class _ErrorView extends StatelessWidget {
 }
 
 class _EmptyStoresView extends StatelessWidget {
-  const _EmptyStoresView();
+  final VoidCallback onCreateStore;
+
+  const _EmptyStoresView({required this.onCreateStore});
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
+    return SizedBox(
       height: 320,
       child: Center(
         child: _EmptyStateMessage(
           icon: Icons.storefront_outlined,
           title: 'Chưa có cửa hàng',
           message: 'Tài khoản của bạn chưa được liên kết với cửa hàng nào.',
+          actionLabel: 'Tạo cửa hàng',
+          onAction: onCreateStore,
         ),
       ),
     );
@@ -379,11 +412,15 @@ class _EmptyStateMessage extends StatelessWidget {
   final IconData icon;
   final String title;
   final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   const _EmptyStateMessage({
     required this.icon,
     required this.title,
     required this.message,
+    this.actionLabel,
+    this.onAction,
   });
 
   @override
@@ -408,6 +445,14 @@ class _EmptyStateMessage extends StatelessWidget {
         ),
         const SizedBox(height: AppConstants.spacingXs),
         Text(message, style: AppTextStyles.bodySm, textAlign: TextAlign.center),
+        if (actionLabel != null && onAction != null) ...[
+          const SizedBox(height: AppConstants.spacingMd),
+          ElevatedButton.icon(
+            onPressed: onAction,
+            icon: const Icon(Icons.add_rounded),
+            label: Text(actionLabel!),
+          ),
+        ],
       ],
     );
   }

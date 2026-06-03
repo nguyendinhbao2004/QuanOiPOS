@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/core/network/dio/dio_client.dart';
 import 'package:quan_oi/features/workspace_context/data/datasources/workspace_remote_data_source.dart';
+import 'package:quan_oi/features/workspace_context/data/models/create_store_request_model.dart';
 import 'package:quan_oi/features/workspace_context/data/models/store_model.dart';
 import 'package:quan_oi/features/workspace_context/data/models/store_permission_model.dart';
 import 'package:quan_oi/features/workspace_context/data/repositories/workspace_repository_impl.dart';
@@ -60,6 +61,22 @@ void main() {
     });
   });
 
+  group('CreateStoreRequestModel', () {
+    test('serializes request body for backend', () {
+      const request = CreateStoreRequestModel(
+        storeName: 'Quan oi',
+        phone: '0900000000',
+        address: '123 Nguyen Trai',
+      );
+
+      expect(request.toJson(), {
+        'storeName': 'Quan oi',
+        'phone': '0900000000',
+        'address': '123 Nguyen Trai',
+      });
+    });
+  });
+
   group('StorePermissionModel', () {
     test('maps permission payload from backend', () {
       final permissions = StorePermissionModel.listFromJson(_permissionsData);
@@ -105,6 +122,91 @@ void main() {
       expect(requestedPath, '/stores/my');
       expect(stores, hasLength(4));
       expect(stores.first.storeName, contains('Poseidon'));
+    });
+
+    test('creates store from /stores', () async {
+      String? requestedPath;
+      Object? requestedData;
+      final dio = Dio();
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            requestedPath = options.path;
+            requestedData = options.data;
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 201,
+                data: {
+                  'succeeded': true,
+                  'message': 'Tao Store thanh cong',
+                  'data': _createdStoreData,
+                  'errors': <String>[],
+                },
+              ),
+            );
+          },
+        ),
+      );
+
+      final dataSource = WorkspaceRemoteDataSource(DioClient(dio));
+
+      final store = await dataSource.createStore(
+        const CreateStoreRequestModel(
+          storeName: 'Quan oi',
+          phone: '0900000000',
+          address: '123 Nguyen Trai',
+        ),
+      );
+
+      expect(requestedPath, '/stores');
+      expect(requestedData, {
+        'storeName': 'Quan oi',
+        'phone': '0900000000',
+        'address': '123 Nguyen Trai',
+      });
+      expect(store.id, 10);
+      expect(store.storeName, 'Quan oi');
+    });
+
+    test('surfaces create store backend errors', () async {
+      final dio = Dio();
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                data: {
+                  'succeeded': false,
+                  'message': '',
+                  'data': null,
+                  'errors': ['Bạn đã đạt giới hạn cửa hàng'],
+                },
+              ),
+            );
+          },
+        ),
+      );
+
+      final dataSource = WorkspaceRemoteDataSource(DioClient(dio));
+
+      expect(
+        () => dataSource.createStore(
+          const CreateStoreRequestModel(
+            storeName: 'Quan oi',
+            phone: '0900000000',
+            address: '123 Nguyen Trai',
+          ),
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (error) => error.toString(),
+            'message',
+            contains('Bạn đã đạt giới hạn cửa hàng'),
+          ),
+        ),
+      );
     });
 
     test('loads store detail from /stores/id', () async {
@@ -260,19 +362,50 @@ void main() {
       expect(context.can('DASHBOARD.VIEW'), isTrue);
       expect(context.can('UNKNOWN.PERMISSION'), isFalse);
     });
+
+    test('creates store through repository', () async {
+      final dataSource = _FakeWorkspaceRemoteDataSource(
+        StoreModel.listFromJson(_storesData),
+        createdStore: StoreModel.fromJson(_createdStoreData),
+      );
+      final repository = WorkspaceRepositoryImpl(dataSource);
+
+      final store = await repository.createStore(
+        storeName: 'Quan oi',
+        phone: '0900000000',
+        address: '123 Nguyen Trai',
+      );
+
+      expect(store.id, 10);
+      expect(store.storeName, 'Quan oi');
+      expect(dataSource.lastCreateRequest?.storeName, 'Quan oi');
+      expect(dataSource.lastCreateRequest?.phone, '0900000000');
+      expect(dataSource.lastCreateRequest?.address, '123 Nguyen Trai');
+    });
   });
 }
 
 class _FakeWorkspaceRemoteDataSource extends WorkspaceRemoteDataSource {
   final List<StoreModel> stores;
   final List<StorePermissionModel> permissions;
+  final StoreModel? createdStore;
+  CreateStoreRequestModel? lastCreateRequest;
 
-  _FakeWorkspaceRemoteDataSource(this.stores, {this.permissions = const []})
-    : super(DioClient(Dio()));
+  _FakeWorkspaceRemoteDataSource(
+    this.stores, {
+    this.permissions = const [],
+    this.createdStore,
+  }) : super(DioClient(Dio()));
 
   @override
   Future<List<StoreModel>> getMyStores() async {
     return stores;
+  }
+
+  @override
+  Future<StoreModel> createStore(CreateStoreRequestModel request) async {
+    lastCreateRequest = request;
+    return createdStore ?? stores.first;
   }
 
   @override
@@ -341,6 +474,20 @@ const _storesData = [
     'isDeleted': true,
   },
 ];
+
+const _createdStoreData = {
+  'id': 10,
+  'ownerAccountId': 8,
+  'storeName': 'Quan oi',
+  'phone': '0900000000',
+  'address': '123 Nguyen Trai',
+  'status': 1,
+  'createdAt': '2026-06-03T07:00:00Z',
+  'createdBy': null,
+  'updatedAt': null,
+  'updatedBy': null,
+  'isDeleted': false,
+};
 
 const _permissionsData = [
   {'permissionId': 1, 'code': 'DASHBOARD.VIEW'},

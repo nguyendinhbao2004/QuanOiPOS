@@ -10,6 +10,19 @@ import 'package:quan_oi/features/auth/domain/entities/account_type.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_notifier.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
+import 'package:quan_oi/features/subscription/domain/entities/active_subscription.dart';
+import 'package:quan_oi/features/subscription/domain/entities/pending_subscription_purchase.dart';
+import 'package:quan_oi/features/subscription/domain/entities/purchase_subscription_result.dart';
+import 'package:quan_oi/features/subscription/domain/entities/service_package.dart';
+import 'package:quan_oi/features/subscription/domain/repositories/subscription_repository.dart';
+import 'package:quan_oi/features/subscription/domain/usecases/cancel_pending_subscription_purchase_use_case.dart';
+import 'package:quan_oi/features/subscription/domain/usecases/clear_pending_subscription_purchase_use_case.dart';
+import 'package:quan_oi/features/subscription/domain/usecases/load_active_subscription_use_case.dart';
+import 'package:quan_oi/features/subscription/domain/usecases/load_pending_subscription_purchase_use_case.dart';
+import 'package:quan_oi/features/subscription/domain/usecases/load_subscription_plans_use_case.dart';
+import 'package:quan_oi/features/subscription/domain/usecases/purchase_subscription_use_case.dart';
+import 'package:quan_oi/features/subscription/presentation/providers/subscription_providers.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/create_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_last_active_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
@@ -191,10 +204,11 @@ void main() {
   testWidgets('my stores page shows empty and search-empty states', (
     tester,
   ) async {
-    await _pumpMyStoresPage(tester, const _FakeWorkspaceRepository(stores: []));
+    await _pumpMyStoresPage(tester, _FakeWorkspaceRepository(stores: const []));
     await tester.pumpAndSettle();
 
     expect(find.text('Chưa có cửa hàng'), findsOneWidget);
+    expect(find.text('Tạo cửa hàng'), findsOneWidget);
 
     await _pumpMyStoresPage(tester, _FakeWorkspaceRepository());
     await tester.pumpAndSettle();
@@ -234,6 +248,180 @@ void main() {
     expect(find.text('Network down'), findsOneWidget);
     expect(find.text('Thử lại'), findsOneWidget);
   });
+
+  testWidgets('create store action opens form when subscription is active', (
+    tester,
+  ) async {
+    final container = _buildContainer(AccountType.storeUser);
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/my-stores');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Thêm mới'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tạo cửa hàng'), findsOneWidget);
+    expect(find.byKey(const Key('create_store_name_field')), findsOneWidget);
+  });
+
+  testWidgets(
+    'create store action redirects to subscription without active package',
+    (tester) async {
+      final container = _buildContainer(
+        AccountType.storeUser,
+        activeSubscription: null,
+      );
+      addTearDown(container.dispose);
+
+      final router = container.read(routerProvider);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      router.go('/my-stores');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Thêm mới'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Gói dịch vụ của tôi'), findsOneWidget);
+      expect(find.text('Tạo cửa hàng'), findsNothing);
+    },
+  );
+
+  testWidgets('empty stores create CTA opens create form', (tester) async {
+    final container = _buildContainer(AccountType.storeUser, stores: const []);
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/my-stores');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Tạo cửa hàng'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('create_store_name_field')), findsOneWidget);
+  });
+
+  testWidgets('create store form validates required fields and phone', (
+    tester,
+  ) async {
+    final container = _buildContainer(AccountType.storeUser);
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/stores/create');
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(const Key('create_store_submit_button')),
+    );
+    await tester.tap(find.byKey(const Key('create_store_submit_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Vui lòng nhập tên cửa hàng'), findsOneWidget);
+    expect(find.text('Vui lòng nhập số điện thoại'), findsOneWidget);
+    expect(find.text('Vui lòng nhập địa chỉ cửa hàng'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('create_store_name_field')),
+      'Quan oi',
+    );
+    await tester.enterText(
+      find.byKey(const Key('create_store_phone_field')),
+      '123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('create_store_address_field')),
+      '123 Nguyen Trai',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('create_store_submit_button')),
+    );
+    await tester.tap(find.byKey(const Key('create_store_submit_button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Số điện thoại phải gồm 10 hoặc 11 chữ số'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('create store submit saves active store and opens overview', (
+    tester,
+  ) async {
+    final repository = _FakeWorkspaceRepository();
+    final lastActiveStoreStorage = _FakeLastActiveStoreStorage();
+    final container = _buildContainer(
+      AccountType.storeUser,
+      workspaceRepository: repository,
+      lastActiveStoreStorage: lastActiveStoreStorage,
+    );
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/stores/create');
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('create_store_name_field')),
+      'Quan oi',
+    );
+    await tester.enterText(
+      find.byKey(const Key('create_store_phone_field')),
+      '0900000000',
+    );
+    await tester.enterText(
+      find.byKey(const Key('create_store_address_field')),
+      '123 Nguyen Trai',
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('create_store_submit_button')),
+    );
+    await tester.tap(find.byKey(const Key('create_store_submit_button')));
+    await tester.pumpAndSettle();
+
+    expect(lastActiveStoreStorage.lastStoreId, 10);
+    expect(repository.createStoreCallCount, 1);
+    expect(find.text('Tổng quan hôm nay'), findsOneWidget);
+    expect(find.text('Quan oi'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpMyStoresPage(
@@ -247,6 +435,10 @@ Future<void> _pumpMyStoresPage(
         loadMyStoresUseCaseProvider.overrideWithValue(
           LoadMyStoresUseCase(repository),
         ),
+        createStoreUseCaseProvider.overrideWithValue(
+          CreateStoreUseCase(repository),
+        ),
+        ..._subscriptionOverrides(_FakeSubscriptionRepository()),
         ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
       ],
       child: MaterialApp(theme: AppTheme.light, home: const MyStoresPage()),
@@ -257,10 +449,16 @@ Future<void> _pumpMyStoresPage(
 ProviderContainer _buildContainer(
   AccountType accountType, {
   List<Store> stores = _defaultStores,
+  _FakeWorkspaceRepository? workspaceRepository,
   _FakeLastActiveStoreStorage? lastActiveStoreStorage,
+  ActiveSubscription? activeSubscription = _activeSubscription,
 }) {
-  final repository = _FakeWorkspaceRepository(stores: stores);
+  final repository =
+      workspaceRepository ?? _FakeWorkspaceRepository(stores: stores);
   final storeStorage = lastActiveStoreStorage ?? _FakeLastActiveStoreStorage();
+  final subscriptionRepository = _FakeSubscriptionRepository(
+    activeSubscription: activeSubscription,
+  );
 
   return ProviderContainer(
     overrides: [
@@ -277,12 +475,39 @@ ProviderContainer _buildContainer(
       loadMyStoresUseCaseProvider.overrideWithValue(
         LoadMyStoresUseCase(repository),
       ),
+      createStoreUseCaseProvider.overrideWithValue(
+        CreateStoreUseCase(repository),
+      ),
       loadStoreAccessContextUseCaseProvider.overrideWithValue(
         LoadStoreAccessContextUseCase(repository),
       ),
+      ..._subscriptionOverrides(subscriptionRepository),
       ..._lastActiveStoreOverrides(storeStorage),
     ],
   );
+}
+
+List<Override> _subscriptionOverrides(_FakeSubscriptionRepository repository) {
+  return [
+    loadSubscriptionPlansUseCaseProvider.overrideWithValue(
+      LoadSubscriptionPlansUseCase(repository),
+    ),
+    loadActiveSubscriptionUseCaseProvider.overrideWithValue(
+      LoadActiveSubscriptionUseCase(repository),
+    ),
+    purchaseSubscriptionUseCaseProvider.overrideWithValue(
+      PurchaseSubscriptionUseCase(repository),
+    ),
+    loadPendingSubscriptionPurchaseUseCaseProvider.overrideWithValue(
+      LoadPendingSubscriptionPurchaseUseCase(repository),
+    ),
+    clearPendingSubscriptionPurchaseUseCaseProvider.overrideWithValue(
+      ClearPendingSubscriptionPurchaseUseCase(repository),
+    ),
+    cancelPendingSubscriptionPurchaseUseCaseProvider.overrideWithValue(
+      CancelPendingSubscriptionPurchaseUseCase(repository),
+    ),
+  ];
 }
 
 List<Override> _lastActiveStoreOverrides(_FakeLastActiveStoreStorage storage) {
@@ -314,12 +539,13 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
   final Exception? loadError;
   final Completer<List<Store>>? loadCompleter;
   final List<Store> stores;
+  int createStoreCallCount = 0;
 
-  const _FakeWorkspaceRepository({
+  _FakeWorkspaceRepository({
     this.loadError,
     this.loadCompleter,
-    this.stores = _defaultStores,
-  });
+    List<Store> stores = _defaultStores,
+  }) : stores = List<Store>.of(stores);
 
   @override
   Future<List<Store>> loadMyStores() async {
@@ -334,6 +560,26 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
     }
 
     return stores;
+  }
+
+  @override
+  Future<Store> createStore({
+    required String storeName,
+    required String phone,
+    required String address,
+  }) async {
+    createStoreCallCount += 1;
+    final store = Store(
+      id: 10,
+      ownerAccountId: 8,
+      storeName: storeName,
+      phone: phone,
+      address: address,
+      status: StoreStatus.active,
+      isDeleted: false,
+    );
+    stores.add(store);
+    return store;
   }
 
   @override
@@ -353,6 +599,55 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
       permissions: await loadMyStorePermissions(storeId),
     );
   }
+}
+
+class _FakeSubscriptionRepository implements SubscriptionRepository {
+  final ActiveSubscription? activeSubscription;
+
+  const _FakeSubscriptionRepository({
+    this.activeSubscription = _activeSubscription,
+  });
+
+  @override
+  Future<List<ServicePackage>> loadPlans() async {
+    return const [_servicePackage];
+  }
+
+  @override
+  Future<ActiveSubscription?> loadActiveSubscription() async {
+    return activeSubscription;
+  }
+
+  @override
+  Future<PurchaseSubscriptionResult> purchaseSubscription({
+    required int planId,
+    bool autoRenew = true,
+    String? returnUrl,
+    String? cancelUrl,
+  }) async {
+    return const PurchaseSubscriptionResult(
+      subscriptionId: 3,
+      paymentId: 7,
+      orderCode: 81780473152,
+      planName: 'Pro',
+      amount: 299000,
+      paymentLink: 'https://pay.payos.vn/web/test',
+      daysValid: 30,
+      maxStores: 5,
+      expiresAt: null,
+    );
+  }
+
+  @override
+  Future<PendingSubscriptionPurchase?> loadPendingPurchase() async {
+    return null;
+  }
+
+  @override
+  Future<void> clearPendingPurchase() async {}
+
+  @override
+  Future<void> cancelPendingPurchase({required int subscriptionId}) async {}
 }
 
 class _FakeLastActiveStoreStorage implements LastActiveStoreStorage {
@@ -376,6 +671,35 @@ class _FakeLastActiveStoreStorage implements LastActiveStoreStorage {
     lastStoreId = null;
   }
 }
+
+const _activeSubscription = ActiveSubscription(
+  id: 2,
+  accountId: 8,
+  planId: 2,
+  planName: 'Pro',
+  price: 299000,
+  startDate: null,
+  endDate: null,
+  daysRemaining: 18,
+  isActive: true,
+  isExpired: false,
+  maxStores: 5,
+  maxUsers: 50,
+  status: 'Active',
+  autoRenew: true,
+  cancelAt: null,
+);
+
+const _servicePackage = ServicePackage(
+  id: '2',
+  name: 'Pro',
+  priceAmount: 299000,
+  durationDays: 30,
+  maxStores: 5,
+  maxUsers: 50,
+  features: ['Dashboard nâng cao'],
+  isActive: true,
+);
 
 const _defaultStores = [
   Store(

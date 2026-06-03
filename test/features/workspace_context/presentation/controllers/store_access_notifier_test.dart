@@ -164,6 +164,15 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
   }
 
   @override
+  Future<Store> createStore({
+    required String storeName,
+    required String phone,
+    required String address,
+  }) async {
+    return _store;
+  }
+
+  @override
   Future<Store> loadStoreById(int storeId) async {
     return _store;
   }
