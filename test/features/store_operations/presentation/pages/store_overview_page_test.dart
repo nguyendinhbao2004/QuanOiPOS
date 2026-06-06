@@ -213,8 +213,82 @@ void main() {
       await tester.tap(find.text('Nhập sản phẩm'));
       await tester.pumpAndSettle();
 
+      expect(find.text('Nhập hàng'), findsOneWidget);
+      expect(find.text('Sản phẩm'), findsOneWidget);
+      expect(find.text('Danh mục'), findsOneWidget);
+      expect(find.text('Revive'), findsOneWidget);
+      expect(find.text('SP0098  |  Còn: 4'), findsOneWidget);
+      expect(find.text('Tiếp tục'), findsNothing);
+
+      await tester.tap(
+        find.byKey(const Key('inventory_import_product_add_SP0098')),
+      );
+      await tester.pumpAndSettle();
+
       expect(
-        find.text('Nhập sản phẩm sẽ được triển khai sau'),
+        find.byKey(const Key('inventory_import_product_stepper_SP0098')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('inventory_import_product_quantity_SP0098')),
+        findsOneWidget,
+      );
+      expect(find.text('1 SP'), findsOneWidget);
+      expect(find.text('Tiếp tục'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const Key('inventory_import_products_continue_action')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tạo nhập hàng'), findsOneWidget);
+      expect(find.text('Chọn nhà cung cấp'), findsOneWidget);
+      expect(find.text('Sản phẩm (1)'), findsNothing);
+      expect(find.text('Revive'), findsOneWidget);
+      expect(
+        find.byKey(const Key('inventory_import_product_price_SP0098')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('inventory_import_product_quantity_draft_SP0098')),
+        findsOneWidget,
+      );
+      expect(find.text('Tổng số lượng'), findsOneWidget);
+      expect(find.text('Tổng cộng'), findsOneWidget);
+      expect(find.text('Nhập hàng'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('inventory_import_product_price_SP0098')),
+        '10000',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('10000'), findsWidgets);
+
+      await tester.tap(
+        find.byKey(const Key('inventory_import_draft_add_product_action')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nhập hàng'), findsOneWidget);
+      expect(
+        find.byKey(const Key('inventory_import_product_stepper_SP0098')),
+        findsOneWidget,
+      );
+      expect(find.text('1 SP'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const Key('inventory_import_products_continue_action')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('inventory_import_draft_back_action')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nhập hàng'), findsOneWidget);
+      expect(
+        find.byKey(const Key('inventory_import_product_stepper_SP0098')),
         findsOneWidget,
       );
     },

@@ -18,6 +18,7 @@ import '../features/store_operations/presentation/pages/privacy_policy_page.dart
 import '../features/store_operations/presentation/pages/store_home_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_check_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_import_page.dart';
+import '../features/store_operations/presentation/pages/store_inventory_import_products_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_ledger_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_management_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_stock_page.dart';
@@ -44,6 +45,8 @@ abstract final class RouteNames {
   static const String storeInventoryManagement = 'store-inventory-management';
   static const String storeInventoryCheck = 'store-inventory-check';
   static const String storeInventoryImport = 'store-inventory-import';
+  static const String storeInventoryImportProducts =
+      'store-inventory-import-products';
   static const String storeInventoryLedger = 'store-inventory-ledger';
   static const String storeInventoryStock = 'store-inventory-stock';
   static const String storeTableManagement = 'store-table-management';
@@ -153,6 +156,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
 
           return StoreInventoryImportPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/inventory/imports/products',
+        name: RouteNames.storeInventoryImportProducts,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          return StoreInventoryImportProductsPage(storeId: storeId);
         },
       ),
       GoRoute(

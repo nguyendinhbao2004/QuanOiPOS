@@ -17,15 +17,12 @@ class StoreInventoryImportPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accessState = ref.watch(storeAccessNotifierProvider(storeId));
-    const canCreateInventoryImport = true;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       floatingActionButton: accessState.status == StoreAccessStatus.ready
           ? FloatingActionButton.extended(
-              onPressed: canCreateInventoryImport
-                  ? () => _showInventoryImportCreateMenu(context)
-                  : null,
+              onPressed: () => _showInventoryImportCreateMenu(context, storeId),
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.surface,
               icon: const Icon(Icons.add_rounded),
@@ -456,7 +453,10 @@ enum _InventoryImportCreateAction {
   });
 }
 
-Future<void> _showInventoryImportCreateMenu(BuildContext context) async {
+Future<void> _showInventoryImportCreateMenu(
+  BuildContext context,
+  int storeId,
+) async {
   final selectedAction = await showGeneralDialog<_InventoryImportCreateAction>(
     context: context,
     barrierColor: AppColors.overlay,
@@ -475,6 +475,14 @@ Future<void> _showInventoryImportCreateMenu(BuildContext context) async {
   );
 
   if (selectedAction != null && context.mounted) {
+    if (selectedAction == _InventoryImportCreateAction.product) {
+      context.goNamed(
+        RouteNames.storeInventoryImportProducts,
+        pathParameters: {'storeId': storeId.toString()},
+      );
+      return;
+    }
+
     _showComingSoon(context, selectedAction.label);
   }
 }
