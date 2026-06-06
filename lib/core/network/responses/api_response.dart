@@ -17,12 +17,13 @@ class ApiResponse<T> {
     Map<String, dynamic> json, {
     T Function(Object? json)? dataFromJson,
   }) {
-    final rawData = json['data'];
+    final rawData = json['data'] ?? json['Data'];
 
     return ApiResponse<T>(
-      succeeded: json['succeeded'] as bool? ?? false,
-      message: json['message'] as String?,
-      errors: _toStringList(json['errors']),
+      succeeded:
+          json['succeeded'] as bool? ?? json['Succeeded'] as bool? ?? false,
+      message: (json['message'] ?? json['Message']) as String?,
+      errors: _toStringList(json['errors'] ?? json['Errors']),
       data: dataFromJson == null ? rawData as T? : dataFromJson(rawData),
     );
   }
@@ -32,7 +33,9 @@ class ApiResponse<T> {
       'succeeded': succeeded,
       'message': message,
       'errors': errors,
-      'data': dataToJson == null ? data : (data == null ? null : dataToJson(data as T)),
+      'data': dataToJson == null
+          ? data
+          : (data == null ? null : dataToJson(data as T)),
     };
   }
 

@@ -22,6 +22,10 @@ import '../features/store_operations/presentation/pages/store_inventory_ledger_p
 import '../features/store_operations/presentation/pages/store_inventory_management_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_stock_page.dart';
 import '../features/store_operations/presentation/pages/store_overview_page.dart';
+import '../features/store_operations/staff_management/presentation/pages/invite_staff_page.dart';
+import '../features/store_operations/staff_management/presentation/pages/staff_detail_page.dart';
+import '../features/store_operations/staff_management/presentation/pages/staff_management_page.dart';
+import '../features/store_operations/staff_management/presentation/pages/staff_role_form_page.dart';
 import '../features/store_operations/table_management/presentation/pages/table_management_page.dart';
 import '../features/store_operations/table_management/presentation/pages/table_settings_page.dart';
 import '../features/subscription/presentation/pages/store_subscription_page.dart';
@@ -44,6 +48,13 @@ abstract final class RouteNames {
   static const String storeInventoryStock = 'store-inventory-stock';
   static const String storeTableManagement = 'store-table-management';
   static const String storeTableSettings = 'store-table-settings';
+  static const String storeStaffManagement = 'store-staff-management';
+  static const String storeStaffUserDetail = 'store-staff-user-detail';
+  static const String storeStaffInvitationDetail =
+      'store-staff-invitation-detail';
+  static const String storeStaffInvite = 'store-staff-invite';
+  static const String storeStaffRoleCreate = 'store-staff-role-create';
+  static const String storeStaffRoleDetail = 'store-staff-role-detail';
   static const String myStores = 'my-stores';
   static const String createStore = 'create-store';
   static const String storeSubscription = 'store-subscription';
@@ -187,6 +198,103 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
 
           return TableManagementPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/staff/users/:storeUserId',
+        name: RouteNames.storeStaffUserDetail,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          final storeUserId = int.tryParse(
+            state.pathParameters['storeUserId'] ?? '',
+          );
+
+          if (storeId == null || storeUserId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Nhân viên không hợp lệ')),
+            );
+          }
+
+          return StaffDetailPage(storeId: storeId, storeUserId: storeUserId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/staff/invitations/:invitationId',
+        name: RouteNames.storeStaffInvitationDetail,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          final invitationId = int.tryParse(
+            state.pathParameters['invitationId'] ?? '',
+          );
+
+          if (storeId == null || invitationId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Lời mời không hợp lệ')),
+            );
+          }
+
+          return StaffDetailPage(storeId: storeId, invitationId: invitationId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/staff/invite',
+        name: RouteNames.storeStaffInvite,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          return InviteStaffPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/staff/roles/new',
+        name: RouteNames.storeStaffRoleCreate,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          return StaffRoleFormPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/staff/roles/:roleId',
+        name: RouteNames.storeStaffRoleDetail,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          final roleId = int.tryParse(state.pathParameters['roleId'] ?? '');
+
+          if (storeId == null || roleId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Vai trò không hợp lệ')),
+            );
+          }
+
+          return StaffRoleFormPage(storeId: storeId, roleId: roleId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/staff',
+        name: RouteNames.storeStaffManagement,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          return StaffManagementPage(storeId: storeId);
         },
       ),
       GoRoute(

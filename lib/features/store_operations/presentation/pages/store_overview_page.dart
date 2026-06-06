@@ -143,6 +143,11 @@ class _ReadyView extends ConsumerWidget {
               storeId: accessContext.store.id,
               canUpdateStore: state.can(AppPermissionCodes.storeUpdate),
               canViewArea: state.can(AppPermissionCodes.areaView),
+              canManageStaff:
+                  state.can(AppPermissionCodes.staffView) ||
+                  state.can(AppPermissionCodes.staffInvite) ||
+                  state.can(AppPermissionCodes.staffUpdate) ||
+                  state.can(AppPermissionCodes.staffRemove),
             ),
           ],
         ),
@@ -225,11 +230,13 @@ class _FeatureGrid extends StatelessWidget {
   final int storeId;
   final bool canUpdateStore;
   final bool canViewArea;
+  final bool canManageStaff;
 
   const _FeatureGrid({
     required this.storeId,
     required this.canUpdateStore,
     required this.canViewArea,
+    required this.canManageStaff,
   });
 
   @override
@@ -264,6 +271,16 @@ class _FeatureGrid extends StatelessWidget {
         Icons.settings_outlined,
         isEnabled: canUpdateStore,
         disabledMessage: 'Bạn chưa có quyền cập nhật cửa hàng',
+      ),
+      _FeatureItemData(
+        'Nhân viên',
+        Icons.groups_outlined,
+        isEnabled: canManageStaff,
+        disabledMessage: 'Bạn chưa có quyền quản lý nhân viên',
+        onTap: () => context.goNamed(
+          RouteNames.storeStaffManagement,
+          pathParameters: {'storeId': storeId.toString()},
+        ),
       ),
     ];
 

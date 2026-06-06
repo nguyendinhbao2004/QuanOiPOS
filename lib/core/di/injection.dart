@@ -49,6 +49,20 @@ import '../../features/store_operations/table_management/domain/usecases/load_ta
 import '../../features/store_operations/table_management/domain/usecases/update_area_display_order_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/update_area_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/update_table_use_case.dart';
+import '../../features/store_operations/staff_management/data/datasources/staff_management_remote_data_source.dart';
+import '../../features/store_operations/staff_management/data/repositories/staff_management_repository_impl.dart';
+import '../../features/store_operations/staff_management/domain/repositories/staff_management_repository.dart';
+import '../../features/store_operations/staff_management/domain/usecases/cancel_staff_invitation_use_case.dart';
+import '../../features/store_operations/staff_management/domain/usecases/create_staff_role_use_case.dart';
+import '../../features/store_operations/staff_management/domain/usecases/delete_staff_role_use_case.dart';
+import '../../features/store_operations/staff_management/domain/usecases/invite_staff_use_case.dart';
+import '../../features/store_operations/staff_management/domain/usecases/load_staff_members_use_case.dart';
+import '../../features/store_operations/staff_management/domain/usecases/load_staff_permission_groups_use_case.dart';
+import '../../features/store_operations/staff_management/domain/usecases/load_staff_roles_use_case.dart';
+import '../../features/store_operations/staff_management/domain/usecases/remove_staff_use_case.dart';
+import '../../features/store_operations/staff_management/domain/usecases/update_staff_access_use_case.dart';
+import '../../features/store_operations/staff_management/domain/usecases/update_staff_display_name_use_case.dart';
+import '../../features/store_operations/staff_management/domain/usecases/update_staff_role_use_case.dart';
 import '../../features/workspace_context/data/datasources/workspace_remote_data_source.dart';
 import '../../features/workspace_context/data/repositories/workspace_repository_impl.dart';
 import '../../features/workspace_context/domain/repositories/workspace_repository.dart';
@@ -258,5 +272,49 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<DeleteAreaUseCase>(
     () => DeleteAreaUseCase(locator<TableManagementRepository>()),
+  );
+
+  // Staff management
+  locator.registerLazySingleton<StaffManagementRemoteDataSource>(
+    () => StaffManagementRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<StaffManagementRepository>(
+    () => StaffManagementRepositoryImpl(
+      locator<StaffManagementRemoteDataSource>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadStaffRolesUseCase>(
+    () => LoadStaffRolesUseCase(locator<StaffManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadStaffMembersUseCase>(
+    () => LoadStaffMembersUseCase(locator<StaffManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadStaffPermissionGroupsUseCase>(
+    () =>
+        LoadStaffPermissionGroupsUseCase(locator<StaffManagementRepository>()),
+  );
+  locator.registerLazySingleton<InviteStaffUseCase>(
+    () => InviteStaffUseCase(locator<StaffManagementRepository>()),
+  );
+  locator.registerLazySingleton<CancelStaffInvitationUseCase>(
+    () => CancelStaffInvitationUseCase(locator<StaffManagementRepository>()),
+  );
+  locator.registerLazySingleton<UpdateStaffDisplayNameUseCase>(
+    () => UpdateStaffDisplayNameUseCase(locator<StaffManagementRepository>()),
+  );
+  locator.registerLazySingleton<UpdateStaffAccessUseCase>(
+    () => UpdateStaffAccessUseCase(locator<StaffManagementRepository>()),
+  );
+  locator.registerLazySingleton<RemoveStaffUseCase>(
+    () => RemoveStaffUseCase(locator<StaffManagementRepository>()),
+  );
+  locator.registerLazySingleton<CreateStaffRoleUseCase>(
+    () => CreateStaffRoleUseCase(locator<StaffManagementRepository>()),
+  );
+  locator.registerLazySingleton<UpdateStaffRoleUseCase>(
+    () => UpdateStaffRoleUseCase(locator<StaffManagementRepository>()),
+  );
+  locator.registerLazySingleton<DeleteStaffRoleUseCase>(
+    () => DeleteStaffRoleUseCase(locator<StaffManagementRepository>()),
   );
 }
