@@ -24,6 +24,8 @@ import '../features/store_operations/presentation/pages/store_inventory_ledger_p
 import '../features/store_operations/presentation/pages/store_inventory_management_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_stock_page.dart';
 import '../features/store_operations/presentation/pages/store_overview_page.dart';
+import '../features/store_operations/product_management/presentation/pages/product_create_page.dart';
+import '../features/store_operations/product_management/presentation/pages/product_management_page.dart';
 import '../features/store_operations/staff_management/presentation/pages/invite_staff_page.dart';
 import '../features/store_operations/staff_management/presentation/pages/staff_detail_page.dart';
 import '../features/store_operations/staff_management/presentation/pages/staff_management_page.dart';
@@ -52,6 +54,8 @@ abstract final class RouteNames {
       'store-inventory-import-products';
   static const String storeInventoryLedger = 'store-inventory-ledger';
   static const String storeInventoryStock = 'store-inventory-stock';
+  static const String storeProductManagement = 'store-product-management';
+  static const String storeProductCreate = 'store-product-create';
   static const String storeTableManagement = 'store-table-management';
   static const String storeTableSettings = 'store-table-settings';
   static const String storeStaffManagement = 'store-staff-management';
@@ -129,6 +133,36 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
 
           return StoreInventoryStockPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/products/new',
+        name: RouteNames.storeProductCreate,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          return ProductCreatePage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/products',
+        name: RouteNames.storeProductManagement,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          return ProductManagementPage(storeId: storeId);
         },
       ),
       GoRoute(

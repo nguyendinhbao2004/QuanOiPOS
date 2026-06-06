@@ -69,7 +69,11 @@ class StoreOverviewPage extends ConsumerWidget {
                 StoreBottomNavItemData(
                   title: 'Sản phẩm',
                   icon: Icons.inventory_2_outlined,
-                  onTap: () => _showComingSoon(context, 'Sản phẩm'),
+                  isEnabled: state.can(AppPermissionCodes.productView),
+                  onTap: () => context.goNamed(
+                    RouteNames.storeProductManagement,
+                    pathParameters: {'storeId': storeId.toString()},
+                  ),
                 ),
                 StoreBottomNavItemData(
                   title: 'Thêm',
@@ -142,6 +146,7 @@ class _ReadyView extends ConsumerWidget {
             _FeatureGrid(
               storeId: accessContext.store.id,
               canUpdateStore: state.can(AppPermissionCodes.storeUpdate),
+              canViewProduct: state.can(AppPermissionCodes.productView),
               canViewArea: state.can(AppPermissionCodes.areaView),
               canManageStaff:
                   state.can(AppPermissionCodes.staffView) ||
@@ -229,12 +234,14 @@ class _ProfitAnalysisCard extends StatelessWidget {
 class _FeatureGrid extends StatelessWidget {
   final int storeId;
   final bool canUpdateStore;
+  final bool canViewProduct;
   final bool canViewArea;
   final bool canManageStaff;
 
   const _FeatureGrid({
     required this.storeId,
     required this.canUpdateStore,
+    required this.canViewProduct,
     required this.canViewArea,
     required this.canManageStaff,
   });
@@ -242,7 +249,16 @@ class _FeatureGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      const _FeatureItemData('Sản phẩm', Icons.inventory_2_outlined),
+      _FeatureItemData(
+        'Sản phẩm',
+        Icons.inventory_2_outlined,
+        isEnabled: canViewProduct,
+        disabledMessage: 'Bạn chưa có quyền xem sản phẩm',
+        onTap: () => context.goNamed(
+          RouteNames.storeProductManagement,
+          pathParameters: {'storeId': storeId.toString()},
+        ),
+      ),
       const _FeatureItemData('Bán hàng', Icons.shopping_cart_outlined),
       const _FeatureItemData('Báo cáo', Icons.bar_chart_rounded),
       const _FeatureItemData('Thu chi', Icons.payments_outlined),

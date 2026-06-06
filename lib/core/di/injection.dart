@@ -49,6 +49,18 @@ import '../../features/store_operations/table_management/domain/usecases/load_ta
 import '../../features/store_operations/table_management/domain/usecases/update_area_display_order_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/update_area_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/update_table_use_case.dart';
+import '../../features/store_operations/product_management/data/datasources/product_management_remote_data_source.dart';
+import '../../features/store_operations/product_management/data/repositories/product_management_repository_impl.dart';
+import '../../features/store_operations/product_management/domain/repositories/product_management_repository.dart';
+import '../../features/store_operations/product_management/domain/usecases/create_product_category_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/create_product_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/delete_product_category_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/delete_product_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/update_product_sell_status_use_case.dart';
 import '../../features/store_operations/staff_management/data/datasources/staff_management_remote_data_source.dart';
 import '../../features/store_operations/staff_management/data/repositories/staff_management_repository_impl.dart';
 import '../../features/store_operations/staff_management/domain/repositories/staff_management_repository.dart';
@@ -272,6 +284,44 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<DeleteAreaUseCase>(
     () => DeleteAreaUseCase(locator<TableManagementRepository>()),
+  );
+
+  // Product management
+  locator.registerLazySingleton<ProductManagementRemoteDataSource>(
+    () => ProductManagementRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<ProductManagementRepository>(
+    () => ProductManagementRepositoryImpl(
+      locator<ProductManagementRemoteDataSource>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadProductCategoriesUseCase>(
+    () => LoadProductCategoriesUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadProductToppingsUseCase>(
+    () => LoadProductToppingsUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<CreateProductCategoryUseCase>(
+    () => CreateProductCategoryUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<UpdateProductCategoryUseCase>(
+    () => UpdateProductCategoryUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<DeleteProductCategoryUseCase>(
+    () => DeleteProductCategoryUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadProductsUseCase>(
+    () => LoadProductsUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<CreateProductUseCase>(
+    () => CreateProductUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<UpdateProductSellStatusUseCase>(
+    () =>
+        UpdateProductSellStatusUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<DeleteProductUseCase>(
+    () => DeleteProductUseCase(locator<ProductManagementRepository>()),
   );
 
   // Staff management

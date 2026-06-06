@@ -21,6 +21,10 @@ class DioClient {
     return dio.put<T>(path, data: data);
   }
 
+  Future<Response<T>> patch<T>(String path, {dynamic data}) {
+    return dio.patch<T>(path, data: data);
+  }
+
   Future<Response<T>> delete<T>(String path, {dynamic data}) {
     return dio.delete<T>(path, data: data);
   }
@@ -61,6 +65,19 @@ class DioClient {
   }) async {
     try {
       final response = await dio.put<dynamic>(path, data: data);
+      return _parseApiResponse<T>(response.data, dataFromJson: dataFromJson);
+    } on DioException catch (error) {
+      throw Exception(_extractErrorMessage(error));
+    }
+  }
+
+  Future<ApiResponse<T>> patchResponse<T>(
+    String path, {
+    dynamic data,
+    T Function(Object? json)? dataFromJson,
+  }) async {
+    try {
+      final response = await dio.patch<dynamic>(path, data: data);
       return _parseApiResponse<T>(response.data, dataFromJson: dataFromJson);
     } on DioException catch (error) {
       throw Exception(_extractErrorMessage(error));

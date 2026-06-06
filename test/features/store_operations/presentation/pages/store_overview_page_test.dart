@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:quan_oi/config/router_config.dart';
 import 'package:quan_oi/core/storage/last_active_store_storage.dart';
 import 'package:quan_oi/core/theme/index.dart';
@@ -94,6 +95,65 @@ void main() {
 
     expect(find.text('Quản lý kho'), findsOneWidget);
     expect(find.text('Bạn chưa có quyền xem quản lý kho'), findsNothing);
+  });
+
+  testWidgets('product item navigates to product management route', (
+    tester,
+  ) async {
+    final repository = const _FakeWorkspaceRepository(
+      permissions: [
+        StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW'),
+        StorePermission(permissionId: 2, code: 'PRODUCT.VIEW'),
+      ],
+    );
+    final router = GoRouter(
+      initialLocation: '/stores/5',
+      routes: [
+        GoRoute(
+          path: '/stores/:storeId',
+          name: RouteNames.storeOverview,
+          builder: (context, state) => const StoreOverviewPage(storeId: 5),
+        ),
+        GoRoute(
+          path: '/stores/:storeId/products',
+          name: RouteNames.storeProductManagement,
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('Product route opened'))),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authNotifierProvider.overrideWith(
+            () => _FixedAuthNotifier(
+              const AuthState(
+                status: AuthStatus.authenticated,
+                accountType: AccountType.storeUser,
+                fullName: 'Test User',
+                email: 'user@quanoi.test',
+              ),
+            ),
+          ),
+          loadStoreAccessContextUseCaseProvider.overrideWithValue(
+            LoadStoreAccessContextUseCase(repository),
+          ),
+          loadMyStoresUseCaseProvider.overrideWithValue(
+            LoadMyStoresUseCase(repository),
+          ),
+          ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
+        ],
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sản phẩm').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Product route opened'), findsOneWidget);
   });
 
   testWidgets(
