@@ -431,7 +431,7 @@ void main() {
 
       expect(find.text('Xuất sản phẩm'), findsOneWidget);
       expect(find.text('Xuất nguyên liệu'), findsOneWidget);
-      expect(find.text('Bổ sung nguyên liệu'), findsOneWidget);
+      expect(find.text('Bổ sung nguyên vật liệu'), findsOneWidget);
 
       await tester.tap(
         find.byKey(const Key('inventory_export_create_product_action')),
@@ -554,7 +554,7 @@ void main() {
 
     expect(router.state.matchedLocation, '/stores/5/inventory/exports');
     expect(
-      find.text('Bổ sung nguyên liệu sẽ được triển khai sau'),
+      find.text('Bổ sung nguyên vật liệu sẽ được triển khai sau'),
       findsOneWidget,
     );
   });

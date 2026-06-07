@@ -430,7 +430,7 @@ enum _InventoryExportCreateAction {
   ),
   supplementIngredient(
     icon: Icons.add_box_outlined,
-    label: 'Bổ sung nguyên liệu',
+    label: 'Bổ sung nguyên vật liệu',
     key: Key('inventory_export_supplement_ingredient_action'),
   );
 
