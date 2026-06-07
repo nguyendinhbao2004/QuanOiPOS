@@ -47,6 +47,22 @@ class StoreModel {
     );
   }
 
+  factory StoreModel.fromEntity(Store store) {
+    return StoreModel(
+      id: store.id,
+      ownerAccountId: store.ownerAccountId,
+      storeName: store.storeName,
+      phone: store.phone,
+      address: store.address,
+      statusCode: store.status.code,
+      createdAt: store.createdAt,
+      createdBy: store.createdBy,
+      updatedAt: store.updatedAt,
+      updatedBy: store.updatedBy,
+      isDeleted: store.isDeleted,
+    );
+  }
+
   static List<StoreModel> listFromJson(Object? json) {
     if (json == null) {
       return const [];
@@ -80,6 +96,22 @@ class StoreModel {
       updatedBy: updatedBy,
       isDeleted: isDeleted,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'ownerAccountId': ownerAccountId,
+      'storeName': storeName,
+      'phone': phone,
+      'address': address,
+      'status': statusCode,
+      'createdAt': createdAt?.toIso8601String(),
+      'createdBy': createdBy,
+      'updatedAt': updatedAt?.toIso8601String(),
+      'updatedBy': updatedBy,
+      'isDeleted': isDeleted,
+    };
   }
 
   static int _intValue(Object? value) {

@@ -39,6 +39,7 @@ class AuthNotifier extends Notifier<AuthState> {
       if (result != null) {
         state = AuthState(
           status: AuthStatus.authenticated,
+          accountId: result.accountId,
           accountType: result.accountType,
           fullName: result.fullName,
           email: result.email,
@@ -65,6 +66,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
       state = AuthState(
         status: AuthStatus.authenticated,
+        accountId: result.accountId,
         accountType: result.accountType,
         fullName: result.fullName,
         email: result.email,
@@ -122,6 +124,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
     state = state.copyWith(
       accountType: profile.accountType,
+      accountId: profile.accountId,
       fullName: profile.fullName,
       email: profile.email,
       phone: profile.phone,

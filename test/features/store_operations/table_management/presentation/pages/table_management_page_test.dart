@@ -1160,6 +1160,29 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
       permissions: await loadMyStorePermissions(storeId),
     );
   }
+
+  @override
+  Future<StoreAccessContext?> loadCachedStoreAccessContext({
+    required int accountId,
+    required int storeId,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<void> saveStoreAccessContextCache({
+    required int accountId,
+    required StoreAccessContext context,
+  }) async {}
+
+  @override
+  Future<void> clearStoreAccessContextCache({
+    required int accountId,
+    required int storeId,
+  }) async {}
+
+  @override
+  Future<void> clearAllStoreAccessContextCache() async {}
 }
 
 class _FakeLastActiveStoreStorage implements LastActiveStoreStorage {

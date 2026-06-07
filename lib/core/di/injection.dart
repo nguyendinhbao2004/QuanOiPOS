@@ -80,15 +80,21 @@ import '../../features/store_operations/staff_management/domain/usecases/remove_
 import '../../features/store_operations/staff_management/domain/usecases/update_staff_access_use_case.dart';
 import '../../features/store_operations/staff_management/domain/usecases/update_staff_display_name_use_case.dart';
 import '../../features/store_operations/staff_management/domain/usecases/update_staff_role_use_case.dart';
+import '../../features/workspace_context/data/datasources/store_access_context_cache_storage.dart';
+import '../../features/workspace_context/data/datasources/store_access_context_cache_storage_impl.dart';
 import '../../features/workspace_context/data/datasources/workspace_remote_data_source.dart';
 import '../../features/workspace_context/data/repositories/workspace_repository_impl.dart';
 import '../../features/workspace_context/domain/repositories/workspace_repository.dart';
+import '../../features/workspace_context/domain/usecases/clear_all_store_access_context_cache_use_case.dart';
 import '../../features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
+import '../../features/workspace_context/domain/usecases/clear_store_access_context_cache_use_case.dart';
 import '../../features/workspace_context/domain/usecases/create_store_use_case.dart';
+import '../../features/workspace_context/domain/usecases/load_cached_store_access_context_use_case.dart';
 import '../../features/workspace_context/domain/usecases/load_last_active_store_use_case.dart';
 import '../../features/workspace_context/domain/usecases/load_my_stores_use_case.dart';
 import '../../features/workspace_context/domain/usecases/load_store_access_context_use_case.dart';
 import '../../features/workspace_context/domain/usecases/save_last_active_store_use_case.dart';
+import '../../features/workspace_context/domain/usecases/save_store_access_context_cache_use_case.dart';
 
 final GetIt locator = GetIt.instance;
 
@@ -235,8 +241,14 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<WorkspaceRemoteDataSource>(
     () => WorkspaceRemoteDataSource(locator<DioClient>()),
   );
+  locator.registerLazySingleton<StoreAccessContextCacheStorage>(
+    () => StoreAccessContextCacheStorageImpl(locator<SharedPreferences>()),
+  );
   locator.registerLazySingleton<WorkspaceRepository>(
-    () => WorkspaceRepositoryImpl(locator<WorkspaceRemoteDataSource>()),
+    () => WorkspaceRepositoryImpl(
+      locator<WorkspaceRemoteDataSource>(),
+      locator<StoreAccessContextCacheStorage>(),
+    ),
   );
   locator.registerLazySingleton<LoadMyStoresUseCase>(
     () => LoadMyStoresUseCase(locator<WorkspaceRepository>()),
@@ -246,6 +258,18 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<LoadStoreAccessContextUseCase>(
     () => LoadStoreAccessContextUseCase(locator<WorkspaceRepository>()),
+  );
+  locator.registerLazySingleton<LoadCachedStoreAccessContextUseCase>(
+    () => LoadCachedStoreAccessContextUseCase(locator<WorkspaceRepository>()),
+  );
+  locator.registerLazySingleton<SaveStoreAccessContextCacheUseCase>(
+    () => SaveStoreAccessContextCacheUseCase(locator<WorkspaceRepository>()),
+  );
+  locator.registerLazySingleton<ClearStoreAccessContextCacheUseCase>(
+    () => ClearStoreAccessContextCacheUseCase(locator<WorkspaceRepository>()),
+  );
+  locator.registerLazySingleton<ClearAllStoreAccessContextCacheUseCase>(
+    () => ClearAllStoreAccessContextCacheUseCase(locator<WorkspaceRepository>()),
   );
   locator.registerLazySingleton<LoadLastActiveStoreUseCase>(
     () => LoadLastActiveStoreUseCase(locator<LastActiveStoreStorage>()),

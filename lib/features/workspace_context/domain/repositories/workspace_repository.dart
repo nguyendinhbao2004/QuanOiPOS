@@ -16,4 +16,21 @@ abstract class WorkspaceRepository {
   Future<List<StorePermission>> loadMyStorePermissions(int storeId);
 
   Future<StoreAccessContext> loadStoreAccessContext(int storeId);
+
+  Future<StoreAccessContext?> loadCachedStoreAccessContext({
+    required int accountId,
+    required int storeId,
+  });
+
+  Future<void> saveStoreAccessContextCache({
+    required int accountId,
+    required StoreAccessContext context,
+  });
+
+  Future<void> clearStoreAccessContextCache({
+    required int accountId,
+    required int storeId,
+  });
+
+  Future<void> clearAllStoreAccessContextCache();
 }

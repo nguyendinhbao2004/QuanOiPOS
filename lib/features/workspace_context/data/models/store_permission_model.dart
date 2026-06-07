@@ -6,6 +6,13 @@ class StorePermissionModel {
 
   const StorePermissionModel({required this.permissionId, required this.code});
 
+  factory StorePermissionModel.fromEntity(StorePermission permission) {
+    return StorePermissionModel(
+      permissionId: permission.permissionId,
+      code: permission.code,
+    );
+  }
+
   factory StorePermissionModel.fromJson(Object? json) {
     if (json is! Map<String, dynamic>) {
       throw const FormatException('Invalid store permission data');
@@ -38,6 +45,10 @@ class StorePermissionModel {
 
   StorePermission toEntity() {
     return StorePermission(permissionId: permissionId, code: code);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'permissionId': permissionId, 'code': code};
   }
 
   static int _intValue(Object? value) {

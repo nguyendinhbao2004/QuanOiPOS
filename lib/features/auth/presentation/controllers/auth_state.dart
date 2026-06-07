@@ -10,6 +10,7 @@ enum AuthStatus {
 
 class AuthState {
   final AuthStatus status;
+  final int? accountId;
   final AccountType? accountType;
   final String? errorMessage;
   final String? fullName;
@@ -19,6 +20,7 @@ class AuthState {
 
   const AuthState({
     required this.status,
+    this.accountId,
     this.accountType,
     this.errorMessage,
     this.fullName,
@@ -29,6 +31,7 @@ class AuthState {
 
   const AuthState.bootstrapping()
     : status = AuthStatus.bootstrapping,
+      accountId = null,
       accountType = null,
       errorMessage = null,
       fullName = null,
@@ -38,6 +41,7 @@ class AuthState {
 
   const AuthState.unauthenticated()
     : status = AuthStatus.unauthenticated,
+      accountId = null,
       accountType = null,
       errorMessage = null,
       fullName = null,
@@ -54,6 +58,7 @@ class AuthState {
 
   AuthState copyWith({
     AuthStatus? status,
+    int? accountId,
     AccountType? accountType,
     String? errorMessage,
     String? fullName,
@@ -64,6 +69,7 @@ class AuthState {
   }) {
     return AuthState(
       status: status ?? this.status,
+      accountId: accountId ?? this.accountId,
       accountType: accountType ?? this.accountType,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       fullName: fullName ?? this.fullName,

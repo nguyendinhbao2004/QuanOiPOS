@@ -138,6 +138,23 @@ class _ReadyView extends ConsumerWidget {
               onAccountTap: () => context.goNamed(RouteNames.storeHome),
               onNotificationTap: () => _showComingSoon(context, 'Thông báo'),
             ),
+            if (state.isRefreshing) ...[
+              const SizedBox(height: AppConstants.spacingSm),
+              const LinearProgressIndicator(minHeight: 2),
+            ],
+            if (state.refreshErrorMessage != null) ...[
+              const SizedBox(height: AppConstants.spacingSm),
+              _RefreshErrorBanner(
+                message: state.refreshErrorMessage!,
+                onRetry: () => ref
+                    .read(
+                      storeAccessNotifierProvider(
+                        accessContext.store.id,
+                      ).notifier,
+                    )
+                    .loadAccess(),
+              ),
+            ],
             const SizedBox(height: AppConstants.spacingLg),
             const _SearchField(),
             const SizedBox(height: AppConstants.spacingLg),
@@ -154,6 +171,43 @@ class _ReadyView extends ConsumerWidget {
                   state.can(AppPermissionCodes.staffUpdate) ||
                   state.can(AppPermissionCodes.staffRemove),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RefreshErrorBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _RefreshErrorBanner({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.warning.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.spacingSm),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              color: AppColors.warning,
+              size: 20,
+            ),
+            const SizedBox(width: AppConstants.spacingSm),
+            Expanded(
+              child: Text(
+                'Đang dùng dữ liệu đã lưu. $message',
+                style: AppTextStyles.bodyXs,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            TextButton(onPressed: onRetry, child: const Text('Thử lại')),
           ],
         ),
       ),

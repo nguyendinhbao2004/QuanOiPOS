@@ -40,6 +40,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
 
+    expect(find.text('Quảng cáo'), findsNothing);
+    expect(find.text('Tin tức'), findsNothing);
+    expect(find.text('Nhân sự'), findsNothing);
+    expect(find.text('Tài khoản'), findsOneWidget);
+
     await tester.tap(find.byType(UserProfileCard));
     await tester.pumpAndSettle();
 

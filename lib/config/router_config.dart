@@ -533,6 +533,11 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(authNotifierProvider, (previous, next) {
     if (previous?.isAuthenticated == true && !next.isAuthenticated) {
       unawaited(ref.read(lastActiveStoreNotifierProvider.notifier).clear());
+      try {
+        unawaited(ref.read(clearAllStoreAccessContextCacheUseCaseProvider)());
+      } catch (_) {
+        // Cache cleanup should not block logout routing.
+      }
     }
     router.refresh();
   });

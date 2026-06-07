@@ -37,17 +37,6 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
     setState(() => _state = _AccountHubState.ready);
   }
 
-  void _showComingSoon(BuildContext context, {required String feature}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature sẽ được triển khai ở phase sau')),
-    );
-  }
-
-  void _onTabSelected(BuildContext context, AccountTab tab) {
-    if (tab == AccountTab.account) return;
-    _showComingSoon(context, feature: 'Tab này');
-  }
-
   void _onStoreMenuTap(BuildContext context) {
     context.pushNamed(RouteNames.myStores);
   }
@@ -59,8 +48,6 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
     final email = authState.email ?? '';
 
     return SystemShellScaffold(
-      currentTab: AccountTab.account,
-      onTabSelected: (tab) => _onTabSelected(context, tab),
       body: SafeArea(
         bottom: false,
         child: Column(

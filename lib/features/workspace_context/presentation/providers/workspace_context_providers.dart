@@ -4,12 +4,16 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/storage/last_active_store_storage.dart';
 import '../../data/datasources/workspace_remote_data_source.dart';
 import '../../domain/repositories/workspace_repository.dart';
+import '../../domain/usecases/clear_all_store_access_context_cache_use_case.dart';
 import '../../domain/usecases/clear_last_active_store_use_case.dart';
+import '../../domain/usecases/clear_store_access_context_cache_use_case.dart';
 import '../../domain/usecases/create_store_use_case.dart';
+import '../../domain/usecases/load_cached_store_access_context_use_case.dart';
 import '../../domain/usecases/load_last_active_store_use_case.dart';
 import '../../domain/usecases/load_my_stores_use_case.dart';
 import '../../domain/usecases/load_store_access_context_use_case.dart';
 import '../../domain/usecases/save_last_active_store_use_case.dart';
+import '../../domain/usecases/save_store_access_context_cache_use_case.dart';
 import '../controllers/create_store_notifier.dart';
 import '../controllers/create_store_state.dart';
 import '../controllers/last_active_store_notifier.dart';
@@ -44,6 +48,26 @@ final createStoreUseCaseProvider = Provider<CreateStoreUseCase>((ref) {
 final loadStoreAccessContextUseCaseProvider =
     Provider<LoadStoreAccessContextUseCase>((ref) {
       return locator<LoadStoreAccessContextUseCase>();
+    });
+
+final loadCachedStoreAccessContextUseCaseProvider =
+    Provider<LoadCachedStoreAccessContextUseCase>((ref) {
+      return locator<LoadCachedStoreAccessContextUseCase>();
+    });
+
+final saveStoreAccessContextCacheUseCaseProvider =
+    Provider<SaveStoreAccessContextCacheUseCase>((ref) {
+      return locator<SaveStoreAccessContextCacheUseCase>();
+    });
+
+final clearStoreAccessContextCacheUseCaseProvider =
+    Provider<ClearStoreAccessContextCacheUseCase>((ref) {
+      return locator<ClearStoreAccessContextCacheUseCase>();
+    });
+
+final clearAllStoreAccessContextCacheUseCaseProvider =
+    Provider<ClearAllStoreAccessContextCacheUseCase>((ref) {
+      return locator<ClearAllStoreAccessContextCacheUseCase>();
     });
 
 final loadLastActiveStoreUseCaseProvider = Provider<LoadLastActiveStoreUseCase>(

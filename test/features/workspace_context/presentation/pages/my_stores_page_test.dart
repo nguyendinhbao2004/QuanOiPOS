@@ -24,6 +24,8 @@ import 'package:quan_oi/features/subscription/domain/usecases/purchase_subscript
 import 'package:quan_oi/features/subscription/presentation/providers/subscription_providers.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/create_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/clear_store_access_context_cache_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/load_cached_store_access_context_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_last_active_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_access_context.dart';
@@ -32,6 +34,7 @@ import 'package:quan_oi/features/workspace_context/domain/repositories/workspace
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_my_stores_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/load_store_access_context_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/save_last_active_store_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/save_store_access_context_cache_use_case.dart';
 import 'package:quan_oi/features/workspace_context/presentation/pages/my_stores_page.dart';
 import 'package:quan_oi/features/workspace_context/presentation/providers/workspace_context_providers.dart';
 
@@ -104,6 +107,50 @@ void main() {
     );
     expect(find.text('Xin chào, Test User'), findsNothing);
   });
+
+  testWidgets(
+    'StoreUser opens cached last active store without blocking loader',
+    (tester) async {
+      final accessCompleter = Completer<StoreAccessContext>();
+      final repository = _FakeWorkspaceRepository(
+        cachedContext: _cachedAccessContext,
+        accessCompleter: accessCompleter,
+      );
+      final container = _buildContainer(
+        AccountType.storeUser,
+        workspaceRepository: repository,
+        lastActiveStoreStorage: _FakeLastActiveStoreStorage(initialStoreId: 2),
+      );
+      addTearDown(container.dispose);
+
+      final router = container.read(routerProvider);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      for (var i = 0; i < 5; i += 1) {
+        await tester.pump();
+      }
+
+      expect(find.text('Cached Buffet'), findsOneWidget);
+      expect(find.text('Tổng quan hôm nay'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+
+      accessCompleter.complete(_remoteAccessContext);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Buffet Poseidon Vincom Plaza Lê Văn Việt'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets(
     'StoreUser opens account hub from root without last active store',
@@ -466,6 +513,7 @@ ProviderContainer _buildContainer(
         () => _FixedAuthNotifier(
           AuthState(
             status: AuthStatus.authenticated,
+            accountId: 8,
             accountType: accountType,
             fullName: 'Test User',
             email: 'user@quanoi.test',
@@ -480,6 +528,15 @@ ProviderContainer _buildContainer(
       ),
       loadStoreAccessContextUseCaseProvider.overrideWithValue(
         LoadStoreAccessContextUseCase(repository),
+      ),
+      loadCachedStoreAccessContextUseCaseProvider.overrideWithValue(
+        LoadCachedStoreAccessContextUseCase(repository),
+      ),
+      saveStoreAccessContextCacheUseCaseProvider.overrideWithValue(
+        SaveStoreAccessContextCacheUseCase(repository),
+      ),
+      clearStoreAccessContextCacheUseCaseProvider.overrideWithValue(
+        ClearStoreAccessContextCacheUseCase(repository),
       ),
       ..._subscriptionOverrides(subscriptionRepository),
       ..._lastActiveStoreOverrides(storeStorage),
@@ -538,12 +595,17 @@ class _FixedAuthNotifier extends AuthNotifier {
 class _FakeWorkspaceRepository implements WorkspaceRepository {
   final Exception? loadError;
   final Completer<List<Store>>? loadCompleter;
+  final Completer<StoreAccessContext>? accessCompleter;
   final List<Store> stores;
+  StoreAccessContext? cachedContext;
+  StoreAccessContext? savedCache;
   int createStoreCallCount = 0;
 
   _FakeWorkspaceRepository({
     this.loadError,
     this.loadCompleter,
+    this.accessCompleter,
+    this.cachedContext,
     List<Store> stores = _defaultStores,
   }) : stores = List<Store>.of(stores);
 
@@ -594,10 +656,45 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
 
   @override
   Future<StoreAccessContext> loadStoreAccessContext(int storeId) async {
+    final completer = accessCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
+
     return StoreAccessContext(
       store: await loadStoreById(storeId),
       permissions: await loadMyStorePermissions(storeId),
     );
+  }
+
+  @override
+  Future<StoreAccessContext?> loadCachedStoreAccessContext({
+    required int accountId,
+    required int storeId,
+  }) async {
+    return cachedContext;
+  }
+
+  @override
+  Future<void> saveStoreAccessContextCache({
+    required int accountId,
+    required StoreAccessContext context,
+  }) async {
+    savedCache = context;
+    cachedContext = context;
+  }
+
+  @override
+  Future<void> clearStoreAccessContextCache({
+    required int accountId,
+    required int storeId,
+  }) async {
+    cachedContext = null;
+  }
+
+  @override
+  Future<void> clearAllStoreAccessContextCache() async {
+    cachedContext = null;
   }
 }
 
@@ -730,3 +827,29 @@ const _defaultStores = [
     isDeleted: false,
   ),
 ];
+
+const _cachedAccessContext = StoreAccessContext(
+  store: Store(
+    id: 2,
+    ownerAccountId: 8,
+    storeName: 'Cached Buffet',
+    phone: '0961813466',
+    address: 'Cached address',
+    status: StoreStatus.active,
+    isDeleted: false,
+  ),
+  permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
+);
+
+const _remoteAccessContext = StoreAccessContext(
+  store: Store(
+    id: 2,
+    ownerAccountId: 8,
+    storeName: 'Buffet Poseidon Vincom Plaza Lê Văn Việt',
+    phone: '0961813466',
+    address: 'TTTM Vincom Plaza, 50 Đ. Lê Văn Việt',
+    status: StoreStatus.active,
+    isDeleted: false,
+  ),
+  permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
+);
