@@ -21,15 +21,13 @@ class StoreInventoryExportPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       floatingActionButton: accessState.status == StoreAccessStatus.ready
-          ? FloatingActionButton.extended(
-              onPressed: () => context.goNamed(
-                RouteNames.storeInventoryExportProducts,
-                pathParameters: {'storeId': storeId.toString()},
-              ),
+          ? FloatingActionButton(
+              key: const Key('inventory_export_create_action'),
+              onPressed: () => _showInventoryExportCreateMenu(context, storeId),
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.surface,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Tạo xuất hàng'),
+              tooltip: 'Tạo xuất hàng',
+              child: const Icon(Icons.add_rounded),
             )
           : null,
       body: SafeArea(
@@ -415,6 +413,188 @@ class _LoadingView extends StatelessWidget {
     return const ColoredBox(
       color: AppColors.background,
       child: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+enum _InventoryExportCreateAction {
+  product(
+    icon: Icons.inventory_2_outlined,
+    label: 'Xuất sản phẩm',
+    key: Key('inventory_export_create_product_action'),
+  ),
+  ingredient(
+    icon: Icons.kitchen_outlined,
+    label: 'Xuất nguyên liệu',
+    key: Key('inventory_export_create_ingredient_action'),
+  ),
+  supplementIngredient(
+    icon: Icons.add_box_outlined,
+    label: 'Bổ sung nguyên liệu',
+    key: Key('inventory_export_supplement_ingredient_action'),
+  );
+
+  final IconData icon;
+  final String label;
+  final Key key;
+
+  const _InventoryExportCreateAction({
+    required this.icon,
+    required this.label,
+    required this.key,
+  });
+}
+
+Future<void> _showInventoryExportCreateMenu(
+  BuildContext context,
+  int storeId,
+) async {
+  final selectedAction = await showGeneralDialog<_InventoryExportCreateAction>(
+    context: context,
+    barrierColor: AppColors.overlay,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    transitionDuration: AppConstants.animFast,
+    pageBuilder: (context, animation, secondaryAnimation) {
+      return const _InventoryExportCreateMenuOverlay();
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        child: child,
+      );
+    },
+  );
+
+  if (selectedAction == null || !context.mounted) {
+    return;
+  }
+
+  switch (selectedAction) {
+    case _InventoryExportCreateAction.product:
+      context.goNamed(
+        RouteNames.storeInventoryExportProducts,
+        pathParameters: {'storeId': storeId.toString()},
+      );
+    case _InventoryExportCreateAction.ingredient:
+      context.goNamed(
+        RouteNames.storeInventoryExportIngredients,
+        pathParameters: {'storeId': storeId.toString()},
+      );
+    case _InventoryExportCreateAction.supplementIngredient:
+      _showComingSoon(context, selectedAction.label);
+  }
+}
+
+class _InventoryExportCreateMenuOverlay extends StatelessWidget {
+  const _InventoryExportCreateMenuOverlay();
+
+  static const double _pageMaxWidth = 560;
+  static const double _menuWidth = 244;
+  static const double _fabClearance = 88;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final pageInset = constraints.maxWidth > _pageMaxWidth
+              ? (constraints.maxWidth - _pageMaxWidth) / 2
+              : 0.0;
+          final rightInset = pageInset + AppConstants.spacingMd;
+          final bottomInset =
+              MediaQuery.paddingOf(context).bottom + _fabClearance;
+
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  key: const Key('inventory_export_create_menu_backdrop'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+              ),
+              Positioned(
+                right: rightInset,
+                bottom: bottomInset,
+                child: const _InventoryExportCreateMenu(width: _menuWidth),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _InventoryExportCreateMenu extends StatelessWidget {
+  final double width;
+
+  const _InventoryExportCreateMenu({required this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('inventory_export_create_menu'),
+      width: width,
+      padding: const EdgeInsets.symmetric(vertical: AppConstants.spacingSm),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.textPrimary.withValues(alpha: 0.14),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final action in _InventoryExportCreateAction.values)
+            _InventoryExportCreateMenuItem(action: action),
+        ],
+      ),
+    );
+  }
+}
+
+class _InventoryExportCreateMenuItem extends StatelessWidget {
+  final _InventoryExportCreateAction action;
+
+  const _InventoryExportCreateMenuItem({required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: action.key,
+      onTap: () => Navigator.of(context).pop(action),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.spacingMd,
+          vertical: AppConstants.spacingSm,
+        ),
+        child: Row(
+          children: [
+            Icon(action.icon, color: AppColors.primary, size: 22),
+            const SizedBox(width: AppConstants.spacingMd),
+            Expanded(
+              child: Text(
+                action.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.labelSm.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

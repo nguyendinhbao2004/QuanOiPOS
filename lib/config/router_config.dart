@@ -17,6 +17,8 @@ import '../features/store_operations/presentation/pages/operation_regulations_pa
 import '../features/store_operations/presentation/pages/privacy_policy_page.dart';
 import '../features/store_operations/presentation/pages/store_feature_search_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_export_draft_page.dart';
+import '../features/store_operations/presentation/pages/store_inventory_export_ingredient_draft_page.dart';
+import '../features/store_operations/presentation/pages/store_inventory_export_ingredients_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_export_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_export_products_page.dart';
 import '../features/store_operations/presentation/pages/store_home_page.dart';
@@ -56,6 +58,10 @@ abstract final class RouteNames {
   static const String storeInventoryExport = 'store-inventory-export';
   static const String storeInventoryExportDraft =
       'store-inventory-export-draft';
+  static const String storeInventoryExportIngredientDraft =
+      'store-inventory-export-ingredient-draft';
+  static const String storeInventoryExportIngredients =
+      'store-inventory-export-ingredients';
   static const String storeInventoryExportProducts =
       'store-inventory-export-products';
   static const String storeInventoryImport = 'store-inventory-import';
@@ -291,6 +297,52 @@ final routerProvider = Provider<GoRouter>((ref) {
               : null;
 
           return StoreInventoryExportDraftPage(
+            storeId: storeId,
+            seedData: seedData,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/inventory/exports/ingredients',
+        name: RouteNames.storeInventoryExportIngredients,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          final seedData =
+              state.extra is StoreInventoryExportIngredientDraftSeedData
+              ? state.extra! as StoreInventoryExportIngredientDraftSeedData
+              : null;
+
+          return StoreInventoryExportIngredientsPage(
+            storeId: storeId,
+            seedData: seedData,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/inventory/exports/ingredients/draft',
+        name: RouteNames.storeInventoryExportIngredientDraft,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          final seedData =
+              state.extra is StoreInventoryExportIngredientDraftSeedData
+              ? state.extra! as StoreInventoryExportIngredientDraftSeedData
+              : null;
+
+          return StoreInventoryExportIngredientDraftPage(
             storeId: storeId,
             seedData: seedData,
           );
