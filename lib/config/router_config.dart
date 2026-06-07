@@ -21,6 +21,8 @@ import '../features/store_operations/presentation/pages/store_inventory_export_i
 import '../features/store_operations/presentation/pages/store_inventory_export_ingredients_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_export_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_export_products_page.dart';
+import '../features/store_operations/presentation/pages/store_inventory_export_supplement_material_draft_page.dart';
+import '../features/store_operations/presentation/pages/store_inventory_export_supplement_materials_page.dart';
 import '../features/store_operations/presentation/pages/store_home_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_check_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_import_ingredients_page.dart';
@@ -64,6 +66,10 @@ abstract final class RouteNames {
       'store-inventory-export-ingredients';
   static const String storeInventoryExportProducts =
       'store-inventory-export-products';
+  static const String storeInventoryExportSupplementMaterialDraft =
+      'store-inventory-export-supplement-material-draft';
+  static const String storeInventoryExportSupplementMaterials =
+      'store-inventory-export-supplement-materials';
   static const String storeInventoryImport = 'store-inventory-import';
   static const String storeInventoryImportIngredients =
       'store-inventory-import-ingredients';
@@ -343,6 +349,54 @@ final routerProvider = Provider<GoRouter>((ref) {
               : null;
 
           return StoreInventoryExportIngredientDraftPage(
+            storeId: storeId,
+            seedData: seedData,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/inventory/exports/supplement-materials',
+        name: RouteNames.storeInventoryExportSupplementMaterials,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          final seedData =
+              state.extra is StoreInventoryExportSupplementMaterialDraftSeedData
+              ? state.extra!
+                    as StoreInventoryExportSupplementMaterialDraftSeedData
+              : null;
+
+          return StoreInventoryExportSupplementMaterialsPage(
+            storeId: storeId,
+            seedData: seedData,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/inventory/exports/supplement-materials/draft',
+        name: RouteNames.storeInventoryExportSupplementMaterialDraft,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          final seedData =
+              state.extra is StoreInventoryExportSupplementMaterialDraftSeedData
+              ? state.extra!
+                    as StoreInventoryExportSupplementMaterialDraftSeedData
+              : null;
+
+          return StoreInventoryExportSupplementMaterialDraftPage(
             storeId: storeId,
             seedData: seedData,
           );

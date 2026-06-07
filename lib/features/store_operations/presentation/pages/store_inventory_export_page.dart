@@ -482,7 +482,10 @@ Future<void> _showInventoryExportCreateMenu(
         pathParameters: {'storeId': storeId.toString()},
       );
     case _InventoryExportCreateAction.supplementIngredient:
-      _showComingSoon(context, selectedAction.label);
+      context.goNamed(
+        RouteNames.storeInventoryExportSupplementMaterials,
+        pathParameters: {'storeId': storeId.toString()},
+      );
   }
 }
 

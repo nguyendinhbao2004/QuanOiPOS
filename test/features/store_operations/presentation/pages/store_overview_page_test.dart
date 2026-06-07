@@ -525,7 +525,7 @@ void main() {
     },
   );
 
-  testWidgets('inventory export create menu handles supplement mock action', (
+  testWidgets('inventory export supplement action opens mock material flow', (
     tester,
   ) async {
     final repository = const _FakeWorkspaceRepository(
@@ -552,11 +552,108 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(router.state.matchedLocation, '/stores/5/inventory/exports');
     expect(
-      find.text('Bổ sung nguyên vật liệu sẽ được triển khai sau'),
+      router.state.matchedLocation,
+      '/stores/5/inventory/exports/supplement-materials',
+    );
+    expect(find.text('Bổ sung nguyên vật liệu'), findsOneWidget);
+    expect(find.text('Nguyên vật liệu'), findsOneWidget);
+    expect(find.text('Nhóm nguyên vật liệu'), findsOneWidget);
+    expect(find.text('Đường'), findsOneWidget);
+    expect(find.text('NVL0001  |  Còn: 12 kg'), findsOneWidget);
+    expect(find.text('Tiếp tục'), findsNothing);
+
+    await tester.tap(
+      find.byKey(const Key('inventory_export_supplement_material_add_NVL0001')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        const Key('inventory_export_supplement_material_stepper_NVL0001'),
+      ),
       findsOneWidget,
     );
+    expect(
+      find.byKey(
+        const Key('inventory_export_supplement_material_quantity_NVL0001'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('1 NVL'), findsOneWidget);
+    expect(find.text('Tiếp tục'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(
+        const Key('inventory_export_supplement_material_increment_NVL0001'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 NVL'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const Key('inventory_export_supplement_material_add_NVL0002')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('3 NVL'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(
+        const Key('inventory_export_supplement_materials_continue_action'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      router.state.matchedLocation,
+      '/stores/5/inventory/exports/supplement-materials/draft',
+    );
+    expect(find.text('Tạo phiếu bổ sung nguyên vật liệu'), findsOneWidget);
+    expect(find.text('Thêm nguyên vật liệu'), findsOneWidget);
+    expect(find.text('Đường'), findsOneWidget);
+    expect(find.text('NVL0001'), findsOneWidget);
+    expect(find.text('Tổng số lượng'), findsOneWidget);
+    expect(find.text('Tổng cộng'), findsOneWidget);
+    expect(find.text('Hoàn thành'), findsOneWidget);
+    final totalQuantityText = tester.widget<Text>(
+      find.byKey(
+        const Key('inventory_export_supplement_material_draft_total_quantity'),
+      ),
+    );
+    final materialCountText = tester.widget<Text>(
+      find.byKey(
+        const Key('inventory_export_supplement_material_draft_material_count'),
+      ),
+    );
+    expect(totalQuantityText.data, '3');
+    expect(materialCountText.data, '2');
+
+    await tester.tap(
+      find.byKey(
+        const Key('inventory_export_supplement_material_draft_add_action'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      router.state.matchedLocation,
+      '/stores/5/inventory/exports/supplement-materials',
+    );
+    expect(
+      find.byKey(
+        const Key('inventory_export_supplement_material_stepper_NVL0001'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const Key('inventory_export_supplement_material_stepper_NVL0002'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('3 NVL'), findsOneWidget);
   });
 
   testWidgets('inventory export ingredient action opens mock ingredient flow', (
@@ -973,6 +1070,66 @@ void main() {
 
       expect(find.text('Store access failed'), findsOneWidget);
       expect(find.text('Tạo phiếu xuất nguyên liệu'), findsNothing);
+      expect(find.text('Thử lại'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'inventory export supplement materials page keeps access error state',
+    (tester) async {
+      final repository = _FakeWorkspaceRepository(
+        permissions: const [],
+        accessError: Exception('Store access failed'),
+      );
+      final container = _buildRouterContainer(repository);
+      addTearDown(container.dispose);
+
+      final router = container.read(routerProvider);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      router.go('/stores/5/inventory/exports/supplement-materials');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Store access failed'), findsOneWidget);
+      expect(find.text('Đường'), findsNothing);
+      expect(find.text('Thử lại'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'inventory export supplement material draft page keeps access error state',
+    (tester) async {
+      final repository = _FakeWorkspaceRepository(
+        permissions: const [],
+        accessError: Exception('Store access failed'),
+      );
+      final container = _buildRouterContainer(repository);
+      addTearDown(container.dispose);
+
+      final router = container.read(routerProvider);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      router.go('/stores/5/inventory/exports/supplement-materials/draft');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Store access failed'), findsOneWidget);
+      expect(find.text('Tạo phiếu bổ sung nguyên vật liệu'), findsNothing);
       expect(find.text('Thử lại'), findsOneWidget);
     },
   );
