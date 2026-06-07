@@ -12,14 +12,20 @@ import 'package:quan_oi/features/store_operations/product_management/domain/enti
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_variant_draft.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/repositories/product_management_repository.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/create_product_category_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/create_product_topping_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/create_product_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_category_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_topping_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_sell_status_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/presentation/controllers/product_create_state.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/pages/product_create_page.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/pages/product_management_page.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/providers/product_management_providers.dart';
@@ -132,8 +138,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Danh mục sản phẩm'), findsOneWidget);
-    expect(find.byKey(const Key('category_tab_add_button')), findsOneWidget);
+    expect(find.byKey(const Key('category_tab_add_button')), findsNothing);
     expect(find.byKey(const Key('product_category_tile_1')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('add_category_button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('product_category_management_sheet')),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -152,15 +166,26 @@ void main() {
             permissionId: 2,
             code: AppPermissionCodes.productCreate,
           ),
+          StorePermission(
+            permissionId: 3,
+            code: AppPermissionCodes.productUpdate,
+          ),
+          StorePermission(
+            permissionId: 4,
+            code: AppPermissionCodes.productDelete,
+          ),
         ],
         productRepository: productRepository,
       );
       await tester.pumpAndSettle();
+      expect(productRepository.loadToppingsCallCount, 1);
 
       await tester.tap(find.byKey(const Key('add_product_button')));
       await tester.pumpAndSettle();
+      expect(productRepository.loadToppingsCallCount, 1);
 
       expect(find.text('Tạo sản phẩm'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('1. Thông tin món'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('2. Biến thể / Size'),
@@ -174,7 +199,10 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('3. Topping áp dụng'), findsOneWidget);
-      expect(find.text('Trân châu đen'), findsOneWidget);
+      expect(
+        find.byKey(const Key('product_create_topping_field')),
+        findsOneWidget,
+      );
 
       await tester.scrollUntilVisible(
         find.byKey(const Key('product_create_name_field')),
@@ -194,28 +222,62 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(
-        find.byKey(const Key('product_create_size_s_price_field')),
+        find.byKey(const Key('product_create_variant_1_name_field')),
         160,
         scrollable: find.byType(Scrollable).first,
       );
       expect(
-        find.byKey(const Key('product_create_size_s_price_field')),
+        find.byKey(const Key('product_create_variant_1_name_field')),
         findsOneWidget,
       );
 
       await tester.enterText(
-        find.byKey(const Key('product_create_size_s_price_field')),
-        '25000',
+        find.byKey(const Key('product_create_variant_1_name_field')),
+        'Rau muống',
       );
       await tester.enterText(
-        find.byKey(const Key('product_create_size_m_price_field')),
-        '30000',
+        find.byKey(const Key('product_create_variant_1_price_field')),
+        '5000',
+      );
+      await tester.tap(
+        find.byKey(const Key('product_create_add_variant_button')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('product_create_variant_2_name_field')),
+        'Rau cải',
       );
       await tester.enterText(
-        find.byKey(const Key('product_create_size_l_price_field')),
-        '35000',
+        find.byKey(const Key('product_create_variant_2_price_field')),
+        '7000',
       );
-      await tester.tap(find.byKey(const Key('product_create_topping_1')));
+      await tester.tap(
+        find.byKey(const Key('product_create_variant_2_default_button')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('product_create_variant_2_default_button')),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('product_create_topping_field')),
+        220,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.byKey(const Key('product_create_topping_field')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(
+        find.byKey(const Key('product_create_topping_picker_sheet')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const Key('product_create_topping_picker_item_1')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('product_create_topping_picker_update_button')),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('product_create_submit_button')));
       await tester.pumpAndSettle();
@@ -224,18 +286,474 @@ void main() {
       expect(productRepository.createProductCallCount, 1);
       expect(productRepository.lastToppingIds, [1]);
       expect(productRepository.lastVariants?.map((variant) => variant.name), [
-        'Size S',
-        'Size M',
-        'Size L',
+        'Rau muống',
+        'Rau cải',
       ]);
       expect(
-        productRepository.lastVariants
-            ?.singleWhere((variant) => variant.isDefault)
-            .name,
-        'Size M',
+        productRepository.lastVariants?.every((variant) => !variant.isDefault),
+        isTrue,
       );
     },
   );
+
+  testWidgets('create page category picker and topping CRUD sheets work', (
+    tester,
+  ) async {
+    final productRepository = _FakeProductManagementRepository();
+
+    await _pumpRoutedPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 1, code: AppPermissionCodes.productView),
+        StorePermission(
+          permissionId: 2,
+          code: AppPermissionCodes.productCreate,
+        ),
+        StorePermission(
+          permissionId: 3,
+          code: AppPermissionCodes.productUpdate,
+        ),
+        StorePermission(
+          permissionId: 4,
+          code: AppPermissionCodes.productDelete,
+        ),
+      ],
+      productRepository: productRepository,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('add_product_button')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('product_create_category_field')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('product_create_category_picker_sheet')),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextField).last, 'Thực');
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('product_create_category_picker_item_2')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('product_create_category_picker_item_2')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('product_create_category_picker_update_button')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Thực phẩm'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('product_create_category_field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Thêm danh mục'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('category_name_field')),
+      'Bánh ngọt',
+    );
+    await tester.tap(find.byKey(const Key('category_form_submit_button')));
+    await tester.pumpAndSettle();
+    expect(
+      productRepository.categories.map((category) => category.name),
+      contains('Bánh ngọt'),
+    );
+    await tester.tap(
+      find.byKey(const Key('product_create_category_picker_update_button')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('product_create_topping_field')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('product_create_topping_field')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip('Thêm topping'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('topping_name_field')),
+      'Kem cheese',
+    );
+    await tester.enterText(
+      find.byKey(const Key('topping_price_field')),
+      '9000',
+    );
+    await tester.tap(find.byKey(const Key('topping_form_submit_button')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(productRepository.createToppingCallCount, 1);
+    expect(find.text('Kem cheese'), findsWidgets);
+    expect(
+      find.byKey(const Key('product_create_topping_actions_2')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const Key('edit_product_toppings_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('edit_product_topping_2')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('topping_name_field')),
+      'Kem cheese mặn',
+    );
+    await tester.tap(find.byKey(const Key('topping_form_submit_button')));
+    await tester.pumpAndSettle();
+    expect(productRepository.updateToppingCallCount, 1);
+    expect(find.text('Kem cheese mặn'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('delete_product_topping_2')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('confirm_delete_product_topping_button')),
+    );
+    await tester.pumpAndSettle();
+    expect(productRepository.deleteToppingCallCount, 1);
+    expect(find.text('Kem cheese mặn'), findsNothing);
+  });
+
+  testWidgets('tap product opens detail, prefills and updates product', (
+    tester,
+  ) async {
+    final productRepository = _FakeProductManagementRepository();
+
+    await _pumpRoutedPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 1, code: AppPermissionCodes.productView),
+        StorePermission(
+          permissionId: 2,
+          code: AppPermissionCodes.productUpdate,
+        ),
+        StorePermission(
+          permissionId: 3,
+          code: AppPermissionCodes.productDelete,
+        ),
+      ],
+      productRepository: productRepository,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('product_tile_1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Chi tiết sản phẩm'), findsOneWidget);
+    expect(find.text('Cập nhật'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const Key('product_create_name_field')),
+          )
+          .controller
+          ?.text,
+      'Trà sữa trân châu',
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('product_create_name_field')),
+      'Trà sữa cập nhật',
+    );
+    await tester.tap(find.byKey(const Key('product_create_category_field')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('product_create_category_picker_item_2')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('product_create_category_picker_update_button')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Thực phẩm'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('product_create_multi_size_switch')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Món này có nhiều size'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('product_create_variant_1_name_field')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(
+      find.byKey(const Key('product_create_variant_1_name_field')),
+      'Size M',
+    );
+    await tester.enterText(
+      find.byKey(const Key('product_create_variant_1_price_field')),
+      '30000',
+    );
+    await tester.tap(
+      find.byKey(const Key('product_create_add_variant_button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('product_create_variant_2_name_field')),
+      'Size L',
+    );
+    await tester.enterText(
+      find.byKey(const Key('product_create_variant_2_price_field')),
+      '35000',
+    );
+    await tester.tap(
+      find.byKey(const Key('product_create_variant_2_default_button')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('product_create_topping_field')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('product_create_topping_field')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('product_create_topping_picker_item_1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Đóng').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('product_create_submit_button')));
+    await tester.pumpAndSettle();
+
+    expect(productRepository.updateProductCallCount, 1);
+    expect(productRepository.lastUpdatedProductName, 'Trà sữa cập nhật');
+    expect(productRepository.lastUpdatedCategoryId, 2);
+    expect(productRepository.lastToppingIds, [1]);
+    expect(productRepository.lastVariants?.map((variant) => variant.name), [
+      'Size M',
+      'Size L',
+    ]);
+    expect(
+      productRepository.lastVariants
+          ?.singleWhere((variant) => variant.isDefault)
+          .name,
+      'Size L',
+    );
+    expect(productRepository.loadProductsCallCount, greaterThan(1));
+    expect(find.text('Chi tiết sản phẩm'), findsNothing);
+  });
+
+  testWidgets('edit product delete one size sends remaining variants', (
+    tester,
+  ) async {
+    final productRepository = _FakeProductManagementRepository();
+
+    await _pumpRoutedPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 1, code: AppPermissionCodes.productView),
+        StorePermission(
+          permissionId: 2,
+          code: AppPermissionCodes.productUpdate,
+        ),
+      ],
+      productRepository: productRepository,
+    );
+    await tester.pumpAndSettle();
+
+    await _openProductDetail(tester);
+    await _buildTwoSizeRows(tester);
+    await tester.tap(
+      find.byKey(const Key('product_create_variant_1_delete_button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('product_create_submit_button')));
+    await tester.pumpAndSettle();
+
+    expect(productRepository.updateProductCallCount, 1);
+    expect(productRepository.lastVariants?.map((variant) => variant.name), [
+      'Size L',
+    ]);
+    expect(
+      productRepository.lastVariants
+          ?.singleWhere((variant) => variant.isDefault)
+          .name,
+      'Size L',
+    );
+  });
+
+  testWidgets('edit product delete all sizes sends empty variants', (
+    tester,
+  ) async {
+    final productRepository = _FakeProductManagementRepository();
+
+    await _pumpRoutedPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 1, code: AppPermissionCodes.productView),
+        StorePermission(
+          permissionId: 2,
+          code: AppPermissionCodes.productUpdate,
+        ),
+      ],
+      productRepository: productRepository,
+    );
+    await tester.pumpAndSettle();
+
+    await _openProductDetail(tester);
+    await _buildTwoSizeRows(tester);
+    await tester.tap(
+      find.byKey(const Key('product_create_variant_1_delete_button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('product_create_variant_2_delete_button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('product_create_submit_button')));
+    await tester.pumpAndSettle();
+
+    expect(productRepository.updateProductCallCount, 1);
+    expect(productRepository.lastVariants, isEmpty);
+  });
+
+  testWidgets('edit product topping add and delete update toppingIds payload', (
+    tester,
+  ) async {
+    final productRepository = _FakeProductManagementRepository();
+
+    await _pumpRoutedPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 1, code: AppPermissionCodes.productView),
+        StorePermission(
+          permissionId: 2,
+          code: AppPermissionCodes.productCreate,
+        ),
+        StorePermission(
+          permissionId: 3,
+          code: AppPermissionCodes.productUpdate,
+        ),
+        StorePermission(
+          permissionId: 4,
+          code: AppPermissionCodes.productDelete,
+        ),
+      ],
+      productRepository: productRepository,
+    );
+    await tester.pumpAndSettle();
+
+    await _openProductDetail(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('product_create_topping_field')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('product_create_topping_field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Thêm topping'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('topping_name_field')),
+      'Kem cheese',
+    );
+    await tester.enterText(
+      find.byKey(const Key('topping_price_field')),
+      '9000',
+    );
+    await tester.tap(find.byKey(const Key('topping_form_submit_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Đóng').last);
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('product_create_submit_button')));
+    await tester.pumpAndSettle();
+
+    expect(productRepository.lastToppingIds, [2]);
+
+    await _openProductDetail(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('product_create_topping_field')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('product_create_topping_field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('edit_product_toppings_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('delete_product_topping_2')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('confirm_delete_product_topping_button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Đóng').last);
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('product_create_submit_button')));
+    await tester.pumpAndSettle();
+
+    expect(productRepository.deleteToppingCallCount, 1);
+    expect(productRepository.lastToppingIds, isEmpty);
+  });
+
+  testWidgets('edit product delete confirms, deletes and reloads list', (
+    tester,
+  ) async {
+    final productRepository = _FakeProductManagementRepository();
+
+    await _pumpRoutedPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 1, code: AppPermissionCodes.productView),
+        StorePermission(
+          permissionId: 2,
+          code: AppPermissionCodes.productUpdate,
+        ),
+        StorePermission(
+          permissionId: 3,
+          code: AppPermissionCodes.productDelete,
+        ),
+      ],
+      productRepository: productRepository,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('product_tile_1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('product_delete_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm_delete_product_button')));
+    await tester.pumpAndSettle();
+
+    expect(productRepository.deleteProductCallCount, 1);
+    expect(productRepository.products, isEmpty);
+    expect(productRepository.loadProductsCallCount, greaterThan(1));
+  });
+
+  testWidgets('missing update permission blocks product detail form', (
+    tester,
+  ) async {
+    final productRepository = _FakeProductManagementRepository();
+
+    await _pumpRoutedPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 1, code: AppPermissionCodes.productView),
+      ],
+      productRepository: productRepository,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('product_tile_1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bạn chưa có quyền cập nhật sản phẩm'), findsOneWidget);
+    expect(find.byKey(const Key('product_create_name_field')), findsNothing);
+    expect(productRepository.loadProductDetailCallCount, 0);
+    expect(productRepository.updateProductCallCount, 0);
+  });
 }
 
 Future<void> _pumpPage(
@@ -254,6 +772,18 @@ Future<void> _pumpPage(
         loadProductCategoriesUseCaseProvider.overrideWithValue(
           LoadProductCategoriesUseCase(productRepository),
         ),
+        loadProductToppingsUseCaseProvider.overrideWithValue(
+          LoadProductToppingsUseCase(productRepository),
+        ),
+        createProductToppingUseCaseProvider.overrideWithValue(
+          CreateProductToppingUseCase(productRepository),
+        ),
+        updateProductToppingUseCaseProvider.overrideWithValue(
+          UpdateProductToppingUseCase(productRepository),
+        ),
+        deleteProductToppingUseCaseProvider.overrideWithValue(
+          DeleteProductToppingUseCase(productRepository),
+        ),
         createProductCategoryUseCaseProvider.overrideWithValue(
           CreateProductCategoryUseCase(productRepository),
         ),
@@ -266,8 +796,14 @@ Future<void> _pumpPage(
         loadProductsUseCaseProvider.overrideWithValue(
           LoadProductsUseCase(productRepository),
         ),
+        loadProductDetailUseCaseProvider.overrideWithValue(
+          LoadProductDetailUseCase(productRepository),
+        ),
         createProductUseCaseProvider.overrideWithValue(
           CreateProductUseCase(productRepository),
+        ),
+        updateProductUseCaseProvider.overrideWithValue(
+          UpdateProductUseCase(productRepository),
         ),
         updateProductSellStatusUseCaseProvider.overrideWithValue(
           UpdateProductSellStatusUseCase(productRepository),
@@ -282,6 +818,48 @@ Future<void> _pumpPage(
       ),
     ),
   );
+}
+
+Future<void> _openProductDetail(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('product_tile_1')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _buildTwoSizeRows(WidgetTester tester) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('product_create_multi_size_switch')),
+    220,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.tap(find.text('Món này có nhiều size'));
+  await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('product_create_variant_1_name_field')),
+    160,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.enterText(
+    find.byKey(const Key('product_create_variant_1_name_field')),
+    'Size M',
+  );
+  await tester.enterText(
+    find.byKey(const Key('product_create_variant_1_price_field')),
+    '30000',
+  );
+  await tester.tap(find.byKey(const Key('product_create_add_variant_button')));
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.byKey(const Key('product_create_variant_2_name_field')),
+    'Size L',
+  );
+  await tester.enterText(
+    find.byKey(const Key('product_create_variant_2_price_field')),
+    '35000',
+  );
+  await tester.tap(
+    find.byKey(const Key('product_create_variant_2_default_button')),
+  );
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpRoutedPage(
@@ -301,7 +879,27 @@ Future<void> _pumpRoutedPage(
       GoRoute(
         path: '/stores/:storeId/products/new',
         name: RouteNames.storeProductCreate,
-        builder: (context, state) => const ProductCreatePage(storeId: 5),
+        builder: (context, state) {
+          final seedData = state.extra is ProductCreateSeedData
+              ? state.extra! as ProductCreateSeedData
+              : null;
+          return ProductCreatePage(storeId: 5, seedData: seedData);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/products/:productId',
+        name: RouteNames.storeProductDetail,
+        builder: (context, state) {
+          final productId = int.parse(state.pathParameters['productId']!);
+          final seedData = state.extra is ProductCreateSeedData
+              ? state.extra! as ProductCreateSeedData
+              : ProductCreateSeedData(
+                  categories: const [],
+                  toppings: const [],
+                  editingProductId: productId,
+                );
+          return ProductCreatePage(storeId: 5, seedData: seedData);
+        },
       ),
     ],
   );
@@ -329,6 +927,15 @@ List<Override> _productOverrides(
     loadProductToppingsUseCaseProvider.overrideWithValue(
       LoadProductToppingsUseCase(productRepository),
     ),
+    createProductToppingUseCaseProvider.overrideWithValue(
+      CreateProductToppingUseCase(productRepository),
+    ),
+    updateProductToppingUseCaseProvider.overrideWithValue(
+      UpdateProductToppingUseCase(productRepository),
+    ),
+    deleteProductToppingUseCaseProvider.overrideWithValue(
+      DeleteProductToppingUseCase(productRepository),
+    ),
     createProductCategoryUseCaseProvider.overrideWithValue(
       CreateProductCategoryUseCase(productRepository),
     ),
@@ -341,8 +948,14 @@ List<Override> _productOverrides(
     loadProductsUseCaseProvider.overrideWithValue(
       LoadProductsUseCase(productRepository),
     ),
+    loadProductDetailUseCaseProvider.overrideWithValue(
+      LoadProductDetailUseCase(productRepository),
+    ),
     createProductUseCaseProvider.overrideWithValue(
       CreateProductUseCase(productRepository),
+    ),
+    updateProductUseCaseProvider.overrideWithValue(
+      UpdateProductUseCase(productRepository),
     ),
     updateProductSellStatusUseCaseProvider.overrideWithValue(
       UpdateProductSellStatusUseCase(productRepository),
@@ -403,7 +1016,15 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   int loadCategoriesCallCount = 0;
   int loadToppingsCallCount = 0;
   int loadProductsCallCount = 0;
+  int loadProductDetailCallCount = 0;
   int createProductCallCount = 0;
+  int updateProductCallCount = 0;
+  int deleteProductCallCount = 0;
+  int createToppingCallCount = 0;
+  int updateToppingCallCount = 0;
+  int deleteToppingCallCount = 0;
+  String? lastUpdatedProductName;
+  int? lastUpdatedCategoryId;
   List<ProductVariantDraft>? lastVariants;
   List<int>? lastToppingIds;
 
@@ -447,19 +1068,70 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   @override
   Future<List<ProductCategory>> loadCategories(int storeId) async {
     loadCategoriesCallCount += 1;
-    return categories;
+    return [...categories];
   }
 
   @override
   Future<List<ProductTopping>> loadToppings(int storeId) async {
     loadToppingsCallCount += 1;
-    return toppings;
+    return [...toppings];
+  }
+
+  @override
+  Future<ProductTopping> createTopping({
+    required int storeId,
+    required String name,
+    required int price,
+  }) async {
+    createToppingCallCount += 1;
+    final topping = ProductTopping(
+      id: toppings.length + 1,
+      storeId: storeId,
+      name: name,
+      price: price,
+      isDeleted: false,
+    );
+    toppings.add(topping);
+    return topping;
+  }
+
+  @override
+  Future<ProductTopping> updateTopping({
+    required int toppingId,
+    required String name,
+    required int price,
+  }) async {
+    updateToppingCallCount += 1;
+    final topping = ProductTopping(
+      id: toppingId,
+      storeId: 5,
+      name: name,
+      price: price,
+      isDeleted: false,
+    );
+    final index = toppings.indexWhere((item) => item.id == toppingId);
+    if (index != -1) {
+      toppings[index] = topping;
+    }
+    return topping;
+  }
+
+  @override
+  Future<void> deleteTopping(int toppingId) async {
+    deleteToppingCallCount += 1;
+    toppings.removeWhere((topping) => topping.id == toppingId);
   }
 
   @override
   Future<List<Product>> loadProducts(int storeId) async {
     loadProductsCallCount += 1;
-    return products;
+    return [...products];
+  }
+
+  @override
+  Future<Product> loadProductDetail(int productId) async {
+    loadProductDetailCallCount += 1;
+    return products.firstWhere((product) => product.id == productId);
   }
 
   @override
@@ -467,12 +1139,14 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required int storeId,
     required String name,
   }) async {
-    return ProductCategory(
-      id: 3,
+    final category = ProductCategory(
+      id: categories.length + 1,
       storeId: storeId,
       name: name,
       isDeleted: false,
     );
+    categories.add(category);
+    return category;
   }
 
   @override
@@ -524,11 +1198,57 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   }
 
   @override
+  Future<Product> updateProduct({
+    required int productId,
+    required int categoryId,
+    required String name,
+    required String imageUrl,
+    required String description,
+    required int preparationTime,
+    required int price,
+    required ProductType type,
+    List<ProductVariantDraft>? variants,
+    required List<int> toppingIds,
+  }) async {
+    updateProductCallCount += 1;
+    lastUpdatedProductName = name;
+    lastUpdatedCategoryId = categoryId;
+    lastVariants = variants;
+    lastToppingIds = toppingIds;
+    final product = Product(
+      id: productId,
+      storeId: 5,
+      categoryId: categoryId,
+      categoryName: 'Đồ uống',
+      name: name,
+      imageUrl: imageUrl,
+      description: description,
+      preparationTime: preparationTime,
+      price: price,
+      type: type,
+      variants: variants ?? const [],
+      toppings: toppings
+          .where((topping) => toppingIds.contains(topping.id))
+          .toList(),
+      isSell: true,
+      isDeleted: false,
+    );
+    final index = products.indexWhere((product) => product.id == productId);
+    if (index != -1) {
+      products[index] = product;
+    }
+    return product;
+  }
+
+  @override
   Future<void> updateProductSellStatus({
     required int productId,
     required bool isSell,
   }) async {}
 
   @override
-  Future<void> deleteProduct(int productId) async {}
+  Future<void> deleteProduct(int productId) async {
+    deleteProductCallCount += 1;
+    products.removeWhere((product) => product.id == productId);
+  }
 }

@@ -11,6 +11,7 @@ import '../../../../workspace_context/presentation/controllers/store_access_stat
 import '../../../../workspace_context/presentation/providers/workspace_context_providers.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
+import '../controllers/product_create_state.dart';
 import '../controllers/product_management_notifier.dart';
 import '../controllers/product_management_state.dart';
 import '../providers/product_management_providers.dart';
@@ -98,8 +99,8 @@ class _AccessReadyView extends ConsumerWidget {
         state: state,
         access: access,
         onCreateProduct: () =>
-            _openProductCreatePage(context, access, notifier),
-        onCreateCategory: () => _showCategoryForm(context, ref, access),
+            _openProductCreatePage(context, access, state, notifier),
+        onManageCategories: () => _showCategoryManagement(context, access),
       ),
       body: Column(
         children: [
@@ -149,7 +150,8 @@ class _AccessReadyView extends ConsumerWidget {
                 onCategorySelected: notifier.selectCategory,
                 onManageCategories: () =>
                     _showCategoryManagement(context, access),
-                onCreateCategory: () => _showCategoryForm(context, ref, access),
+                onOpenProduct: (product) =>
+                    _openProductDetail(context, notifier, state, product),
                 onEditCategory: (category) =>
                     _showCategoryForm(context, ref, access, category: category),
                 onDeleteCategory: (category) =>
@@ -162,9 +164,35 @@ class _AccessReadyView extends ConsumerWidget {
     );
   }
 
+  Future<void> _openProductDetail(
+    BuildContext context,
+    ProductManagementNotifier notifier,
+    ProductManagementState state,
+    Product product,
+  ) async {
+    final changed = await context.pushNamed<bool>(
+      RouteNames.storeProductDetail,
+      pathParameters: {
+        'storeId': storeId.toString(),
+        'productId': product.id.toString(),
+      },
+      extra: ProductCreateSeedData(
+        categories: state.categories,
+        toppings: state.toppings,
+        editingProductId: product.id,
+        editingProduct: product,
+      ),
+    );
+
+    if (changed == true) {
+      await notifier.load();
+    }
+  }
+
   Future<void> _openProductCreatePage(
     BuildContext context,
     ProductManagementAccess access,
+    ProductManagementState state,
     ProductManagementNotifier notifier,
   ) async {
     if (!access.canCreateProduct) {
@@ -175,6 +203,10 @@ class _AccessReadyView extends ConsumerWidget {
     final created = await context.pushNamed<bool>(
       RouteNames.storeProductCreate,
       pathParameters: {'storeId': access.storeId.toString()},
+      extra: ProductCreateSeedData(
+        categories: state.categories,
+        toppings: state.toppings,
+      ),
     );
     if (created == true) {
       await notifier.load();
@@ -298,13 +330,13 @@ class _ProductFab extends StatelessWidget {
   final ProductManagementState state;
   final ProductManagementAccess access;
   final VoidCallback onCreateProduct;
-  final VoidCallback onCreateCategory;
+  final VoidCallback onManageCategories;
 
   const _ProductFab({
     required this.state,
     required this.access,
     required this.onCreateProduct,
-    required this.onCreateCategory,
+    required this.onManageCategories,
   });
 
   @override
@@ -315,16 +347,21 @@ class _ProductFab extends StatelessWidget {
 
     final isProductTab = state.selectedTab == ProductManagementTab.products;
     final isCategoryTab = state.selectedTab == ProductManagementTab.categories;
-    if ((!isProductTab && !isCategoryTab) || !access.canCreateProduct) {
+    final canUseFab = isProductTab
+        ? access.canCreateProduct
+        : access.canCreateProduct ||
+              access.canUpdateProduct ||
+              access.canDeleteProduct;
+    if ((!isProductTab && !isCategoryTab) || !canUseFab) {
       return const SizedBox.shrink();
     }
 
     return FloatingActionButton(
       key: Key(isProductTab ? 'add_product_button' : 'add_category_button'),
-      onPressed: isProductTab ? onCreateProduct : onCreateCategory,
+      onPressed: isProductTab ? onCreateProduct : onManageCategories,
       backgroundColor: AppColors.primary,
       foregroundColor: AppColors.surface,
-      child: const Icon(Icons.add_rounded),
+      child: Icon(isProductTab ? Icons.add_rounded : Icons.grid_view_rounded),
     );
   }
 }
@@ -335,7 +372,7 @@ class _ReadyContent extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final ValueChanged<int?> onCategorySelected;
   final VoidCallback onManageCategories;
-  final VoidCallback onCreateCategory;
+  final ValueChanged<Product> onOpenProduct;
   final ValueChanged<ProductCategory> onEditCategory;
   final ValueChanged<ProductCategory> onDeleteCategory;
 
@@ -345,7 +382,7 @@ class _ReadyContent extends StatelessWidget {
     required this.onRefresh,
     required this.onCategorySelected,
     required this.onManageCategories,
-    required this.onCreateCategory,
+    required this.onOpenProduct,
     required this.onEditCategory,
     required this.onDeleteCategory,
   });
@@ -359,13 +396,12 @@ class _ReadyContent extends StatelessWidget {
           state: state,
           onManageCategoriesTap: onManageCategories,
           onCategorySelected: onCategorySelected,
+          onProductTap: onOpenProduct,
         ),
         ProductManagementTab.categories => _CategoriesTabContent(
           categories: state.visibleCategories,
-          canCreateCategory: access.canCreateProduct,
           canUpdateCategory: access.canUpdateProduct,
           canDeleteCategory: access.canDeleteProduct,
-          onCreateCategory: onCreateCategory,
           onEditCategory: onEditCategory,
           onDeleteCategory: onDeleteCategory,
         ),
@@ -507,11 +543,13 @@ class _ProductsTabContent extends StatelessWidget {
   final ProductManagementState state;
   final VoidCallback onManageCategoriesTap;
   final ValueChanged<int?> onCategorySelected;
+  final ValueChanged<Product> onProductTap;
 
   const _ProductsTabContent({
     required this.state,
     required this.onManageCategoriesTap,
     required this.onCategorySelected,
+    required this.onProductTap,
   });
 
   @override
@@ -547,7 +585,7 @@ class _ProductsTabContent extends StatelessWidget {
           )
         else
           for (final product in products) ...[
-            _ProductTile(product: product),
+            _ProductTile(product: product, onTap: () => onProductTap(product)),
             const SizedBox(height: AppConstants.spacingSm),
           ],
       ],
@@ -660,67 +698,73 @@ class _FilterChipButton extends StatelessWidget {
 
 class _ProductTile extends StatelessWidget {
   final Product product;
+  final VoidCallback onTap;
 
-  const _ProductTile({required this.product});
+  const _ProductTile({required this.product, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.spacingSm),
-        child: Row(
-          children: [
-            _ProductThumbnail(imageUrl: product.imageUrl),
-            const SizedBox(width: AppConstants.spacingMd),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          product.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.label.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w700,
+      child: InkWell(
+        key: Key('product_tile_${product.id}'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.spacingSm),
+          child: Row(
+            children: [
+              _ProductThumbnail(imageUrl: product.imageUrl),
+              const SizedBox(width: AppConstants.spacingMd),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.label.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: AppConstants.spacingXs),
+                        _SellStatusBadge(isSell: product.isSell),
+                      ],
+                    ),
+                    const SizedBox(height: AppConstants.spacingXs),
+                    Text(
+                      [
+                        product.categoryName.isEmpty
+                            ? product.type.label
+                            : product.categoryName,
+                        if (product.preparationTime > 0)
+                          '${product.preparationTime} phút',
+                      ].join(' | '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodySm.copyWith(
+                        color: AppColors.textSecondary,
                       ),
-                      const SizedBox(width: AppConstants.spacingXs),
-                      _SellStatusBadge(isSell: product.isSell),
-                    ],
-                  ),
-                  const SizedBox(height: AppConstants.spacingXs),
-                  Text(
-                    [
-                      product.categoryName.isEmpty
-                          ? product.type.label
-                          : product.categoryName,
-                      if (product.preparationTime > 0)
-                        '${product.preparationTime} phút',
-                    ].join(' | '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodySm.copyWith(
-                      color: AppColors.textSecondary,
                     ),
-                  ),
-                  const SizedBox(height: AppConstants.spacingXs),
-                  Text(
-                    _formatCurrency(product.price),
-                    style: AppTextStyles.label.copyWith(
-                      color: AppColors.warning,
-                      fontWeight: FontWeight.w800,
+                    const SizedBox(height: AppConstants.spacingXs),
+                    Text(
+                      _formatCurrency(product.price),
+                      style: AppTextStyles.label.copyWith(
+                        color: AppColors.warning,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -798,19 +842,15 @@ class _ProductPlaceholderIcon extends StatelessWidget {
 
 class _CategoriesTabContent extends StatelessWidget {
   final List<ProductCategory> categories;
-  final bool canCreateCategory;
   final bool canUpdateCategory;
   final bool canDeleteCategory;
-  final VoidCallback onCreateCategory;
   final ValueChanged<ProductCategory> onEditCategory;
   final ValueChanged<ProductCategory> onDeleteCategory;
 
   const _CategoriesTabContent({
     required this.categories,
-    required this.canCreateCategory,
     required this.canUpdateCategory,
     required this.canDeleteCategory,
-    required this.onCreateCategory,
     required this.onEditCategory,
     required this.onDeleteCategory,
   });
@@ -825,24 +865,9 @@ class _CategoriesTabContent extends StatelessWidget {
         AppConstants.spacingXxl,
       ),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Danh mục sản phẩm',
-                style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-            SizedBox(
-              width: 112,
-              child: OutlinedButton.icon(
-                key: const Key('category_tab_add_button'),
-                onPressed: canCreateCategory ? onCreateCategory : null,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Thêm'),
-              ),
-            ),
-          ],
+        Text(
+          'Danh mục sản phẩm',
+          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: AppConstants.spacingMd),
         if (categories.isEmpty)

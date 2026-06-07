@@ -4,14 +4,19 @@ import '../../../../../core/di/injection.dart';
 import '../../data/datasources/product_management_remote_data_source.dart';
 import '../../domain/repositories/product_management_repository.dart';
 import '../../domain/usecases/create_product_category_use_case.dart';
+import '../../domain/usecases/create_product_topping_use_case.dart';
 import '../../domain/usecases/create_product_use_case.dart';
 import '../../domain/usecases/delete_product_category_use_case.dart';
+import '../../domain/usecases/delete_product_topping_use_case.dart';
 import '../../domain/usecases/delete_product_use_case.dart';
 import '../../domain/usecases/load_product_categories_use_case.dart';
+import '../../domain/usecases/load_product_detail_use_case.dart';
 import '../../domain/usecases/load_product_toppings_use_case.dart';
 import '../../domain/usecases/load_products_use_case.dart';
 import '../../domain/usecases/update_product_category_use_case.dart';
 import '../../domain/usecases/update_product_sell_status_use_case.dart';
+import '../../domain/usecases/update_product_topping_use_case.dart';
+import '../../domain/usecases/update_product_use_case.dart';
 import '../controllers/product_create_notifier.dart';
 import '../controllers/product_create_state.dart';
 import '../controllers/product_management_notifier.dart';
@@ -38,6 +43,21 @@ final loadProductToppingsUseCaseProvider = Provider<LoadProductToppingsUseCase>(
   },
 );
 
+final createProductToppingUseCaseProvider =
+    Provider<CreateProductToppingUseCase>((ref) {
+      return locator<CreateProductToppingUseCase>();
+    });
+
+final updateProductToppingUseCaseProvider =
+    Provider<UpdateProductToppingUseCase>((ref) {
+      return locator<UpdateProductToppingUseCase>();
+    });
+
+final deleteProductToppingUseCaseProvider =
+    Provider<DeleteProductToppingUseCase>((ref) {
+      return locator<DeleteProductToppingUseCase>();
+    });
+
 final createProductCategoryUseCaseProvider =
     Provider<CreateProductCategoryUseCase>((ref) {
       return locator<CreateProductCategoryUseCase>();
@@ -59,6 +79,16 @@ final loadProductsUseCaseProvider = Provider<LoadProductsUseCase>((ref) {
 
 final createProductUseCaseProvider = Provider<CreateProductUseCase>((ref) {
   return locator<CreateProductUseCase>();
+});
+
+final loadProductDetailUseCaseProvider = Provider<LoadProductDetailUseCase>((
+  ref,
+) {
+  return locator<LoadProductDetailUseCase>();
+});
+
+final updateProductUseCaseProvider = Provider<UpdateProductUseCase>((ref) {
+  return locator<UpdateProductUseCase>();
 });
 
 final updateProductSellStatusUseCaseProvider =

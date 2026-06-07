@@ -1,5 +1,6 @@
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
+import '../../domain/entities/product_topping.dart';
 
 enum ProductManagementStatus { initial, loading, ready, forbidden, error }
 
@@ -54,6 +55,7 @@ class ProductManagementAccess {
 class ProductManagementState {
   final ProductManagementStatus status;
   final List<ProductCategory> categories;
+  final List<ProductTopping> toppings;
   final List<Product> products;
   final ProductManagementTab selectedTab;
   final int? selectedCategoryId;
@@ -63,6 +65,7 @@ class ProductManagementState {
   const ProductManagementState({
     required this.status,
     this.categories = const [],
+    this.toppings = const [],
     this.products = const [],
     this.selectedTab = ProductManagementTab.products,
     this.selectedCategoryId,
@@ -73,6 +76,7 @@ class ProductManagementState {
   const ProductManagementState.initial()
     : status = ProductManagementStatus.initial,
       categories = const [],
+      toppings = const [],
       products = const [],
       selectedTab = ProductManagementTab.products,
       selectedCategoryId = null,
@@ -115,6 +119,7 @@ class ProductManagementState {
   ProductManagementState copyWith({
     ProductManagementStatus? status,
     List<ProductCategory>? categories,
+    List<ProductTopping>? toppings,
     List<Product>? products,
     ProductManagementTab? selectedTab,
     int? selectedCategoryId,
@@ -126,6 +131,7 @@ class ProductManagementState {
     return ProductManagementState(
       status: status ?? this.status,
       categories: categories ?? this.categories,
+      toppings: toppings ?? this.toppings,
       products: products ?? this.products,
       selectedTab: selectedTab ?? this.selectedTab,
       selectedCategoryId: clearSelectedCategory

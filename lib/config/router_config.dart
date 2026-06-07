@@ -24,6 +24,7 @@ import '../features/store_operations/presentation/pages/store_inventory_ledger_p
 import '../features/store_operations/presentation/pages/store_inventory_management_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_stock_page.dart';
 import '../features/store_operations/presentation/pages/store_overview_page.dart';
+import '../features/store_operations/product_management/presentation/controllers/product_create_state.dart';
 import '../features/store_operations/product_management/presentation/pages/product_create_page.dart';
 import '../features/store_operations/product_management/presentation/pages/product_management_page.dart';
 import '../features/store_operations/staff_management/presentation/pages/invite_staff_page.dart';
@@ -56,6 +57,7 @@ abstract final class RouteNames {
   static const String storeInventoryStock = 'store-inventory-stock';
   static const String storeProductManagement = 'store-product-management';
   static const String storeProductCreate = 'store-product-create';
+  static const String storeProductDetail = 'store-product-detail';
   static const String storeTableManagement = 'store-table-management';
   static const String storeTableSettings = 'store-table-settings';
   static const String storeStaffManagement = 'store-staff-management';
@@ -147,7 +149,37 @@ final routerProvider = Provider<GoRouter>((ref) {
             );
           }
 
-          return ProductCreatePage(storeId: storeId);
+          final seedData = state.extra is ProductCreateSeedData
+              ? state.extra! as ProductCreateSeedData
+              : null;
+
+          return ProductCreatePage(storeId: storeId, seedData: seedData);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/products/:productId',
+        name: RouteNames.storeProductDetail,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          final productId = int.tryParse(
+            state.pathParameters['productId'] ?? '',
+          );
+
+          if (storeId == null || productId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Sản phẩm không hợp lệ')),
+            );
+          }
+
+          final seedData = state.extra is ProductCreateSeedData
+              ? state.extra! as ProductCreateSeedData
+              : ProductCreateSeedData(
+                  categories: const [],
+                  toppings: const [],
+                  editingProductId: productId,
+                );
+
+          return ProductCreatePage(storeId: storeId, seedData: seedData);
         },
       ),
       GoRoute(

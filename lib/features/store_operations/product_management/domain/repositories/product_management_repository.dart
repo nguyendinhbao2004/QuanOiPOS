@@ -9,6 +9,20 @@ abstract class ProductManagementRepository {
 
   Future<List<ProductTopping>> loadToppings(int storeId);
 
+  Future<ProductTopping> createTopping({
+    required int storeId,
+    required String name,
+    required int price,
+  });
+
+  Future<ProductTopping> updateTopping({
+    required int toppingId,
+    required String name,
+    required int price,
+  });
+
+  Future<void> deleteTopping(int toppingId);
+
   Future<ProductCategory> createCategory({
     required int storeId,
     required String name,
@@ -23,8 +37,23 @@ abstract class ProductManagementRepository {
 
   Future<List<Product>> loadProducts(int storeId);
 
+  Future<Product> loadProductDetail(int productId);
+
   Future<Product> createProduct({
     required int storeId,
+    required int categoryId,
+    required String name,
+    required String imageUrl,
+    required String description,
+    required int preparationTime,
+    required int price,
+    required ProductType type,
+    List<ProductVariantDraft>? variants,
+    required List<int> toppingIds,
+  });
+
+  Future<Product> updateProduct({
+    required int productId,
     required int categoryId,
     required String name,
     required String imageUrl,

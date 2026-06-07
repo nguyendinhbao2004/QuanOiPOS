@@ -100,6 +100,8 @@ void main() {
 
     router.go('/stores/5/staff');
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('staff_management_tab_staff')), findsOneWidget);
+    expect(find.byKey(const Key('staff_management_tab_roles')), findsOneWidget);
     await tester.tap(find.textContaining('Vai trò'));
     await tester.pumpAndSettle();
     expect(find.text('Ca tối'), findsNothing);
@@ -150,12 +152,13 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Bạn Thu ngân ca sáng');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Cập nhật nhân viên'));
+    await tester.ensureVisible(find.byKey(const Key('staff_update_button')));
     await tester.pumpAndSettle();
     expect(find.text('Lưu tên hiển thị'), findsNothing);
     expect(find.text('Lưu vai trò và quyền'), findsNothing);
+    expect(find.byKey(const Key('staff_delete_button')), findsOneWidget);
 
-    await tester.tap(find.text('Cập nhật nhân viên'));
+    await tester.tap(find.byKey(const Key('staff_update_button')));
     await tester.pumpAndSettle();
 
     expect(repository.updateDisplayNameCalls, 1);
@@ -177,7 +180,7 @@ void main() {
       router.go('/stores/5/staff/users/12');
       await tester.pumpAndSettle();
 
-      expect(find.text('Cập nhật nhân viên'), findsNothing);
+      expect(find.byKey(const Key('staff_update_button')), findsNothing);
     },
   );
 
@@ -191,7 +194,7 @@ void main() {
     router.go('/stores/5/staff/users/12');
     await tester.pumpAndSettle();
 
-    expect(find.text('Cập nhật nhân viên'), findsNothing);
+    expect(find.byKey(const Key('staff_update_button')), findsNothing);
   });
 
   testWidgets('pending detail is read-only and can cancel invitation', (
@@ -207,9 +210,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Chi tiết lời mời'), findsOneWidget);
-    expect(find.text('Cập nhật nhân viên'), findsNothing);
+    expect(find.byKey(const Key('staff_update_button')), findsNothing);
+    expect(
+      find.byKey(const Key('staff_cancel_invitation_button')),
+      findsOneWidget,
+    );
 
-    await tester.tap(find.text('Hủy lời mời'));
+    await tester.tap(find.byKey(const Key('staff_cancel_invitation_button')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Đồng ý'));
     await tester.pumpAndSettle();

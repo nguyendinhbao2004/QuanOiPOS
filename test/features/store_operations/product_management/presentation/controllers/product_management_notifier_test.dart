@@ -10,6 +10,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_category_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_sell_status_use_case.dart';
@@ -35,15 +36,44 @@ void main() {
       expect(state.status, ProductManagementStatus.forbidden);
       expect(repository.loadCategoriesCallCount, 0);
       expect(repository.loadProductsCallCount, 0);
+      expect(repository.loadToppingsCallCount, 0);
     },
   );
 
-  test('loads categories and products when product view is allowed', () async {
+  test(
+    'loads categories, products and toppings when create is allowed',
+    () async {
+      final repository = _FakeProductManagementRepository();
+      final container = _container(repository);
+      addTearDown(container.dispose);
+
+      final access = _access();
+      await container
+          .read(productManagementNotifierProvider(access).notifier)
+          .load();
+
+      final state = container.read(productManagementNotifierProvider(access));
+
+      expect(state.status, ProductManagementStatus.ready);
+      expect(state.categories.map((category) => category.name), [
+        'Đồ uống',
+        'Thực phẩm',
+      ]);
+      expect(state.products.map((product) => product.name), [
+        'Trà sữa trân châu',
+        'Bánh mì',
+      ]);
+      expect(state.toppings.map((topping) => topping.name), ['Trân châu đen']);
+      expect(repository.loadToppingsCallCount, 1);
+    },
+  );
+
+  test('skips topping preload when create is not allowed', () async {
     final repository = _FakeProductManagementRepository();
     final container = _container(repository);
     addTearDown(container.dispose);
 
-    final access = _access();
+    final access = _access(canCreate: false);
     await container
         .read(productManagementNotifierProvider(access).notifier)
         .load();
@@ -51,14 +81,8 @@ void main() {
     final state = container.read(productManagementNotifierProvider(access));
 
     expect(state.status, ProductManagementStatus.ready);
-    expect(state.categories.map((category) => category.name), [
-      'Đồ uống',
-      'Thực phẩm',
-    ]);
-    expect(state.products.map((product) => product.name), [
-      'Trà sữa trân châu',
-      'Bánh mì',
-    ]);
+    expect(state.toppings, isEmpty);
+    expect(repository.loadToppingsCallCount, 0);
   });
 
   test('filters products by category and local search query', () async {
@@ -141,6 +165,9 @@ ProviderContainer _container(_FakeProductManagementRepository repository) {
       loadProductCategoriesUseCaseProvider.overrideWithValue(
         LoadProductCategoriesUseCase(repository),
       ),
+      loadProductToppingsUseCaseProvider.overrideWithValue(
+        LoadProductToppingsUseCase(repository),
+      ),
       createProductCategoryUseCaseProvider.overrideWithValue(
         CreateProductCategoryUseCase(repository),
       ),
@@ -186,8 +213,14 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   int createCategoryCallCount = 0;
   int updateCategoryCallCount = 0;
   int deleteCategoryCallCount = 0;
+  int loadToppingsCallCount = 0;
+  int createToppingCallCount = 0;
+  int updateToppingCallCount = 0;
+  int deleteToppingCallCount = 0;
   int loadProductsCallCount = 0;
+  int loadProductDetailCallCount = 0;
   int createProductCallCount = 0;
+  int updateProductCallCount = 0;
   int updateSellStatusCallCount = 0;
   int deleteProductCallCount = 0;
 
@@ -235,12 +268,58 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   @override
   Future<List<ProductCategory>> loadCategories(int storeId) async {
     loadCategoriesCallCount += 1;
-    return categories;
+    return [...categories];
   }
 
   @override
   Future<List<ProductTopping>> loadToppings(int storeId) async {
-    return const [];
+    loadToppingsCallCount += 1;
+    return const [
+      ProductTopping(
+        id: 1,
+        storeId: 5,
+        name: 'Trân châu đen',
+        price: 5000,
+        isDeleted: false,
+      ),
+    ];
+  }
+
+  @override
+  Future<ProductTopping> createTopping({
+    required int storeId,
+    required String name,
+    required int price,
+  }) async {
+    createToppingCallCount += 1;
+    return ProductTopping(
+      id: 9,
+      storeId: storeId,
+      name: name,
+      price: price,
+      isDeleted: false,
+    );
+  }
+
+  @override
+  Future<ProductTopping> updateTopping({
+    required int toppingId,
+    required String name,
+    required int price,
+  }) async {
+    updateToppingCallCount += 1;
+    return ProductTopping(
+      id: toppingId,
+      storeId: 5,
+      name: name,
+      price: price,
+      isDeleted: false,
+    );
+  }
+
+  @override
+  Future<void> deleteTopping(int toppingId) async {
+    deleteToppingCallCount += 1;
   }
 
   @override
@@ -281,7 +360,13 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   @override
   Future<List<Product>> loadProducts(int storeId) async {
     loadProductsCallCount += 1;
-    return products;
+    return [...products];
+  }
+
+  @override
+  Future<Product> loadProductDetail(int productId) async {
+    loadProductDetailCallCount += 1;
+    return products.firstWhere((product) => product.id == productId);
   }
 
   @override
@@ -309,6 +394,37 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
       preparationTime: preparationTime,
       price: price,
       type: type,
+      isSell: true,
+      isDeleted: false,
+    );
+  }
+
+  @override
+  Future<Product> updateProduct({
+    required int productId,
+    required int categoryId,
+    required String name,
+    required String imageUrl,
+    required String description,
+    required int preparationTime,
+    required int price,
+    required ProductType type,
+    List<ProductVariantDraft>? variants,
+    required List<int> toppingIds,
+  }) async {
+    updateProductCallCount += 1;
+    return Product(
+      id: productId,
+      storeId: 5,
+      categoryId: categoryId,
+      categoryName: 'Đồ uống',
+      name: name,
+      imageUrl: imageUrl,
+      description: description,
+      preparationTime: preparationTime,
+      price: price,
+      type: type,
+      variants: variants ?? const [],
       isSell: true,
       isDeleted: false,
     );

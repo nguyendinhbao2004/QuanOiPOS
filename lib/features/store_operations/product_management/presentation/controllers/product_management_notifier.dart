@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
 import '../providers/product_management_providers.dart';
 import 'product_management_state.dart';
@@ -42,16 +43,24 @@ class ProductManagementNotifier
     );
 
     try {
-      final categories = await ref.read(loadProductCategoriesUseCaseProvider)(
+      final categoriesFuture = ref.read(loadProductCategoriesUseCaseProvider)(
         _access.storeId,
       );
-      final products = await ref.read(loadProductsUseCaseProvider)(
+      final productsFuture = ref.read(loadProductsUseCaseProvider)(
         _access.storeId,
       );
+      final toppingsFuture = _access.canCreateProduct
+          ? ref.read(loadProductToppingsUseCaseProvider)(_access.storeId)
+          : Future.value(const <ProductTopping>[]);
+
+      final categories = await categoriesFuture;
+      final products = await productsFuture;
+      final toppings = await toppingsFuture;
 
       state = state.copyWith(
         status: ProductManagementStatus.ready,
         categories: categories,
+        toppings: toppings,
         products: products,
         clearError: true,
       );

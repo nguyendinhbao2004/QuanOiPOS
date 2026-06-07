@@ -53,14 +53,19 @@ import '../../features/store_operations/product_management/data/datasources/prod
 import '../../features/store_operations/product_management/data/repositories/product_management_repository_impl.dart';
 import '../../features/store_operations/product_management/domain/repositories/product_management_repository.dart';
 import '../../features/store_operations/product_management/domain/usecases/create_product_category_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/create_product_topping_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/create_product_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/delete_product_category_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/delete_product_topping_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/delete_product_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_sell_status_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
 import '../../features/store_operations/staff_management/data/datasources/staff_management_remote_data_source.dart';
 import '../../features/store_operations/staff_management/data/repositories/staff_management_repository_impl.dart';
 import '../../features/store_operations/staff_management/domain/repositories/staff_management_repository.dart';
@@ -301,6 +306,15 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<LoadProductToppingsUseCase>(
     () => LoadProductToppingsUseCase(locator<ProductManagementRepository>()),
   );
+  locator.registerLazySingleton<CreateProductToppingUseCase>(
+    () => CreateProductToppingUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<UpdateProductToppingUseCase>(
+    () => UpdateProductToppingUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<DeleteProductToppingUseCase>(
+    () => DeleteProductToppingUseCase(locator<ProductManagementRepository>()),
+  );
   locator.registerLazySingleton<CreateProductCategoryUseCase>(
     () => CreateProductCategoryUseCase(locator<ProductManagementRepository>()),
   );
@@ -315,6 +329,12 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<CreateProductUseCase>(
     () => CreateProductUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadProductDetailUseCase>(
+    () => LoadProductDetailUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<UpdateProductUseCase>(
+    () => UpdateProductUseCase(locator<ProductManagementRepository>()),
   );
   locator.registerLazySingleton<UpdateProductSellStatusUseCase>(
     () =>

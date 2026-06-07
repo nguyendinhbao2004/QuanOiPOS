@@ -1,4 +1,6 @@
 import 'product_type.dart';
+import 'product_topping.dart';
+import 'product_variant_draft.dart';
 
 class Product {
   final int id;
@@ -11,6 +13,8 @@ class Product {
   final int preparationTime;
   final int price;
   final ProductType type;
+  final List<ProductVariantDraft> variants;
+  final List<ProductTopping> toppings;
   final bool isSell;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -27,6 +31,8 @@ class Product {
     required this.preparationTime,
     required this.price,
     required this.type,
+    this.variants = const [],
+    this.toppings = const [],
     required this.isSell,
     this.createdAt,
     this.updatedAt,

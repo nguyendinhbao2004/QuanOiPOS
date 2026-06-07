@@ -70,22 +70,8 @@ class _StaffManagementReadyView extends ConsumerStatefulWidget {
 }
 
 class _StaffManagementReadyViewState
-    extends ConsumerState<_StaffManagementReadyView>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+    extends ConsumerState<_StaffManagementReadyView> {
+  _StaffManagementTab _selectedTab = _StaffManagementTab.staff;
 
   @override
   Widget build(BuildContext context) {
@@ -98,22 +84,23 @@ class _StaffManagementReadyViewState
 
     final state = ref.watch(staffManagementNotifierProvider(access));
     final notifier = ref.read(staffManagementNotifierProvider(access).notifier);
-    final isRoleTab = _tabController.index == 1;
+    final isRoleTab = _selectedTab == _StaffManagementTab.roles;
     final canUseFab = isRoleTab ? access.canManageRoles : access.canInviteStaff;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          Material(
-            color: AppColors.surface,
-            child: TabBar(
-              controller: _tabController,
-              tabs: [
-                Tab(text: 'Nhân viên (${state.staff.length})'),
-                Tab(text: 'Vai trò (${state.roles.length})'),
-              ],
-            ),
+          _StaffManagementTabs(
+            selectedTab: _selectedTab,
+            staffCount: state.staff.length,
+            roleCount: state.roles.length,
+            onSelected: (tab) {
+              if (_selectedTab == tab) {
+                return;
+              }
+              setState(() => _selectedTab = tab);
+            },
           ),
           Expanded(
             child: switch (state.status) {
@@ -128,19 +115,25 @@ class _StaffManagementReadyViewState
                 message: state.errorMessage ?? 'Không thể tải dữ liệu',
                 onRetry: notifier.load,
               ),
-              StaffManagementStatus.ready => TabBarView(
-                controller: _tabController,
-                children: [
-                  _StaffListView(access: access, staff: state.staff),
-                  _RoleListView(access: access, roles: state.roles),
-                ],
-              ),
+              StaffManagementStatus.ready => switch (_selectedTab) {
+                _StaffManagementTab.staff => _StaffListView(
+                  access: access,
+                  staff: state.staff,
+                ),
+                _StaffManagementTab.roles => _RoleListView(
+                  access: access,
+                  roles: state.roles,
+                ),
+              },
             },
           ),
         ],
       ),
       floatingActionButton: canUseFab
           ? FloatingActionButton.extended(
+              key: Key(
+                isRoleTab ? 'add_staff_role_button' : 'add_staff_button',
+              ),
               onPressed: () async {
                 Object? result;
                 if (isRoleTab) {
@@ -165,6 +158,80 @@ class _StaffManagementReadyViewState
               label: Text(isRoleTab ? 'Thêm vai trò' : 'Thêm nhân viên'),
             )
           : null,
+    );
+  }
+}
+
+enum _StaffManagementTab { staff, roles }
+
+extension _StaffManagementTabLabel on _StaffManagementTab {
+  String label(int count) {
+    return switch (this) {
+      _StaffManagementTab.staff => 'Nhân viên ($count)',
+      _StaffManagementTab.roles => 'Vai trò ($count)',
+    };
+  }
+}
+
+class _StaffManagementTabs extends StatelessWidget {
+  final _StaffManagementTab selectedTab;
+  final int staffCount;
+  final int roleCount;
+  final ValueChanged<_StaffManagementTab> onSelected;
+
+  const _StaffManagementTabs({
+    required this.selectedTab,
+    required this.staffCount,
+    required this.roleCount,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.surface,
+      child: Row(
+        children: [
+          for (final tab in _StaffManagementTab.values)
+            Expanded(
+              child: InkWell(
+                key: Key('staff_management_tab_${tab.name}'),
+                onTap: () => onSelected(tab),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppConstants.spacingSm,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: selectedTab == tab
+                            ? AppColors.primary
+                            : AppColors.border,
+                        width: selectedTab == tab ? 2.5 : 1,
+                      ),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    tab.label(
+                      tab == _StaffManagementTab.staff ? staffCount : roleCount,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.labelSm.copyWith(
+                      color: selectedTab == tab
+                          ? AppColors.primary
+                          : AppColors.textMuted,
+                      fontWeight: selectedTab == tab
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -1,3 +1,4 @@
+import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
@@ -13,13 +14,35 @@ enum ProductCreateStatus {
   error,
 }
 
+class ProductCreateSeedData {
+  final List<ProductCategory> categories;
+  final List<ProductTopping> toppings;
+  final int? editingProductId;
+  final Product? editingProduct;
+
+  const ProductCreateSeedData({
+    required this.categories,
+    required this.toppings,
+    this.editingProductId,
+    this.editingProduct,
+  });
+
+  bool get isEditing => editingProductId != null || editingProduct != null;
+}
+
 class ProductCreateAccess {
   final int storeId;
   final bool canCreateProduct;
+  final bool canUpdateProduct;
+  final bool canDeleteProduct;
+  final ProductCreateSeedData? seedData;
 
   const ProductCreateAccess({
     required this.storeId,
     required this.canCreateProduct,
+    this.canUpdateProduct = false,
+    this.canDeleteProduct = false,
+    this.seedData,
   });
 
   @override
@@ -28,11 +51,20 @@ class ProductCreateAccess {
         other is ProductCreateAccess &&
             runtimeType == other.runtimeType &&
             storeId == other.storeId &&
-            canCreateProduct == other.canCreateProduct;
+            canCreateProduct == other.canCreateProduct &&
+            canUpdateProduct == other.canUpdateProduct &&
+            canDeleteProduct == other.canDeleteProduct &&
+            seedData == other.seedData;
   }
 
   @override
-  int get hashCode => Object.hash(storeId, canCreateProduct);
+  int get hashCode => Object.hash(
+    storeId,
+    canCreateProduct,
+    canUpdateProduct,
+    canDeleteProduct,
+    seedData,
+  );
 }
 
 class ProductCreateInput {
@@ -63,12 +95,14 @@ class ProductCreateState {
   final ProductCreateStatus status;
   final List<ProductCategory> categories;
   final List<ProductTopping> toppings;
+  final Product? editingProduct;
   final String? errorMessage;
 
   const ProductCreateState({
     required this.status,
     this.categories = const [],
     this.toppings = const [],
+    this.editingProduct,
     this.errorMessage,
   });
 
@@ -76,6 +110,7 @@ class ProductCreateState {
     : status = ProductCreateStatus.initial,
       categories = const [],
       toppings = const [],
+      editingProduct = null,
       errorMessage = null;
 
   bool get isLoading =>
@@ -86,6 +121,7 @@ class ProductCreateState {
     ProductCreateStatus? status,
     List<ProductCategory>? categories,
     List<ProductTopping>? toppings,
+    Product? editingProduct,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -93,6 +129,7 @@ class ProductCreateState {
       status: status ?? this.status,
       categories: categories ?? this.categories,
       toppings: toppings ?? this.toppings,
+      editingProduct: editingProduct ?? this.editingProduct,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }

@@ -1,5 +1,7 @@
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
+import '../../domain/entities/product_variant_draft.dart';
 
 class ProductModel {
   final int id;
@@ -12,6 +14,8 @@ class ProductModel {
   final int preparationTime;
   final int price;
   final ProductType type;
+  final List<ProductVariantDraft> variants;
+  final List<ProductTopping> toppings;
   final bool isSell;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -28,6 +32,8 @@ class ProductModel {
     required this.preparationTime,
     required this.price,
     required this.type,
+    this.variants = const [],
+    this.toppings = const [],
     required this.isSell,
     this.createdAt,
     this.updatedAt,
@@ -41,9 +47,11 @@ class ProductModel {
 
     final category = json['category'];
 
+    final storeId = _intValue(json['storeId']);
+
     return ProductModel(
       id: _intValue(json['id'] ?? json['productId']),
-      storeId: _intValue(json['storeId']),
+      storeId: storeId,
       categoryId: _intValue(
         json['categoryId'] ??
             (category is Map<String, dynamic> ? category['id'] : null),
@@ -58,6 +66,8 @@ class ProductModel {
       preparationTime: _intValue(json['preparationTime']),
       price: _intValue(json['price']),
       type: ProductType.fromValue(json['type']),
+      variants: _variantDrafts(json['variants']),
+      toppings: _toppings(json['toppings'], storeId),
       isSell: _boolValue(json['isSell'], fallback: true),
       createdAt: _dateValue(json['createdAt']),
       updatedAt: _dateValue(json['updatedAt']),
@@ -96,6 +106,8 @@ class ProductModel {
       preparationTime: preparationTime,
       price: price,
       type: type,
+      variants: variants,
+      toppings: toppings,
       isSell: isSell,
       createdAt: createdAt,
       updatedAt: updatedAt,
@@ -145,6 +157,44 @@ class ProductModel {
     }
 
     return fallback;
+  }
+
+  static List<ProductVariantDraft> _variantDrafts(Object? value) {
+    if (value is! List) {
+      return const [];
+    }
+
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (variant) => ProductVariantDraft(
+            name: _stringValue(variant['name'], fallback: 'Mặc định'),
+            price: _intValue(variant['price']),
+            isDefault: _boolValue(variant['isDefault']),
+          ),
+        )
+        .toList();
+  }
+
+  static List<ProductTopping> _toppings(Object? value, int storeId) {
+    if (value is! List) {
+      return const [];
+    }
+
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (topping) => ProductTopping(
+            id: _intValue(topping['id'] ?? topping['toppingId']),
+            storeId: _intValue(topping['storeId']) == 0
+                ? storeId
+                : _intValue(topping['storeId']),
+            name: _stringValue(topping['name'], fallback: 'Topping'),
+            price: _intValue(topping['price']),
+            isDeleted: _boolValue(topping['isDeleted']),
+          ),
+        )
+        .toList();
   }
 
   static DateTime? _dateValue(Object? value) {

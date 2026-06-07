@@ -6,9 +6,15 @@ import 'package:quan_oi/features/store_operations/product_management/domain/enti
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_variant_draft.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/repositories/product_management_repository.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/create_product_category_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/create_product_topping_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/create_product_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_topping_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/controllers/product_create_state.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/providers/product_management_providers.dart';
 
@@ -51,6 +57,32 @@ void main() {
     ]);
   });
 
+  test('uses seed data without loading categories and toppings', () async {
+    final repository = _FakeProductCreateRepository();
+    final container = _container(repository);
+    addTearDown(container.dispose);
+
+    final access = ProductCreateAccess(
+      storeId: 5,
+      canCreateProduct: true,
+      seedData: ProductCreateSeedData(
+        categories: repository.categories,
+        toppings: repository.toppings,
+      ),
+    );
+
+    final state = container.read(productCreateNotifierProvider(access));
+
+    expect(state.status, ProductCreateStatus.ready);
+    expect(state.categories.map((category) => category.name), ['Đồ uống']);
+    expect(state.toppings.map((topping) => topping.name), [
+      'Trân châu đen',
+      'Pudding trứng',
+    ]);
+    expect(repository.loadCategoriesCallCount, 0);
+    expect(repository.loadToppingsCallCount, 0);
+  });
+
   test(
     'submit without variants sends null variants and selected toppings',
     () async {
@@ -85,7 +117,56 @@ void main() {
     },
   );
 
-  test('submit with variants sends S/M/L prices and default size', () async {
+  test(
+    'submit with dynamic variants sends names, prices and default flag',
+    () async {
+      final repository = _FakeProductCreateRepository();
+      final container = _container(repository);
+      addTearDown(container.dispose);
+
+      final access = _access();
+      final notifier = container.read(
+        productCreateNotifierProvider(access).notifier,
+      );
+      await notifier.load();
+
+      await notifier.submit(
+        const ProductCreateInput(
+          name: 'Trà sữa size',
+          categoryId: 1,
+          type: ProductType.drink,
+          description: '',
+          preparationTime: 5,
+          basePrice: null,
+          hasMultipleSizes: true,
+          variants: [
+            ProductVariantDraft(
+              name: 'Rau muống',
+              price: 5000,
+              isDefault: false,
+            ),
+            ProductVariantDraft(name: 'Rau cải', price: 7000, isDefault: true),
+          ],
+          toppingIds: [2],
+        ),
+      );
+
+      expect(repository.lastPrice, 7000);
+      expect(repository.lastVariants?.map((variant) => variant.name), [
+        'Rau muống',
+        'Rau cải',
+      ]);
+      expect(
+        repository.lastVariants
+            ?.singleWhere((variant) => variant.isDefault)
+            .name,
+        'Rau cải',
+      );
+      expect(repository.lastToppingIds, [2]);
+    },
+  );
+
+  test('submit with dynamic variants allows no default option', () async {
     final repository = _FakeProductCreateRepository();
     final container = _container(repository);
     addTearDown(container.dispose);
@@ -98,7 +179,7 @@ void main() {
 
     await notifier.submit(
       const ProductCreateInput(
-        name: 'Trà sữa size',
+        name: 'Trà sữa topping',
         categoryId: 1,
         type: ProductType.drink,
         description: '',
@@ -106,25 +187,19 @@ void main() {
         basePrice: null,
         hasMultipleSizes: true,
         variants: [
-          ProductVariantDraft(name: 'Size S', price: 25000, isDefault: false),
-          ProductVariantDraft(name: 'Size M', price: 30000, isDefault: true),
-          ProductVariantDraft(name: 'Size L', price: 35000, isDefault: false),
+          ProductVariantDraft(name: 'Ít đá', price: 25000, isDefault: false),
+          ProductVariantDraft(name: 'Nhiều đá', price: 30000, isDefault: false),
         ],
-        toppingIds: [2],
+        toppingIds: [],
       ),
     );
 
-    expect(repository.lastPrice, 30000);
-    expect(repository.lastVariants?.map((variant) => variant.name), [
-      'Size S',
-      'Size M',
-      'Size L',
-    ]);
+    expect(repository.createProductCallCount, 1);
+    expect(repository.lastPrice, 25000);
     expect(
-      repository.lastVariants?.singleWhere((variant) => variant.isDefault).name,
-      'Size M',
+      repository.lastVariants?.every((variant) => !variant.isDefault),
+      isTrue,
     );
-    expect(repository.lastToppingIds, [2]);
   });
 
   test(
@@ -194,6 +269,220 @@ void main() {
       expect(repository.createProductCallCount, 0);
     },
   );
+
+  test('update with dynamic variants sends current variants', () async {
+    final repository = _FakeProductCreateRepository();
+    final container = _container(repository);
+    addTearDown(container.dispose);
+
+    final access = _editingAccess(repository);
+    final notifier = container.read(
+      productCreateNotifierProvider(access).notifier,
+    );
+    await notifier.load();
+
+    await notifier.update(
+      const ProductCreateInput(
+        name: 'Trà sữa size mới',
+        categoryId: 1,
+        type: ProductType.drink,
+        description: '',
+        preparationTime: 5,
+        basePrice: null,
+        hasMultipleSizes: true,
+        variants: [
+          ProductVariantDraft(name: 'Size M', price: 30000, isDefault: false),
+          ProductVariantDraft(name: 'Size L', price: 35000, isDefault: true),
+        ],
+        toppingIds: [1],
+      ),
+    );
+
+    expect(repository.updateProductCallCount, 1);
+    expect(repository.lastPrice, 35000);
+    expect(repository.lastVariants?.map((variant) => variant.name), [
+      'Size M',
+      'Size L',
+    ]);
+    expect(
+      repository.lastVariants?.singleWhere((variant) => variant.isDefault).name,
+      'Size L',
+    );
+    expect(repository.lastToppingIds, [1]);
+  });
+
+  test('update can clear variants when all size rows are removed', () async {
+    final repository = _FakeProductCreateRepository();
+    final container = _container(repository);
+    addTearDown(container.dispose);
+
+    final access = _editingAccess(repository);
+    final notifier = container.read(
+      productCreateNotifierProvider(access).notifier,
+    );
+    await notifier.load();
+
+    await notifier.update(
+      const ProductCreateInput(
+        name: 'Trà sữa mặc định',
+        categoryId: 1,
+        type: ProductType.drink,
+        description: '',
+        preparationTime: 5,
+        basePrice: 25000,
+        hasMultipleSizes: true,
+        variants: [],
+        toppingIds: [],
+      ),
+    );
+
+    expect(repository.updateProductCallCount, 1);
+    expect(repository.lastVariants, isEmpty);
+    expect(repository.lastPrice, 25000);
+  });
+
+  test('update sends empty variants when multi size is disabled', () async {
+    final repository = _FakeProductCreateRepository();
+    final container = _container(repository);
+    addTearDown(container.dispose);
+
+    final access = _editingAccess(repository);
+    final notifier = container.read(
+      productCreateNotifierProvider(access).notifier,
+    );
+    await notifier.load();
+
+    await notifier.update(
+      const ProductCreateInput(
+        name: 'Trà sữa một giá',
+        categoryId: 1,
+        type: ProductType.drink,
+        description: '',
+        preparationTime: 5,
+        basePrice: 28000,
+        hasMultipleSizes: false,
+        variants: [
+          ProductVariantDraft(name: 'Size L', price: 35000, isDefault: true),
+        ],
+        toppingIds: [2],
+      ),
+    );
+
+    expect(repository.updateProductCallCount, 1);
+    expect(repository.lastVariants, isEmpty);
+    expect(repository.lastToppingIds, [2]);
+  });
+
+  test('update rejects incomplete variant rows', () async {
+    final repository = _FakeProductCreateRepository();
+    final container = _container(repository);
+    addTearDown(container.dispose);
+
+    final access = _editingAccess(repository);
+    final notifier = container.read(
+      productCreateNotifierProvider(access).notifier,
+    );
+    await notifier.load();
+
+    await expectLater(
+      notifier.update(
+        const ProductCreateInput(
+          name: 'Trà sữa lỗi size',
+          categoryId: 1,
+          type: ProductType.drink,
+          description: '',
+          preparationTime: 5,
+          basePrice: null,
+          hasMultipleSizes: true,
+          variants: [
+            ProductVariantDraft(name: 'Size M', price: 30000, isDefault: true),
+            ProductVariantDraft(name: '', price: 0, isDefault: false),
+          ],
+          toppingIds: [],
+        ),
+      ),
+      throwsA(isA<Exception>()),
+    );
+
+    expect(repository.updateProductCallCount, 0);
+  });
+
+  test('creates category and updates state', () async {
+    final repository = _FakeProductCreateRepository();
+    final container = _container(repository);
+    addTearDown(container.dispose);
+
+    final access = _access();
+    final notifier = container.read(
+      productCreateNotifierProvider(access).notifier,
+    );
+    await notifier.load();
+
+    final category = await notifier.createCategory(name: 'Bánh ngọt');
+    final state = container.read(productCreateNotifierProvider(access));
+
+    expect(category.name, 'Bánh ngọt');
+    expect(repository.createCategoryCallCount, 1);
+    expect(state.categories.map((item) => item.name), ['Đồ uống', 'Bánh ngọt']);
+  });
+
+  test('topping mutations update state', () async {
+    final repository = _FakeProductCreateRepository();
+    final container = _container(repository);
+    addTearDown(container.dispose);
+
+    final access = _access();
+    final notifier = container.read(
+      productCreateNotifierProvider(access).notifier,
+    );
+    await notifier.load();
+
+    final created = await notifier.createTopping(
+      name: 'Kem cheese',
+      price: 9000,
+    );
+    await notifier.updateTopping(
+      toppingId: created.id,
+      name: 'Kem cheese mặn',
+      price: 10000,
+    );
+    await notifier.deleteTopping(created.id);
+
+    final state = container.read(productCreateNotifierProvider(access));
+
+    expect(repository.createToppingCallCount, 1);
+    expect(repository.updateToppingCallCount, 1);
+    expect(repository.deleteToppingCallCount, 1);
+    expect(state.toppings.any((topping) => topping.id == created.id), isFalse);
+  });
+
+  test('topping mutations are blocked without matching permissions', () async {
+    final repository = _FakeProductCreateRepository();
+    final container = _container(repository);
+    addTearDown(container.dispose);
+
+    final access = _access(
+      canCreate: false,
+      canUpdate: false,
+      canDelete: false,
+    );
+    final notifier = container.read(
+      productCreateNotifierProvider(access).notifier,
+    );
+
+    await expectLater(
+      notifier.createTopping(name: 'Kem cheese', price: 9000),
+      throwsA(isA<Exception>()),
+    );
+    await expectLater(
+      notifier.updateTopping(toppingId: 1, name: 'Kem cheese', price: 9000),
+      throwsA(isA<Exception>()),
+    );
+    await expectLater(notifier.deleteTopping(1), throwsA(isA<Exception>()));
+    expect(repository.createToppingCallCount, 0);
+    expect(repository.updateToppingCallCount, 0);
+    expect(repository.deleteToppingCallCount, 0);
+  });
 }
 
 ProviderContainer _container(_FakeProductCreateRepository repository) {
@@ -205,52 +494,200 @@ ProviderContainer _container(_FakeProductCreateRepository repository) {
       loadProductToppingsUseCaseProvider.overrideWithValue(
         LoadProductToppingsUseCase(repository),
       ),
+      createProductCategoryUseCaseProvider.overrideWithValue(
+        CreateProductCategoryUseCase(repository),
+      ),
+      createProductToppingUseCaseProvider.overrideWithValue(
+        CreateProductToppingUseCase(repository),
+      ),
+      updateProductToppingUseCaseProvider.overrideWithValue(
+        UpdateProductToppingUseCase(repository),
+      ),
+      deleteProductToppingUseCaseProvider.overrideWithValue(
+        DeleteProductToppingUseCase(repository),
+      ),
       createProductUseCaseProvider.overrideWithValue(
         CreateProductUseCase(repository),
+      ),
+      loadProductDetailUseCaseProvider.overrideWithValue(
+        LoadProductDetailUseCase(repository),
+      ),
+      updateProductUseCaseProvider.overrideWithValue(
+        UpdateProductUseCase(repository),
       ),
     ],
   );
 }
 
-ProductCreateAccess _access({bool canCreate = true}) {
-  return ProductCreateAccess(storeId: 5, canCreateProduct: canCreate);
+ProductCreateAccess _access({
+  bool canCreate = true,
+  bool canUpdate = true,
+  bool canDelete = true,
+}) {
+  return ProductCreateAccess(
+    storeId: 5,
+    canCreateProduct: canCreate,
+    canUpdateProduct: canUpdate,
+    canDeleteProduct: canDelete,
+  );
+}
+
+ProductCreateAccess _editingAccess(_FakeProductCreateRepository repository) {
+  return ProductCreateAccess(
+    storeId: 5,
+    canCreateProduct: true,
+    canUpdateProduct: true,
+    canDeleteProduct: true,
+    seedData: ProductCreateSeedData(
+      categories: repository.categories,
+      toppings: repository.toppings,
+      editingProduct: const Product(
+        id: 7,
+        storeId: 5,
+        categoryId: 1,
+        categoryName: 'Đồ uống',
+        name: 'Trà sữa trân châu',
+        imageUrl: '',
+        description: 'Trà sữa',
+        preparationTime: 5,
+        price: 25000,
+        type: ProductType.drink,
+        variants: [
+          ProductVariantDraft(name: 'Size M', price: 30000, isDefault: true),
+        ],
+        isSell: true,
+        isDeleted: false,
+      ),
+    ),
+  );
 }
 
 class _FakeProductCreateRepository implements ProductManagementRepository {
   int loadCategoriesCallCount = 0;
   int loadToppingsCallCount = 0;
+  int loadProductDetailCallCount = 0;
+  int createCategoryCallCount = 0;
+  int createToppingCallCount = 0;
+  int updateToppingCallCount = 0;
+  int deleteToppingCallCount = 0;
   int createProductCallCount = 0;
+  int updateProductCallCount = 0;
   int? lastPrice;
   List<ProductVariantDraft>? lastVariants;
   List<int>? lastToppingIds;
 
+  final categories = <ProductCategory>[
+    ProductCategory(id: 1, storeId: 5, name: 'Đồ uống', isDeleted: false),
+  ];
+
+  final toppings = <ProductTopping>[
+    ProductTopping(
+      id: 1,
+      storeId: 5,
+      name: 'Trân châu đen',
+      price: 5000,
+      isDeleted: false,
+    ),
+    ProductTopping(
+      id: 2,
+      storeId: 5,
+      name: 'Pudding trứng',
+      price: 7000,
+      isDeleted: false,
+    ),
+  ];
+
   @override
   Future<List<ProductCategory>> loadCategories(int storeId) async {
     loadCategoriesCallCount += 1;
-    return const [
-      ProductCategory(id: 1, storeId: 5, name: 'Đồ uống', isDeleted: false),
-    ];
+    return [...categories];
   }
 
   @override
   Future<List<ProductTopping>> loadToppings(int storeId) async {
     loadToppingsCallCount += 1;
-    return const [
-      ProductTopping(
-        id: 1,
-        storeId: 5,
-        name: 'Trân châu đen',
-        price: 5000,
-        isDeleted: false,
-      ),
-      ProductTopping(
-        id: 2,
-        storeId: 5,
-        name: 'Pudding trứng',
-        price: 7000,
-        isDeleted: false,
-      ),
-    ];
+    return [...toppings];
+  }
+
+  @override
+  Future<Product> loadProductDetail(int productId) async {
+    loadProductDetailCallCount += 1;
+    return Product(
+      id: productId,
+      storeId: 5,
+      categoryId: 1,
+      categoryName: 'Đồ uống',
+      name: 'Trà sữa trân châu',
+      imageUrl: '',
+      description: 'Trà sữa',
+      preparationTime: 5,
+      price: 25000,
+      type: ProductType.drink,
+      toppings: toppings.take(1).toList(),
+      isSell: true,
+      isDeleted: false,
+    );
+  }
+
+  @override
+  Future<ProductCategory> createCategory({
+    required int storeId,
+    required String name,
+  }) async {
+    createCategoryCallCount += 1;
+    final category = ProductCategory(
+      id: categories.length + 1,
+      storeId: storeId,
+      name: name,
+      isDeleted: false,
+    );
+    categories.add(category);
+    return category;
+  }
+
+  @override
+  Future<ProductTopping> createTopping({
+    required int storeId,
+    required String name,
+    required int price,
+  }) async {
+    createToppingCallCount += 1;
+    final topping = ProductTopping(
+      id: toppings.length + 1,
+      storeId: storeId,
+      name: name,
+      price: price,
+      isDeleted: false,
+    );
+    toppings.add(topping);
+    return topping;
+  }
+
+  @override
+  Future<ProductTopping> updateTopping({
+    required int toppingId,
+    required String name,
+    required int price,
+  }) async {
+    updateToppingCallCount += 1;
+    final topping = ProductTopping(
+      id: toppingId,
+      storeId: 5,
+      name: name,
+      price: price,
+      isDeleted: false,
+    );
+    final index = toppings.indexWhere((item) => item.id == toppingId);
+    if (index != -1) {
+      toppings[index] = topping;
+    }
+    return topping;
+  }
+
+  @override
+  Future<void> deleteTopping(int toppingId) async {
+    deleteToppingCallCount += 1;
+    toppings.removeWhere((topping) => topping.id == toppingId);
   }
 
   @override
@@ -287,11 +724,40 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   }
 
   @override
-  Future<ProductCategory> createCategory({
-    required int storeId,
+  Future<Product> updateProduct({
+    required int productId,
+    required int categoryId,
     required String name,
-  }) {
-    throw UnimplementedError();
+    required String imageUrl,
+    required String description,
+    required int preparationTime,
+    required int price,
+    required ProductType type,
+    List<ProductVariantDraft>? variants,
+    required List<int> toppingIds,
+  }) async {
+    updateProductCallCount += 1;
+    lastPrice = price;
+    lastVariants = variants;
+    lastToppingIds = toppingIds;
+    return Product(
+      id: productId,
+      storeId: 5,
+      categoryId: categoryId,
+      categoryName: 'Đồ uống',
+      name: name,
+      imageUrl: imageUrl,
+      description: description,
+      preparationTime: preparationTime,
+      price: price,
+      type: type,
+      variants: variants ?? const [],
+      toppings: toppings
+          .where((topping) => toppingIds.contains(topping.id))
+          .toList(),
+      isSell: true,
+      isDeleted: false,
+    );
   }
 
   @override

@@ -31,6 +31,40 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
   }
 
   @override
+  Future<ProductTopping> createTopping({
+    required int storeId,
+    required String name,
+    required int price,
+  }) async {
+    final topping = await _remoteDataSource.createTopping(
+      CreateProductToppingRequestModel(
+        storeId: storeId,
+        name: name,
+        price: price,
+      ),
+    );
+    return topping.toEntity();
+  }
+
+  @override
+  Future<ProductTopping> updateTopping({
+    required int toppingId,
+    required String name,
+    required int price,
+  }) async {
+    final topping = await _remoteDataSource.updateTopping(
+      toppingId: toppingId,
+      request: UpdateProductToppingRequestModel(name: name, price: price),
+    );
+    return topping.toEntity();
+  }
+
+  @override
+  Future<void> deleteTopping(int toppingId) {
+    return _remoteDataSource.deleteTopping(toppingId);
+  }
+
+  @override
   Future<ProductCategory> createCategory({
     required int storeId,
     required String name,
@@ -68,6 +102,12 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
   }
 
   @override
+  Future<Product> loadProductDetail(int productId) async {
+    final product = await _remoteDataSource.getProductById(productId);
+    return product.toEntity();
+  }
+
+  @override
   Future<Product> createProduct({
     required int storeId,
     required int categoryId,
@@ -83,6 +123,36 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     final product = await _remoteDataSource.createProduct(
       CreateProductRequestModel(
         storeId: storeId,
+        categoryId: categoryId,
+        name: name,
+        imageUrl: imageUrl,
+        description: description,
+        preparationTime: preparationTime,
+        price: price,
+        type: type,
+        variants: variants,
+        toppingIds: toppingIds,
+      ),
+    );
+    return product.toEntity();
+  }
+
+  @override
+  Future<Product> updateProduct({
+    required int productId,
+    required int categoryId,
+    required String name,
+    required String imageUrl,
+    required String description,
+    required int preparationTime,
+    required int price,
+    required ProductType type,
+    List<ProductVariantDraft>? variants,
+    required List<int> toppingIds,
+  }) async {
+    final product = await _remoteDataSource.updateProduct(
+      productId: productId,
+      request: UpdateProductRequestModel(
         categoryId: categoryId,
         name: name,
         imageUrl: imageUrl,

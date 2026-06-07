@@ -14,7 +14,7 @@ abstract final class AppColors {
 
   // ─── Background ────────────────────────────────────────────────────────────
   /// Nền ứng dụng — trắng kem (#FAF5F0)
-  static const Color background = Color(0xFFFAF5F0);
+  static const Color background = Color(0xFFFFFFFF);
 
   /// Nền card / surface trắng tinh (#FFFFFF)
   static const Color surface = Color(0xFFFFFFFF);

@@ -189,55 +189,58 @@ class _StaffDetailContent extends StatelessWidget {
                   notifier: notifier,
                   displayNameController: displayNameController,
                   canEdit: canEditActive,
-                  onMutated: onMutated,
                 ),
             ],
           ),
         ),
-        if (canRemove || canCancel)
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(AppConstants.spacingMd),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: state.isMutating
-                      ? null
-                      : () async {
-                          final confirmed = await _confirm(
-                            context,
-                            canCancel
-                                ? 'Hủy lời mời nhân viên này?'
-                                : 'Xóa nhân viên khỏi cửa hàng?',
-                          );
-                          if (!confirmed) {
-                            return;
-                          }
+        if (canRemove || canCancel || canEditActive)
+          _StaffDetailFooter(
+            isMutating: state.isMutating,
+            canRemove: canRemove,
+            canCancel: canCancel,
+            canEdit: canEditActive,
+            onRemoveOrCancel: () async {
+              final confirmed = await _confirm(
+                context,
+                canCancel
+                    ? 'Hủy lời mời nhân viên này?'
+                    : 'Xóa nhân viên khỏi cửa hàng?',
+              );
+              if (!confirmed) {
+                return;
+              }
 
-                          try {
-                            if (canCancel) {
-                              await notifier.cancelInvitation();
-                            } else {
-                              await notifier.removeStaff();
-                            }
-                            if (!context.mounted) return;
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (context.mounted) {
-                                onDone();
-                              }
-                            });
-                          } catch (error) {
-                            if (context.mounted) {
-                              _showError(context, error);
-                            }
-                          }
-                        },
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  label: Text(canCancel ? 'Hủy lời mời' : 'Xóa nhân viên'),
-                ),
-              ),
-            ),
+              try {
+                if (canCancel) {
+                  await notifier.cancelInvitation();
+                } else {
+                  await notifier.removeStaff();
+                }
+                if (!context.mounted) return;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (context.mounted) {
+                    onDone();
+                  }
+                });
+              } catch (error) {
+                if (context.mounted) {
+                  _showError(context, error);
+                }
+              }
+            },
+            onUpdate: () async {
+              try {
+                await notifier.updateStaff(displayNameController.text);
+                onMutated();
+                if (context.mounted) {
+                  _showSuccess(context, 'Đã cập nhật nhân viên');
+                }
+              } catch (error) {
+                if (context.mounted) {
+                  _showError(context, error);
+                }
+              }
+            },
           ),
       ],
     );
@@ -355,14 +358,12 @@ class _ActiveEditSection extends StatelessWidget {
   final StaffDetailNotifier notifier;
   final TextEditingController displayNameController;
   final bool canEdit;
-  final VoidCallback onMutated;
 
   const _ActiveEditSection({
     required this.state,
     required this.notifier,
     required this.displayNameController,
     required this.canEdit,
-    required this.onMutated,
   });
 
   @override
@@ -453,31 +454,71 @@ class _ActiveEditSection extends StatelessWidget {
             ),
           ),
         ),
-        if (canEdit) ...[
-          const SizedBox(height: AppConstants.spacingMd),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: state.isMutating
-                  ? null
-                  : () async {
-                      try {
-                        await notifier.updateStaff(displayNameController.text);
-                        onMutated();
-                        if (context.mounted) {
-                          _showSuccess(context, 'Đã cập nhật nhân viên');
-                        }
-                      } catch (error) {
-                        if (context.mounted) {
-                          _showError(context, error);
-                        }
-                      }
-                    },
-              child: const Text('Cập nhật nhân viên'),
-            ),
-          ),
-        ],
       ],
+    );
+  }
+}
+
+class _StaffDetailFooter extends StatelessWidget {
+  final bool isMutating;
+  final bool canRemove;
+  final bool canCancel;
+  final bool canEdit;
+  final VoidCallback onRemoveOrCancel;
+  final VoidCallback onUpdate;
+
+  const _StaffDetailFooter({
+    required this.isMutating,
+    required this.canRemove,
+    required this.canCancel,
+    required this.canEdit,
+    required this.onRemoveOrCancel,
+    required this.onUpdate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        color: AppColors.surface,
+        padding: const EdgeInsets.all(AppConstants.spacingMd),
+        child: Row(
+          children: [
+            if (canRemove || canCancel) ...[
+              Expanded(
+                child: OutlinedButton(
+                  key: Key(
+                    canCancel
+                        ? 'staff_cancel_invitation_button'
+                        : 'staff_delete_button',
+                  ),
+                  onPressed: isMutating ? null : onRemoveOrCancel,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                  ),
+                  child: Text(canCancel ? 'Hủy lời mời' : 'Xóa'),
+                ),
+              ),
+              if (canEdit) const SizedBox(width: AppConstants.spacingMd),
+            ],
+            if (canEdit)
+              Expanded(
+                child: ElevatedButton(
+                  key: const Key('staff_update_button'),
+                  onPressed: isMutating ? null : onUpdate,
+                  child: isMutating
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Cập nhật'),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

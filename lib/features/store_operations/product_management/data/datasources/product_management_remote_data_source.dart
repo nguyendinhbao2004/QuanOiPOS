@@ -43,6 +43,61 @@ class ProductManagementRemoteDataSource {
     return response.data!;
   }
 
+  Future<ProductToppingModel> createTopping(
+    CreateProductToppingRequestModel request,
+  ) async {
+    final response = await _dioClient.postResponse<ProductToppingModel>(
+      '/toppings',
+      data: request.toJson(),
+      dataFromJson: ProductToppingModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể thêm topping',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<ProductToppingModel> updateTopping({
+    required int toppingId,
+    required UpdateProductToppingRequestModel request,
+  }) async {
+    final response = await _dioClient.putResponse<ProductToppingModel>(
+      '/toppings/$toppingId',
+      data: request.toJson(),
+      dataFromJson: ProductToppingModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể cập nhật topping',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<void> deleteTopping(int toppingId) async {
+    final response = await _dioClient.deleteResponse<Object?>(
+      '/toppings/$toppingId',
+    );
+
+    if (!response.succeeded) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể xóa topping',
+      );
+    }
+  }
+
   Future<ProductCategoryModel> createCategory(
     CreateProductCategoryRequestModel request,
   ) async {
@@ -115,6 +170,23 @@ class ProductManagementRemoteDataSource {
     return response.data!;
   }
 
+  Future<ProductModel> getProductById(int productId) async {
+    final response = await _dioClient.getResponse<ProductModel>(
+      '/products/$productId',
+      dataFromJson: ProductModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể tải chi tiết sản phẩm',
+      );
+    }
+
+    return response.data!;
+  }
+
   Future<ProductModel> createProduct(CreateProductRequestModel request) async {
     final response = await _dioClient.postResponse<ProductModel>(
       '/products',
@@ -127,6 +199,27 @@ class ProductManagementRemoteDataSource {
         response.message,
         response.errors,
         'Không thể thêm sản phẩm',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<ProductModel> updateProduct({
+    required int productId,
+    required UpdateProductRequestModel request,
+  }) async {
+    final response = await _dioClient.putResponse<ProductModel>(
+      '/products/$productId',
+      data: request.toJson(),
+      dataFromJson: ProductModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể cập nhật sản phẩm',
       );
     }
 
