@@ -106,7 +106,11 @@ class _InventoryActionList extends StatelessWidget {
       Icons.move_to_inbox_outlined,
       routeName: RouteNames.storeInventoryImport,
     ),
-    _InventoryActionItemData('Xuất kho', Icons.outbox_outlined),
+    _InventoryActionItemData(
+      'Xuất kho',
+      Icons.outbox_outlined,
+      routeName: RouteNames.storeInventoryExport,
+    ),
     _InventoryActionItemData(
       'Sổ kho',
       Icons.receipt_long_outlined,

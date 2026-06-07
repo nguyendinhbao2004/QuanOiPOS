@@ -356,6 +356,49 @@ void main() {
     },
   );
 
+  testWidgets(
+    'inventory export tile navigates to mock export page without permission',
+    (tester) async {
+      final repository = const _FakeWorkspaceRepository(
+        permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
+      );
+      final container = _buildRouterContainer(repository);
+      addTearDown(container.dispose);
+
+      final router = container.read(routerProvider);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      router.go('/stores/5/inventory');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Xuất kho'));
+      await tester.pumpAndSettle();
+
+      expect(router.state.matchedLocation, '/stores/5/inventory/exports');
+      expect(find.text('Sổ xuất hàng'), findsOneWidget);
+      expect(find.text('Tất cả'), findsOneWidget);
+      expect(find.text('Đang xử lý'), findsOneWidget);
+      expect(find.text('Hoàn thành'), findsWidgets);
+      expect(find.text('Hủy'), findsOneWidget);
+      expect(find.text('Tháng này'), findsOneWidget);
+      expect(find.text('Phân loại'), findsOneWidget);
+      expect(find.text('#XH1948'), findsOneWidget);
+      expect(find.text('09:05 22/05/26'), findsOneWidget);
+      expect(find.text('Tạo bởi Lê Minh An'), findsOneWidget);
+      expect(find.text('Tổng cộng'), findsOneWidget);
+      expect(find.text('Tạo xuất hàng'), findsOneWidget);
+      expect(find.byIcon(Icons.file_download_outlined), findsOneWidget);
+    },
+  );
+
   testWidgets('inventory import ingredient action opens mock ingredient flow', (
     tester,
   ) async {
@@ -524,6 +567,30 @@ void main() {
 
     expect(find.text('Store access failed'), findsOneWidget);
     expect(find.text('#NH265'), findsNothing);
+    expect(find.text('Thử lại'), findsOneWidget);
+  });
+
+  testWidgets('inventory export page keeps access error state', (tester) async {
+    final repository = _FakeWorkspaceRepository(
+      permissions: const [],
+      accessError: Exception('Store access failed'),
+    );
+    final container = _buildRouterContainer(repository);
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/stores/5/inventory/exports');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Store access failed'), findsOneWidget);
+    expect(find.text('#XH1948'), findsNothing);
     expect(find.text('Thử lại'), findsOneWidget);
   });
 
