@@ -71,7 +71,7 @@ class _ReadyView extends ConsumerWidget {
             const _InventoryCheckFilters(),
             Expanded(
               child: items.isEmpty
-                  ? const _EmptyInventoryCheckView()
+                  ? _EmptyInventoryCheckView(storeId: storeId)
                   : ListView.separated(
                       padding: const EdgeInsets.all(AppConstants.spacingMd),
                       itemBuilder: (context, index) {
@@ -255,7 +255,9 @@ class _FilterButton extends StatelessWidget {
 }
 
 class _EmptyInventoryCheckView extends StatelessWidget {
-  const _EmptyInventoryCheckView();
+  final int storeId;
+
+  const _EmptyInventoryCheckView({required this.storeId});
 
   @override
   Widget build(BuildContext context) {
@@ -279,7 +281,10 @@ class _EmptyInventoryCheckView extends StatelessWidget {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 260),
               child: ElevatedButton.icon(
-                onPressed: () => _showComingSoon(context, 'Tạo kiểm kho'),
+                onPressed: () => context.goNamed(
+                  RouteNames.storeInventoryCheckCreate,
+                  pathParameters: {'storeId': storeId.toString()},
+                ),
                 icon: const Icon(Icons.add_task_rounded),
                 label: const Text('Tạo kiểm kho'),
               ),

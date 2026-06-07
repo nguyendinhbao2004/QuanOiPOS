@@ -24,6 +24,8 @@ import '../features/store_operations/presentation/pages/store_inventory_export_p
 import '../features/store_operations/presentation/pages/store_inventory_export_supplement_material_draft_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_export_supplement_materials_page.dart';
 import '../features/store_operations/presentation/pages/store_home_page.dart';
+import '../features/store_operations/presentation/pages/store_inventory_check_create_page.dart';
+import '../features/store_operations/presentation/pages/store_inventory_check_draft_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_check_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_import_ingredients_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_import_page.dart';
@@ -57,6 +59,9 @@ abstract final class RouteNames {
   static const String storeFeatureSearch = 'store-feature-search';
   static const String storeInventoryManagement = 'store-inventory-management';
   static const String storeInventoryCheck = 'store-inventory-check';
+  static const String storeInventoryCheckCreate =
+      'store-inventory-check-create';
+  static const String storeInventoryCheckDraft = 'store-inventory-check-draft';
   static const String storeInventoryExport = 'store-inventory-export';
   static const String storeInventoryExportDraft =
       'store-inventory-export-draft';
@@ -247,6 +252,43 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
 
           return StoreInventoryCheckPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/inventory/checks/create',
+        name: RouteNames.storeInventoryCheckCreate,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          return StoreInventoryCheckCreatePage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/inventory/checks/draft',
+        name: RouteNames.storeInventoryCheckDraft,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          final seedData = state.extra is StoreInventoryCheckDraftSeedData
+              ? state.extra! as StoreInventoryCheckDraftSeedData
+              : null;
+
+          return StoreInventoryCheckDraftPage(
+            storeId: storeId,
+            seedData: seedData,
+          );
         },
       ),
       GoRoute(

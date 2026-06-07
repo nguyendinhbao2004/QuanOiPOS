@@ -1196,6 +1196,81 @@ void main() {
       expect(find.text('Bạn chưa có phiếu kiểm kho nào!'), findsOneWidget);
       expect(find.text('Tạo kiểm kho'), findsOneWidget);
       expect(find.byIcon(Icons.file_download_outlined), findsOneWidget);
+
+      await tester.tap(find.text('Tạo kiểm kho'));
+      await tester.pumpAndSettle();
+
+      expect(router.state.matchedLocation, '/stores/5/inventory/checks/create');
+      expect(find.text('Tìm/Chọn sản phẩm, SKU...'), findsOneWidget);
+      expect(find.text('Sản phẩm'), findsOneWidget);
+      expect(find.text('Nguyên vật liệu'), findsOneWidget);
+      expect(find.text('Thăng Long'), findsOneWidget);
+      expect(find.text('SP0048'), findsOneWidget);
+      expect(find.text('Kho: 9'), findsOneWidget);
+
+      await tester.tap(find.text('Thăng Long'));
+      await tester.pumpAndSettle();
+
+      expect(router.state.matchedLocation, '/stores/5/inventory/checks/draft');
+      expect(find.text('Tạo phiếu kiểm kho'), findsOneWidget);
+      expect(find.text('Tìm/Chọn sản phẩm, SKU...'), findsOneWidget);
+      expect(find.text('Tất cả'), findsOneWidget);
+      expect(find.text('Đã cân bằng'), findsOneWidget);
+      expect(find.text('Lệch'), findsWidgets);
+      expect(find.text('Trống'), findsOneWidget);
+      expect(find.text('Thăng Long'), findsOneWidget);
+      expect(find.text('SP0048'), findsOneWidget);
+      expect(find.text('Kho hệ thống: 9'), findsOneWidget);
+      expect(find.text('Lệch: -9'), findsOneWidget);
+      expect(find.text('Lưu phiếu'), findsOneWidget);
+      expect(find.text('Hoàn thành'), findsOneWidget);
+      final actualQuantityText = tester.widget<Text>(
+        find.byKey(const Key('inventory_check_draft_actual_quantity')),
+      );
+      final systemQuantityText = tester.widget<Text>(
+        find.byKey(const Key('inventory_check_draft_system_quantity')),
+      );
+      final differenceQuantityText = tester.widget<Text>(
+        find.byKey(const Key('inventory_check_draft_difference_quantity')),
+      );
+      expect(actualQuantityText.data, '0');
+      expect(systemQuantityText.data, '9');
+      expect(differenceQuantityText.data, '9');
+
+      await tester.tap(
+        find.byKey(const Key('inventory_check_draft_increment_SP0048')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lệch: -8'), findsOneWidget);
+      final updatedActualQuantityText = tester.widget<Text>(
+        find.byKey(const Key('inventory_check_draft_actual_quantity')),
+      );
+      final updatedDifferenceQuantityText = tester.widget<Text>(
+        find.byKey(const Key('inventory_check_draft_difference_quantity')),
+      );
+      expect(updatedActualQuantityText.data, '1');
+      expect(updatedDifferenceQuantityText.data, '8');
+
+      router.go('/stores/5/inventory/checks/create');
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const Key('inventory_check_create_ingredients_tab')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Đường'), findsOneWidget);
+      expect(find.text('NL0001'), findsOneWidget);
+      expect(find.text('Kho: 12 kg'), findsOneWidget);
+
+      await tester.tap(find.text('Đường'));
+      await tester.pumpAndSettle();
+
+      expect(router.state.matchedLocation, '/stores/5/inventory/checks/draft');
+      expect(find.text('Đường'), findsOneWidget);
+      expect(find.text('NL0001'), findsOneWidget);
+      expect(find.text('Kho hệ thống: 12 kg'), findsOneWidget);
     },
   );
 
@@ -1220,6 +1295,93 @@ void main() {
 
     expect(find.text('Store access failed'), findsOneWidget);
     expect(find.text('Bạn chưa có phiếu kiểm kho nào!'), findsNothing);
+    expect(find.text('Thử lại'), findsOneWidget);
+  });
+
+  testWidgets('inventory check create page keeps access error state', (
+    tester,
+  ) async {
+    final repository = _FakeWorkspaceRepository(
+      permissions: const [],
+      accessError: Exception('Store access failed'),
+    );
+    final container = _buildRouterContainer(repository);
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/stores/5/inventory/checks/create');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Store access failed'), findsOneWidget);
+    expect(find.text('Thăng Long'), findsNothing);
+    expect(find.text('Thử lại'), findsOneWidget);
+  });
+
+  testWidgets(
+    'inventory check draft without selected item shows missing state',
+    (tester) async {
+      final repository = const _FakeWorkspaceRepository(
+        permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
+      );
+      final container = _buildRouterContainer(repository);
+      addTearDown(container.dispose);
+
+      final router = container.read(routerProvider);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      router.go('/stores/5/inventory/checks/draft');
+      await tester.pumpAndSettle();
+
+      expect(router.state.matchedLocation, '/stores/5/inventory/checks/draft');
+      expect(find.text('Chưa chọn hàng kiểm kho'), findsOneWidget);
+      expect(find.text('Chọn hàng kiểm kho'), findsOneWidget);
+      expect(find.text('Thăng Long'), findsNothing);
+
+      await tester.tap(find.text('Chọn hàng kiểm kho'));
+      await tester.pumpAndSettle();
+
+      expect(router.state.matchedLocation, '/stores/5/inventory/checks/create');
+    },
+  );
+
+  testWidgets('inventory check draft page keeps access error state', (
+    tester,
+  ) async {
+    final repository = _FakeWorkspaceRepository(
+      permissions: const [],
+      accessError: Exception('Store access failed'),
+    );
+    final container = _buildRouterContainer(repository);
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/stores/5/inventory/checks/draft');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Store access failed'), findsOneWidget);
+    expect(find.text('Tạo phiếu kiểm kho'), findsNothing);
     expect(find.text('Thử lại'), findsOneWidget);
   });
 
