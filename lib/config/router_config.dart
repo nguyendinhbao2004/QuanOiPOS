@@ -15,6 +15,7 @@ import '../features/store_operations/presentation/pages/about_app_page.dart';
 import '../features/store_operations/presentation/pages/app_settings_page.dart';
 import '../features/store_operations/presentation/pages/operation_regulations_page.dart';
 import '../features/store_operations/presentation/pages/privacy_policy_page.dart';
+import '../features/store_operations/presentation/pages/store_feature_search_page.dart';
 import '../features/store_operations/presentation/pages/store_home_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_check_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_import_ingredients_page.dart';
@@ -46,6 +47,7 @@ abstract final class RouteNames {
   static const String systemAdminHome = 'system-admin-home';
   static const String storeHome = 'store-home';
   static const String storeOverview = 'store-overview';
+  static const String storeFeatureSearch = 'store-feature-search';
   static const String storeInventoryManagement = 'store-inventory-management';
   static const String storeInventoryCheck = 'store-inventory-check';
   static const String storeInventoryImport = 'store-inventory-import';
@@ -106,6 +108,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/store-home',
         name: RouteNames.storeHome,
         builder: (context, state) => const StoreHomePage(),
+      ),
+      GoRoute(
+        path: '/stores/:storeId/search',
+        name: RouteNames.storeFeatureSearch,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          return StoreFeatureSearchPage(storeId: storeId);
+        },
       ),
       GoRoute(
         path: '/stores/:storeId/inventory',

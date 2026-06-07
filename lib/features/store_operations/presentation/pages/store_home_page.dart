@@ -7,7 +7,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/index.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../widgets/account_hub_header.dart';
-import '../widgets/account_menu_section.dart';
+import '../widgets/account_hub_menu_section.dart';
 import '../widgets/logout_action_button.dart';
 import '../widgets/system_shell_scaffold.dart';
 import '../widgets/user_profile_card.dart';
@@ -149,31 +149,13 @@ class _ReadyStateView extends StatelessWidget {
             onTap: onProfileTap,
           ),
           const SizedBox(height: AppConstants.spacingMd),
-          AccountMenuSection(
-            items: [
-              AccountMenuItemData(
-                title: 'Gói dịch vụ của tôi',
-                leadingIcon: Icons.inventory_2_outlined,
-                trailingMeta: 'Xem chi tiết',
-                onTap: () => context.pushNamed(RouteNames.storeSubscription),
-              ),
-              AccountMenuItemData(
-                title: 'Cửa hàng',
-                leadingIcon: Icons.storefront_outlined,
-                trailingMeta: 'Chọn cửa hàng',
-                onTap: onStoreTap,
-              ),
-              AccountMenuItemData(
-                title: 'Đổi mật khẩu',
-                leadingIcon: Icons.lock_reset_outlined,
-                onTap: () => context.pushNamed(RouteNames.changePassword),
-              ),
-              AccountMenuItemData(
-                title: 'Cài đặt ứng dụng',
-                leadingIcon: Icons.settings_outlined,
-                onTap: onAppSettingsTap,
-              ),
-            ],
+          AccountHubMenuSection(
+            onSubscriptionTap: () =>
+                context.pushNamed(RouteNames.storeSubscription),
+            onStoresTap: onStoreTap,
+            onChangePasswordTap: () =>
+                context.pushNamed(RouteNames.changePassword),
+            onAppSettingsTap: onAppSettingsTap,
           ),
           const SizedBox(height: AppConstants.spacingMd),
           LogoutActionButton(onPressed: onLogout),

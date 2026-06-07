@@ -10,7 +10,7 @@ import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../workspace_context/presentation/controllers/store_access_state.dart';
 import '../../../workspace_context/presentation/providers/workspace_context_providers.dart';
 import '../widgets/store_bottom_navigation_bar.dart';
-import '../widgets/store_switcher_bottom_sheet.dart';
+import '../widgets/store_workspace_drawer.dart';
 import '../widgets/store_workspace_header.dart';
 
 class StoreOverviewPage extends ConsumerWidget {
@@ -21,8 +21,12 @@ class StoreOverviewPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(storeAccessNotifierProvider(storeId));
+    final accessContext = state.context;
 
     return Scaffold(
+      drawer: state.status == StoreAccessStatus.ready && accessContext != null
+          ? StoreWorkspaceDrawer(activeStoreId: accessContext.store.id)
+          : null,
       body: SafeArea(
         bottom: false,
         child: switch (state.status) {
@@ -128,15 +132,34 @@ class _ReadyView extends ConsumerWidget {
             AppConstants.spacingXxl,
           ),
           children: [
-            StoreWorkspaceHeader(
-              store: accessContext.store,
-              subtitle: accessContext.store.address.isEmpty
-                  ? 'Chào $greetingTarget'
-                  : accessContext.store.address,
-              onStoreTap: () =>
-                  _showStoreSwitcher(context, ref, accessContext.store.id),
-              onAccountTap: () => context.goNamed(RouteNames.storeHome),
-              onNotificationTap: () => _showComingSoon(context, 'Thông báo'),
+            Builder(
+              builder: (context) {
+                final headerSubtitle = accessContext.store.address.isEmpty
+                    ? 'Chào $greetingTarget'
+                    : accessContext.store.address;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    StoreWorkspaceHeader(
+                      onLogoTap: () => Scaffold.of(context).openDrawer(),
+                      onSearchTap: () => context.goNamed(
+                        RouteNames.storeFeatureSearch,
+                        pathParameters: {
+                          'storeId': accessContext.store.id.toString(),
+                        },
+                      ),
+                      onScanTap: () => _showComingSoon(context, 'Quét mã'),
+                      onNotificationTap: () =>
+                          _showComingSoon(context, 'Thông báo'),
+                    ),
+                    StoreWorkspaceHeaderTitle(
+                      store: accessContext.store,
+                      subtitle: headerSubtitle,
+                    ),
+                  ],
+                );
+              },
             ),
             if (state.isRefreshing) ...[
               const SizedBox(height: AppConstants.spacingSm),
@@ -155,8 +178,6 @@ class _ReadyView extends ConsumerWidget {
                     .loadAccess(),
               ),
             ],
-            const SizedBox(height: AppConstants.spacingLg),
-            const _SearchField(),
             const SizedBox(height: AppConstants.spacingLg),
             const _ProfitAnalysisCard(),
             const SizedBox(height: AppConstants.spacingLg),
@@ -210,21 +231,6 @@ class _RefreshErrorBanner extends StatelessWidget {
             TextButton(onPressed: onRetry, child: const Text('Thử lại')),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SearchField extends StatelessWidget {
-  const _SearchField();
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      enabled: false,
-      decoration: const InputDecoration(
-        hintText: 'Tìm kiếm',
-        prefixIcon: Icon(Icons.search_rounded),
       ),
     );
   }
@@ -565,44 +571,4 @@ void _showComingSoon(BuildContext context, String feature) {
   ScaffoldMessenger.of(
     context,
   ).showSnackBar(SnackBar(content: Text('$feature sẽ được triển khai sau')));
-}
-
-Future<void> _showStoreSwitcher(
-  BuildContext context,
-  WidgetRef ref,
-  int activeStoreId,
-) async {
-  final selectedStoreId = await showModalBottomSheet<int>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) {
-      return FractionallySizedBox(
-        heightFactor: 0.78,
-        child: StoreSwitcherBottomSheet(activeStoreId: activeStoreId),
-      );
-    },
-  );
-
-  if (!context.mounted ||
-      selectedStoreId == null ||
-      selectedStoreId == activeStoreId) {
-    return;
-  }
-
-  try {
-    await ref
-        .read(lastActiveStoreNotifierProvider.notifier)
-        .save(selectedStoreId);
-  } catch (_) {
-    // Last-store persistence should not block switching stores.
-  }
-
-  if (!context.mounted) return;
-
-  context.goNamed(
-    RouteNames.storeOverview,
-    pathParameters: {'storeId': selectedStoreId.toString()},
-  );
 }

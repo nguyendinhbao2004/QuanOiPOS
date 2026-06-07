@@ -9,9 +9,11 @@ import 'package:quan_oi/features/auth/domain/entities/account_type.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_notifier.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
+import 'package:quan_oi/features/store_operations/presentation/pages/store_feature_search_page.dart';
 import 'package:quan_oi/features/store_operations/presentation/pages/store_overview_page.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_access_context.dart';
+import 'package:quan_oi/features/workspace_context/domain/exceptions/store_access_denied_exception.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_permission.dart';
 import 'package:quan_oi/features/workspace_context/domain/repositories/workspace_repository.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
@@ -640,7 +642,7 @@ void main() {
     expect(find.text('Thử lại'), findsOneWidget);
   });
 
-  testWidgets('store header opens switcher bottom sheet with active store', (
+  testWidgets('store header opens drawer with active store and account menu', (
     tester,
   ) async {
     await _pumpOverview(
@@ -651,27 +653,143 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(
+      find.byKey(const Key('store_workspace_header_search_pill')),
+      findsOneWidget,
+    );
+
     await tester.tap(
-      find.byKey(const Key('store_workspace_header_store_button')),
+      find.byKey(const Key('store_workspace_header_logo_button')),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Chuyển cửa hàng'), findsOneWidget);
+    expect(find.byKey(const Key('store_workspace_drawer')), findsOneWidget);
     expect(find.byKey(const Key('switch_store_5')), findsOneWidget);
     expect(find.text('Buffet Poseidon'), findsOneWidget);
-    expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+    expect(find.text('Gói dịch vụ của tôi'), findsOneWidget);
+    expect(find.text('Cửa hàng'), findsOneWidget);
+    expect(find.text('Đổi mật khẩu'), findsOneWidget);
+    expect(find.text('Cài đặt ứng dụng'), findsOneWidget);
+    expect(find.text('Đăng xuất'), findsOneWidget);
+  });
 
-    await tester.enterText(
-      find.byKey(const Key('store_switcher_search_field')),
-      'poseidon',
+  testWidgets('store search pill opens feature search suggestions', (
+    tester,
+  ) async {
+    await _pumpFeatureSearchRouter(
+      tester,
+      const _FakeWorkspaceRepository(
+        permissions: [
+          StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW'),
+          StorePermission(permissionId: 2, code: 'PRODUCT.VIEW'),
+        ],
+      ),
+    );
+
+    await tester.tap(
+      find.byKey(const Key('store_workspace_header_search_pill')),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Buffet Poseidon'), findsOneWidget);
-    expect(find.byKey(const Key('switch_store_5')), findsNothing);
+    expect(find.text('Gợi ý tính năng'), findsOneWidget);
+    expect(find.text('Bán hàng'), findsOneWidget);
+    expect(find.text('Sản phẩm'), findsOneWidget);
+    expect(find.text('Thu chi'), findsOneWidget);
+    expect(find.text('Báo cáo'), findsOneWidget);
   });
 
-  testWidgets('selecting current store closes switcher without route reload', (
+  testWidgets(
+    'feature search filters and opens product route with permission',
+    (tester) async {
+      await _pumpFeatureSearchRouter(
+        tester,
+        const _FakeWorkspaceRepository(
+          permissions: [
+            StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW'),
+            StorePermission(permissionId: 2, code: 'PRODUCT.VIEW'),
+          ],
+        ),
+      );
+
+      await tester.tap(
+        find.byKey(const Key('store_workspace_header_search_pill')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('store_feature_search_field')),
+        'sản',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kết quả phù hợp'), findsOneWidget);
+      expect(find.text('Sản phẩm'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const Key('store_feature_search_item_products')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Product route opened'), findsOneWidget);
+    },
+  );
+
+  testWidgets('feature search keeps product disabled without permission', (
+    tester,
+  ) async {
+    await _pumpFeatureSearchRouter(
+      tester,
+      const _FakeWorkspaceRepository(
+        permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
+      ),
+    );
+
+    await tester.tap(
+      find.byKey(const Key('store_workspace_header_search_pill')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('store_feature_search_field')),
+      'sản',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('store_feature_search_item_products')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sản phẩm'), findsOneWidget);
+    expect(find.text('Product route opened'), findsNothing);
+  });
+
+  testWidgets('feature search handles access error state', (tester) async {
+    await _pumpFeatureSearchRouter(
+      tester,
+      _FakeWorkspaceRepository(
+        permissions: const [],
+        accessError: Exception('Store access failed'),
+      ),
+      initialLocation: '/stores/5/search',
+    );
+
+    expect(find.text('Store access failed'), findsOneWidget);
+    expect(find.text('Gợi ý tính năng'), findsNothing);
+  });
+
+  testWidgets('feature search handles forbidden state', (tester) async {
+    await _pumpFeatureSearchRouter(
+      tester,
+      const _FakeWorkspaceRepository(
+        permissions: [],
+        accessError: StoreAccessDeniedException('No store access'),
+      ),
+      initialLocation: '/stores/5/search',
+    );
+
+    expect(find.text('No store access'), findsOneWidget);
+    expect(find.text('Gợi ý tính năng'), findsNothing);
+  });
+
+  testWidgets('selecting current store closes drawer without route reload', (
     tester,
   ) async {
     await _pumpOverview(
@@ -683,13 +801,13 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(
-      find.byKey(const Key('store_workspace_header_store_button')),
+      find.byKey(const Key('store_workspace_header_logo_button')),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('switch_store_5')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Chuyển cửa hàng'), findsNothing);
+    expect(find.byKey(const Key('store_workspace_drawer')), findsNothing);
     expect(find.text('FPT Shipper Vip'), findsOneWidget);
   });
 
@@ -721,7 +839,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(
-        find.byKey(const Key('store_workspace_header_store_button')),
+        find.byKey(const Key('store_workspace_header_logo_button')),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('switch_store_2')));
@@ -733,7 +851,7 @@ void main() {
     },
   );
 
-  testWidgets('store header account icon navigates back to account hub', (
+  testWidgets('store drawer account menu opens my stores route', (
     tester,
   ) async {
     final repository = const _FakeWorkspaceRepository(
@@ -753,10 +871,15 @@ void main() {
     router.go('/stores/5');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.person_outline_rounded));
+    await tester.tap(
+      find.byKey(const Key('store_workspace_header_logo_button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cửa hàng'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Xin chào, Test User'), findsOneWidget);
+    expect(find.text('Danh sách cửa hàng'), findsOneWidget);
+    expect(find.text('Buffet Poseidon'), findsOneWidget);
     expect(find.text('Tổng quan hôm nay'), findsNothing);
   });
 
@@ -811,15 +934,70 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(
-      find.byKey(const Key('store_workspace_header_store_button')),
+      find.byKey(const Key('store_workspace_header_logo_button')),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('switch_store_6')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Chuyển cửa hàng'), findsOneWidget);
+    expect(find.byKey(const Key('store_workspace_drawer')), findsOneWidget);
     expect(find.byKey(const Key('switch_store_6')), findsOneWidget);
   });
+}
+
+Future<void> _pumpFeatureSearchRouter(
+  WidgetTester tester,
+  _FakeWorkspaceRepository repository, {
+  String initialLocation = '/stores/5',
+}) async {
+  final router = GoRouter(
+    initialLocation: initialLocation,
+    routes: [
+      GoRoute(
+        path: '/stores/:storeId/search',
+        name: RouteNames.storeFeatureSearch,
+        builder: (context, state) => const StoreFeatureSearchPage(storeId: 5),
+      ),
+      GoRoute(
+        path: '/stores/:storeId',
+        name: RouteNames.storeOverview,
+        builder: (context, state) => const StoreOverviewPage(storeId: 5),
+      ),
+      GoRoute(
+        path: '/stores/:storeId/products',
+        name: RouteNames.storeProductManagement,
+        builder: (context, state) =>
+            const Scaffold(body: Center(child: Text('Product route opened'))),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        authNotifierProvider.overrideWith(
+          () => _FixedAuthNotifier(
+            const AuthState(
+              status: AuthStatus.authenticated,
+              accountType: AccountType.storeUser,
+              fullName: 'Test User',
+              email: 'user@quanoi.test',
+            ),
+          ),
+        ),
+        loadStoreAccessContextUseCaseProvider.overrideWithValue(
+          LoadStoreAccessContextUseCase(repository),
+        ),
+        loadMyStoresUseCaseProvider.overrideWithValue(
+          LoadMyStoresUseCase(repository),
+        ),
+        ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
+      ],
+      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpOverview(
