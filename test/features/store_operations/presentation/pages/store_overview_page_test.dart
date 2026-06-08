@@ -11,6 +11,7 @@ import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
 import 'package:quan_oi/features/store_operations/presentation/pages/store_feature_search_page.dart';
 import 'package:quan_oi/features/store_operations/presentation/pages/store_overview_page.dart';
+import 'package:quan_oi/features/store_operations/voice_order/presentation/pages/voice_order_demo_page.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_access_context.dart';
 import 'package:quan_oi/features/workspace_context/domain/exceptions/store_access_denied_exception.dart';
@@ -48,6 +49,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Tổng quan'), findsOneWidget);
+    expect(find.text('Order giọng nói'), findsOneWidget);
     expect(find.text('Bạn chưa có quyền xem quản lý kho'), findsNothing);
     expect(find.text('Quản lý bàn'), findsOneWidget);
     expect(find.text('Bạn chưa có quyền xem quản lý bàn'), findsNothing);
@@ -158,6 +160,120 @@ void main() {
     expect(find.text('Product route opened'), findsOneWidget);
   });
 
+  testWidgets('voice order item navigates to demo route', (tester) async {
+    final repository = const _FakeWorkspaceRepository(
+      permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
+    );
+    final router = GoRouter(
+      initialLocation: '/stores/5',
+      routes: [
+        GoRoute(
+          path: '/stores/:storeId',
+          name: RouteNames.storeOverview,
+          builder: (context, state) => const StoreOverviewPage(storeId: 5),
+        ),
+        GoRoute(
+          path: '/stores/:storeId/voice-order',
+          name: RouteNames.storeVoiceOrderDemo,
+          builder: (context, state) => const Scaffold(
+            body: Center(child: Text('Voice order demo opened')),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authNotifierProvider.overrideWith(
+            () => _FixedAuthNotifier(
+              const AuthState(
+                status: AuthStatus.authenticated,
+                accountType: AccountType.storeUser,
+                fullName: 'Test User',
+                email: 'user@quanoi.test',
+              ),
+            ),
+          ),
+          loadStoreAccessContextUseCaseProvider.overrideWithValue(
+            LoadStoreAccessContextUseCase(repository),
+          ),
+          loadMyStoresUseCaseProvider.overrideWithValue(
+            LoadMyStoresUseCase(repository),
+          ),
+          ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
+        ],
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Order giọng nói'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Order giọng nói'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Voice order demo opened'), findsOneWidget);
+  });
+
+  testWidgets('voice order route blocks without DASHBOARD.VIEW', (
+    tester,
+  ) async {
+    final repository = const _FakeWorkspaceRepository(
+      permissions: [StorePermission(permissionId: 2, code: 'STORE.VIEW')],
+    );
+    final router = GoRouter(
+      initialLocation: '/stores/5/voice-order',
+      routes: [
+        GoRoute(
+          path: '/my-stores',
+          name: RouteNames.myStores,
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('My stores opened'))),
+        ),
+        GoRoute(
+          path: '/stores/:storeId/voice-order',
+          name: RouteNames.storeVoiceOrderDemo,
+          builder: (context, state) => const VoiceOrderDemoPage(storeId: 5),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authNotifierProvider.overrideWith(
+            () => _FixedAuthNotifier(
+              const AuthState(
+                status: AuthStatus.authenticated,
+                accountType: AccountType.storeUser,
+                fullName: 'Test User',
+                email: 'user@quanoi.test',
+              ),
+            ),
+          ),
+          loadStoreAccessContextUseCaseProvider.overrideWithValue(
+            LoadStoreAccessContextUseCase(repository),
+          ),
+          loadMyStoresUseCaseProvider.overrideWithValue(
+            LoadMyStoresUseCase(repository),
+          ),
+          ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
+        ],
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Bạn chưa có quyền dùng demo order giọng nói'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'inventory tile navigates to mock stock page without permission',
     (tester) async {
@@ -181,7 +297,7 @@ void main() {
       router.go('/stores/5');
       await tester.pumpAndSettle();
 
-      await tester.drag(find.byType(ListView), const Offset(0, -900));
+      await tester.ensureVisible(find.text('Quản lý kho'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Quản lý kho'));
       await tester.pumpAndSettle();

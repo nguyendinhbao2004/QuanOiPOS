@@ -43,6 +43,7 @@ import '../features/store_operations/staff_management/presentation/pages/staff_m
 import '../features/store_operations/staff_management/presentation/pages/staff_role_form_page.dart';
 import '../features/store_operations/table_management/presentation/pages/table_management_page.dart';
 import '../features/store_operations/table_management/presentation/pages/table_settings_page.dart';
+import '../features/store_operations/voice_order/presentation/pages/voice_order_demo_page.dart';
 import '../features/subscription/presentation/pages/store_subscription_page.dart';
 import '../features/subscription/presentation/pages/subscription_checkout_page.dart';
 import '../features/workspace_context/presentation/controllers/last_active_store_state.dart';
@@ -85,6 +86,7 @@ abstract final class RouteNames {
   static const String storeProductManagement = 'store-product-management';
   static const String storeProductCreate = 'store-product-create';
   static const String storeProductDetail = 'store-product-detail';
+  static const String storeVoiceOrderDemo = 'store-voice-order-demo';
   static const String storeTableManagement = 'store-table-management';
   static const String storeTableSettings = 'store-table-settings';
   static const String storeStaffManagement = 'store-staff-management';
@@ -532,6 +534,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
 
           return TableManagementPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/voice-order',
+        name: RouteNames.storeVoiceOrderDemo,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          return VoiceOrderDemoPage(storeId: storeId);
         },
       ),
       GoRoute(

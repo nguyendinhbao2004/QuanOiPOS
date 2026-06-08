@@ -320,6 +320,15 @@ class _FeatureGrid extends StatelessWidget {
         ),
       ),
       const _FeatureItemData('Bán hàng', Icons.shopping_cart_outlined),
+      _FeatureItemData(
+        'Order giọng nói',
+        Icons.graphic_eq_rounded,
+        isEnabled: true,
+        onTap: () => context.goNamed(
+          RouteNames.storeVoiceOrderDemo,
+          pathParameters: {'storeId': storeId.toString()},
+        ),
+      ),
       const _FeatureItemData('Báo cáo', Icons.bar_chart_rounded),
       const _FeatureItemData('Thu chi', Icons.payments_outlined),
       const _FeatureItemData('Khuyến mãi', Icons.local_offer_outlined),

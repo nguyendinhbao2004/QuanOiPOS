@@ -80,6 +80,10 @@ import '../../features/store_operations/staff_management/domain/usecases/remove_
 import '../../features/store_operations/staff_management/domain/usecases/update_staff_access_use_case.dart';
 import '../../features/store_operations/staff_management/domain/usecases/update_staff_display_name_use_case.dart';
 import '../../features/store_operations/staff_management/domain/usecases/update_staff_role_use_case.dart';
+import '../../features/store_operations/voice_order/data/datasources/voice_order_remote_data_source.dart';
+import '../../features/store_operations/voice_order/data/repositories/voice_order_repository_impl.dart';
+import '../../features/store_operations/voice_order/domain/repositories/voice_order_repository.dart';
+import '../../features/store_operations/voice_order/domain/usecases/recognize_voice_order_use_case.dart';
 import '../../features/workspace_context/data/datasources/store_access_context_cache_storage.dart';
 import '../../features/workspace_context/data/datasources/store_access_context_cache_storage_impl.dart';
 import '../../features/workspace_context/data/datasources/workspace_remote_data_source.dart';
@@ -269,7 +273,8 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
     () => ClearStoreAccessContextCacheUseCase(locator<WorkspaceRepository>()),
   );
   locator.registerLazySingleton<ClearAllStoreAccessContextCacheUseCase>(
-    () => ClearAllStoreAccessContextCacheUseCase(locator<WorkspaceRepository>()),
+    () =>
+        ClearAllStoreAccessContextCacheUseCase(locator<WorkspaceRepository>()),
   );
   locator.registerLazySingleton<LoadLastActiveStoreUseCase>(
     () => LoadLastActiveStoreUseCase(locator<LastActiveStoreStorage>()),
@@ -366,6 +371,17 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<DeleteProductUseCase>(
     () => DeleteProductUseCase(locator<ProductManagementRepository>()),
+  );
+
+  // Voice order
+  locator.registerLazySingleton<VoiceOrderRemoteDataSource>(
+    () => VoiceOrderRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<VoiceOrderRepository>(
+    () => VoiceOrderRepositoryImpl(locator<VoiceOrderRemoteDataSource>()),
+  );
+  locator.registerLazySingleton<RecognizeVoiceOrderUseCase>(
+    () => RecognizeVoiceOrderUseCase(locator<VoiceOrderRepository>()),
   );
 
   // Staff management

@@ -26,6 +26,10 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Quán Ơi cần microphone để ghi âm đơn hàng bằng giọng nói.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>Quán Ơi dùng nhận diện giọng nói để hiển thị nội dung bạn đang đọc.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>
