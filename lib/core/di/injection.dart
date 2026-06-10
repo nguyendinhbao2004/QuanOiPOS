@@ -44,10 +44,15 @@ import '../../features/store_operations/table_management/domain/repositories/tab
 import '../../features/store_operations/table_management/domain/usecases/create_area_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/create_table_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/delete_area_use_case.dart';
+import '../../features/store_operations/table_management/domain/usecases/load_area_detail_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/load_areas_use_case.dart';
+import '../../features/store_operations/table_management/domain/usecases/load_table_detail_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/load_table_groups_use_case.dart';
+import '../../features/store_operations/table_management/domain/usecases/load_table_sessions_use_case.dart';
+import '../../features/store_operations/table_management/domain/usecases/open_table_session_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/update_area_display_order_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/update_area_use_case.dart';
+import '../../features/store_operations/table_management/domain/usecases/update_table_status_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/update_table_use_case.dart';
 import '../../features/store_operations/product_management/data/datasources/product_management_remote_data_source.dart';
 import '../../features/store_operations/product_management/data/repositories/product_management_repository_impl.dart';
@@ -60,6 +65,7 @@ import '../../features/store_operations/product_management/domain/usecases/delet
 import '../../features/store_operations/product_management/domain/usecases/delete_product_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
@@ -301,6 +307,15 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<LoadTableGroupsUseCase>(
     () => LoadTableGroupsUseCase(locator<TableManagementRepository>()),
   );
+  locator.registerLazySingleton<LoadTableDetailUseCase>(
+    () => LoadTableDetailUseCase(locator<TableManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadAreaDetailUseCase>(
+    () => LoadAreaDetailUseCase(locator<TableManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadTableSessionsUseCase>(
+    () => LoadTableSessionsUseCase(locator<TableManagementRepository>()),
+  );
   locator.registerLazySingleton<CreateAreaUseCase>(
     () => CreateAreaUseCase(locator<TableManagementRepository>()),
   );
@@ -312,6 +327,12 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<UpdateTableUseCase>(
     () => UpdateTableUseCase(locator<TableManagementRepository>()),
+  );
+  locator.registerLazySingleton<UpdateTableStatusUseCase>(
+    () => UpdateTableStatusUseCase(locator<TableManagementRepository>()),
+  );
+  locator.registerLazySingleton<OpenTableSessionUseCase>(
+    () => OpenTableSessionUseCase(locator<TableManagementRepository>()),
   );
   locator.registerLazySingleton<UpdateAreaDisplayOrderUseCase>(
     () => UpdateAreaDisplayOrderUseCase(locator<TableManagementRepository>()),
@@ -334,6 +355,9 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<LoadProductToppingsUseCase>(
     () => LoadProductToppingsUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadProductIngredientsUseCase>(
+    () => LoadProductIngredientsUseCase(locator<ProductManagementRepository>()),
   );
   locator.registerLazySingleton<CreateProductToppingUseCase>(
     () => CreateProductToppingUseCase(locator<ProductManagementRepository>()),

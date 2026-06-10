@@ -1,25 +1,22 @@
-import '../../domain/entities/dining_table.dart';
-import '../../domain/entities/table_status.dart';
+import '../../domain/entities/table_session.dart';
 
-class DiningTableModel {
+class TableSessionModel {
   final int id;
-  final int storeId;
-  final int areaId;
-  final String name;
-  final int capacity;
-  final TableStatus status;
+  final int tableId;
+  final DateTime? openTime;
+  final DateTime? closeTime;
+  final TableSessionStatus status;
   final DateTime? createdAt;
   final String? createdBy;
   final DateTime? updatedAt;
   final String? updatedBy;
   final bool isDeleted;
 
-  const DiningTableModel({
+  const TableSessionModel({
     required this.id,
-    required this.storeId,
-    required this.areaId,
-    required this.name,
-    required this.capacity,
+    required this.tableId,
+    this.openTime,
+    this.closeTime,
     required this.status,
     this.createdAt,
     this.createdBy,
@@ -28,17 +25,16 @@ class DiningTableModel {
     required this.isDeleted,
   });
 
-  factory DiningTableModel.fromJson(Object? json) {
+  factory TableSessionModel.fromJson(Object? json) {
     if (json is! Map<String, dynamic>) {
-      throw const FormatException('Invalid table data');
+      throw const FormatException('Invalid table session data');
     }
 
-    return DiningTableModel(
+    return TableSessionModel(
       id: _intValue(json['id']),
-      storeId: _intValue(json['storeId']),
-      areaId: _intValue(json['areaId']),
-      name: _stringValue(json['name'], fallback: 'Bàn'),
-      capacity: _intValue(json['capacity']),
+      tableId: _intValue(json['tableId']),
+      openTime: _dateValue(json['openTime']),
+      closeTime: _dateValue(json['closeTime']),
       status: statusFromJson(json['status']),
       createdAt: _dateValue(json['createdAt']),
       createdBy: _nullableString(json['createdBy']),
@@ -48,43 +44,53 @@ class DiningTableModel {
     );
   }
 
-  static List<DiningTableModel> listFromJson(Object? json) {
+  static List<TableSessionModel> listFromJson(Object? json) {
     if (json == null) {
       return const [];
     }
 
     if (json is List) {
-      return json.map(DiningTableModel.fromJson).toList();
+      return json.map(TableSessionModel.fromJson).toList();
     }
 
     if (json is Map<String, dynamic>) {
-      final items = json['items'] ?? json['tables'] ?? json['data'];
+      final items = json['items'] ?? json['sessions'] ?? json['data'];
       if (items is List) {
-        return items.map(DiningTableModel.fromJson).toList();
+        return items.map(TableSessionModel.fromJson).toList();
       }
     }
 
-    throw const FormatException('Invalid table list data');
+    throw const FormatException('Invalid table session list data');
   }
 
-  static TableStatus statusFromJson(Object? value) {
+  static TableSessionStatus statusFromJson(Object? value) {
+    if (value is num) {
+      return switch (value.toInt()) {
+        1 => TableSessionStatus.open,
+        2 => TableSessionStatus.closed,
+        3 => TableSessionStatus.cancelled,
+        _ => TableSessionStatus.unknown,
+      };
+    }
+
     final text = value?.toString().trim().toLowerCase();
     return switch (text) {
-      'available' => TableStatus.available,
-      'occupied' => TableStatus.occupied,
-      'reserved' => TableStatus.reserved,
-      'disabled' => TableStatus.disabled,
-      _ => TableStatus.unknown,
+      '1' || 'open' => TableSessionStatus.open,
+      '2' || 'closed' || 'close' => TableSessionStatus.closed,
+      '3' ||
+      'cancelled' ||
+      'canceled' ||
+      'cancel' => TableSessionStatus.cancelled,
+      _ => TableSessionStatus.unknown,
     };
   }
 
-  DiningTable toEntity() {
-    return DiningTable(
+  TableSession toEntity() {
+    return TableSession(
       id: id,
-      storeId: storeId,
-      areaId: areaId,
-      name: name,
-      capacity: capacity,
+      tableId: tableId,
+      openTime: openTime,
+      closeTime: closeTime,
       status: status,
       createdAt: createdAt,
       createdBy: createdBy,

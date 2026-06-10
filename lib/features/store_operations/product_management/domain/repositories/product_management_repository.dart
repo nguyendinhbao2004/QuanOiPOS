@@ -1,5 +1,7 @@
 import '../entities/product.dart';
 import '../entities/product_category.dart';
+import '../entities/product_ingredient.dart';
+import '../entities/product_recipe_draft.dart';
 import '../entities/product_topping.dart';
 import '../entities/product_type.dart';
 import '../entities/product_variant_draft.dart';
@@ -8,6 +10,8 @@ abstract class ProductManagementRepository {
   Future<List<ProductCategory>> loadCategories(int storeId);
 
   Future<List<ProductTopping>> loadToppings(int storeId);
+
+  Future<List<ProductIngredient>> loadIngredients(int storeId);
 
   Future<ProductTopping> createTopping({
     required int storeId,
@@ -47,9 +51,11 @@ abstract class ProductManagementRepository {
     required String description,
     required int preparationTime,
     required int price,
+    required int costPrice,
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+    required List<ProductRecipeDraft> recipes,
   });
 
   Future<Product> updateProduct({
@@ -60,9 +66,11 @@ abstract class ProductManagementRepository {
     required String description,
     required int preparationTime,
     required int price,
+    required int costPrice,
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+    required List<ProductRecipeDraft> recipes,
   });
 
   Future<void> updateProductSellStatus({

@@ -74,6 +74,7 @@ class TableTile extends StatelessWidget {
       TableStatus.available => AppColors.success,
       TableStatus.occupied => AppColors.warning,
       TableStatus.reserved => AppColors.info,
+      TableStatus.disabled => AppColors.textMuted,
       TableStatus.unknown => AppColors.textMuted,
     };
   }

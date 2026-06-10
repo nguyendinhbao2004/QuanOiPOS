@@ -1,5 +1,6 @@
 import '../../domain/entities/product_type.dart';
 import '../../domain/entities/product_variant_draft.dart';
+import '../../domain/entities/product_recipe_draft.dart';
 
 class CreateProductCategoryRequestModel {
   final int storeId;
@@ -63,9 +64,11 @@ class CreateProductRequestModel {
   final String description;
   final int preparationTime;
   final int price;
+  final int costPrice;
   final ProductType type;
   final List<ProductVariantDraft>? variants;
   final List<int> toppingIds;
+  final List<ProductRecipeDraft> recipes;
 
   const CreateProductRequestModel({
     required this.storeId,
@@ -75,9 +78,11 @@ class CreateProductRequestModel {
     required this.description,
     required this.preparationTime,
     required this.price,
+    required this.costPrice,
     required this.type,
     this.variants,
     required this.toppingIds,
+    this.recipes = const [],
   });
 
   Map<String, dynamic> toJson() {
@@ -89,17 +94,28 @@ class CreateProductRequestModel {
       'description': description,
       'preparationTime': preparationTime,
       'price': price,
+      'costPrice': costPrice,
       'type': type.value,
       'variants': variants
           ?.map(
             (variant) => {
               'name': variant.name,
               'price': variant.price,
+              'costPrice': variant.costPrice,
               'isDefault': variant.isDefault,
             },
           )
           .toList(),
       'toppingIds': toppingIds,
+      'recipes': recipes
+          .map(
+            (recipe) => {
+              'ingredientId': recipe.ingredientId,
+              'quantity': recipe.quantity,
+              'capacity': recipe.capacity,
+            },
+          )
+          .toList(),
     };
   }
 }
@@ -111,9 +127,11 @@ class UpdateProductRequestModel {
   final String description;
   final int preparationTime;
   final int price;
+  final int costPrice;
   final ProductType type;
   final List<ProductVariantDraft>? variants;
   final List<int> toppingIds;
+  final List<ProductRecipeDraft> recipes;
 
   const UpdateProductRequestModel({
     required this.categoryId,
@@ -122,9 +140,11 @@ class UpdateProductRequestModel {
     required this.description,
     required this.preparationTime,
     required this.price,
+    required this.costPrice,
     required this.type,
     this.variants,
     required this.toppingIds,
+    this.recipes = const [],
   });
 
   Map<String, dynamic> toJson() {
@@ -135,17 +155,28 @@ class UpdateProductRequestModel {
       'description': description,
       'preparationTime': preparationTime,
       'price': price,
+      'costPrice': costPrice,
       'type': type.value,
       'variants': variants
           ?.map(
             (variant) => {
               'name': variant.name,
               'price': variant.price,
+              'costPrice': variant.costPrice,
               'isDefault': variant.isDefault,
             },
           )
           .toList(),
       'toppingIds': toppingIds,
+      'recipes': recipes
+          .map(
+            (recipe) => {
+              'ingredientId': recipe.ingredientId,
+              'quantity': recipe.quantity,
+              'capacity': recipe.capacity,
+            },
+          )
+          .toList(),
     };
   }
 }

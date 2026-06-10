@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_category.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_ingredient.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_recipe_draft.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_topping.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_variant_draft.dart';
@@ -286,6 +288,10 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   }
 
   @override
+  Future<List<ProductIngredient>> loadIngredients(int storeId) async =>
+      const [];
+
+  @override
   Future<ProductTopping> createTopping({
     required int storeId,
     required String name,
@@ -378,9 +384,11 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required String description,
     required int preparationTime,
     required int price,
+    required int costPrice,
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+    required List<ProductRecipeDraft> recipes,
   }) async {
     createProductCallCount += 1;
     return Product(
@@ -408,9 +416,11 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required String description,
     required int preparationTime,
     required int price,
+    required int costPrice,
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+    required List<ProductRecipeDraft> recipes,
   }) async {
     updateProductCallCount += 1;
     return Product(

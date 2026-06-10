@@ -1,6 +1,8 @@
 import '../entities/area.dart';
 import '../entities/dining_table.dart';
 import '../entities/table_area_group.dart';
+import '../entities/table_session.dart';
+import '../entities/table_status.dart';
 
 abstract class TableManagementRepository {
   Future<List<Area>> loadAreas(int storeId);
@@ -9,6 +11,19 @@ abstract class TableManagementRepository {
     required int storeId,
     int? areaId,
   });
+
+  Future<DiningTable> loadTableDetail(int tableId);
+
+  Future<Area> loadAreaDetail(int areaId);
+
+  Future<void> updateTableStatus({
+    required int tableId,
+    required TableStatus status,
+  });
+
+  Future<List<TableSession>> loadTableSessions(int tableId);
+
+  Future<TableSession> openTableSession(int tableId);
 
   Future<Area> createArea({
     required int storeId,

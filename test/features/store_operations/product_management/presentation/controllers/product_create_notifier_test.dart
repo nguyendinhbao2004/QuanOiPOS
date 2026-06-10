@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_category.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_ingredient.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_recipe_draft.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_topping.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_variant_draft.dart';
@@ -12,6 +14,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_topping_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
@@ -151,7 +154,8 @@ void main() {
         ),
       );
 
-      expect(repository.lastPrice, 7000);
+      expect(repository.lastPrice, 0);
+      expect(repository.lastCostPrice, 0);
       expect(repository.lastVariants?.map((variant) => variant.name), [
         'Rau muống',
         'Rau cải',
@@ -195,7 +199,8 @@ void main() {
     );
 
     expect(repository.createProductCallCount, 1);
-    expect(repository.lastPrice, 25000);
+    expect(repository.lastPrice, 0);
+    expect(repository.lastCostPrice, 0);
     expect(
       repository.lastVariants?.every((variant) => !variant.isDefault),
       isTrue,
@@ -299,7 +304,8 @@ void main() {
     );
 
     expect(repository.updateProductCallCount, 1);
-    expect(repository.lastPrice, 35000);
+    expect(repository.lastPrice, 0);
+    expect(repository.lastCostPrice, 0);
     expect(repository.lastVariants?.map((variant) => variant.name), [
       'Size M',
       'Size L',
@@ -494,6 +500,9 @@ ProviderContainer _container(_FakeProductCreateRepository repository) {
       loadProductToppingsUseCaseProvider.overrideWithValue(
         LoadProductToppingsUseCase(repository),
       ),
+      loadProductIngredientsUseCaseProvider.overrideWithValue(
+        LoadProductIngredientsUseCase(repository),
+      ),
       createProductCategoryUseCaseProvider.overrideWithValue(
         CreateProductCategoryUseCase(repository),
       ),
@@ -566,6 +575,7 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   int loadCategoriesCallCount = 0;
   int loadToppingsCallCount = 0;
   int loadProductDetailCallCount = 0;
+  int loadIngredientsCallCount = 0;
   int createCategoryCallCount = 0;
   int createToppingCallCount = 0;
   int updateToppingCallCount = 0;
@@ -573,8 +583,10 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   int createProductCallCount = 0;
   int updateProductCallCount = 0;
   int? lastPrice;
+  int? lastCostPrice;
   List<ProductVariantDraft>? lastVariants;
   List<int>? lastToppingIds;
+  List<ProductRecipeDraft>? lastRecipes;
 
   final categories = <ProductCategory>[
     ProductCategory(id: 1, storeId: 5, name: 'Đồ uống', isDeleted: false),
@@ -597,6 +609,21 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
     ),
   ];
 
+  final ingredients = <ProductIngredient>[
+    const ProductIngredient(
+      id: 1,
+      storeId: 5,
+      name: 'Trà',
+      itemType: 1,
+      unit: 'gram',
+      quantity: 10,
+      capacity: 1000,
+      currentCapacity: 500,
+      isActive: true,
+      isDeleted: false,
+    ),
+  ];
+
   @override
   Future<List<ProductCategory>> loadCategories(int storeId) async {
     loadCategoriesCallCount += 1;
@@ -607,6 +634,12 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   Future<List<ProductTopping>> loadToppings(int storeId) async {
     loadToppingsCallCount += 1;
     return [...toppings];
+  }
+
+  @override
+  Future<List<ProductIngredient>> loadIngredients(int storeId) async {
+    loadIngredientsCallCount += 1;
+    return [...ingredients];
   }
 
   @override
@@ -699,14 +732,18 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
     required String description,
     required int preparationTime,
     required int price,
+    required int costPrice,
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+    required List<ProductRecipeDraft> recipes,
   }) async {
     createProductCallCount += 1;
     lastPrice = price;
+    lastCostPrice = costPrice;
     lastVariants = variants;
     lastToppingIds = toppingIds;
+    lastRecipes = recipes;
     return Product(
       id: 9,
       storeId: storeId,
@@ -732,14 +769,18 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
     required String description,
     required int preparationTime,
     required int price,
+    required int costPrice,
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+    required List<ProductRecipeDraft> recipes,
   }) async {
     updateProductCallCount += 1;
     lastPrice = price;
+    lastCostPrice = costPrice;
     lastVariants = variants;
     lastToppingIds = toppingIds;
+    lastRecipes = recipes;
     return Product(
       id: productId,
       storeId: 5,

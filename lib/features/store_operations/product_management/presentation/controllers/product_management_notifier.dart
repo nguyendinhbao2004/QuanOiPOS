@@ -127,9 +127,11 @@ class ProductManagementNotifier
       description: description,
       preparationTime: preparationTime,
       price: price,
+      costPrice: 0,
       type: type,
       variants: null,
       toppingIds: const [],
+      recipes: const [],
     );
     await load();
   }

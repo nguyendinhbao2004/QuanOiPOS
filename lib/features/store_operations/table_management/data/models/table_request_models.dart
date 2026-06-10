@@ -36,3 +36,23 @@ class UpdateTableRequestModel {
     return {'areaId': areaId, 'name': name, 'capacity': capacity};
   }
 }
+
+class UpdateTableStatusRequestModel {
+  final int status;
+
+  const UpdateTableStatusRequestModel({required this.status});
+
+  Map<String, dynamic> toJson() {
+    return {'status': status};
+  }
+}
+
+class OpenTableSessionRequestModel {
+  final int tableId;
+
+  const OpenTableSessionRequestModel({required this.tableId});
+
+  Map<String, dynamic> toJson() {
+    return {'tableId': tableId};
+  }
+}

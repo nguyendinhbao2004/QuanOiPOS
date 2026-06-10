@@ -12,6 +12,8 @@ import '../../../../workspace_context/presentation/controllers/store_access_stat
 import '../../../../workspace_context/presentation/providers/workspace_context_providers.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
+import '../../domain/entities/product_ingredient.dart';
+import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
 import '../../domain/entities/product_variant_draft.dart';
@@ -35,7 +37,9 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
   final _descriptionController = TextEditingController();
   final _preparationTimeController = TextEditingController(text: '0');
   final _basePriceController = TextEditingController();
+  final _costPriceController = TextEditingController();
   final List<_VariantOptionRowState> _variantOptions = [];
+  final List<_RecipeRowState> _recipeRows = [];
   int? _categoryId;
   ProductType _type = ProductType.drink;
   bool _hasMultipleSizes = false;
@@ -50,8 +54,12 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
     _descriptionController.dispose();
     _preparationTimeController.dispose();
     _basePriceController.dispose();
+    _costPriceController.dispose();
     for (final option in _variantOptions) {
       option.dispose();
+    }
+    for (final recipe in _recipeRows) {
+      recipe.dispose();
     }
     super.dispose();
   }
@@ -97,6 +105,17 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
     });
   }
 
+  void _setRecipeRows(List<_RecipeRowState> rows) {
+    setState(() {
+      for (final recipe in _recipeRows) {
+        recipe.dispose();
+      }
+      _recipeRows
+        ..clear()
+        ..addAll(rows);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final accessState = ref.watch(storeAccessNotifierProvider(widget.storeId));
@@ -135,12 +154,14 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
             descriptionController: _descriptionController,
             preparationTimeController: _preparationTimeController,
             basePriceController: _basePriceController,
+            costPriceController: _costPriceController,
             categoryId: _categoryId,
             type: _type,
             hasMultipleSizes: _hasMultipleSizes,
             variantOptions: _variantOptions,
             defaultVariantOptionId: _defaultVariantOptionId,
             selectedToppingIds: _selectedToppingIds,
+            recipeRows: _recipeRows,
             didPrefillProduct: _didPrefillProduct,
             onEditProductLoaded: _prefillProduct,
             onCategoryChanged: (value) => setState(() => _categoryId = value),
@@ -166,6 +187,7 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
               });
             },
             onToppingSelectionChanged: _setSelectedToppingIds,
+            onRecipeRowsChanged: _setRecipeRows,
           ),
         },
       ),
@@ -181,6 +203,9 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
       _basePriceController.text = product.price > 0
           ? product.price.toString()
           : '';
+      _costPriceController.text = product.costPrice > 0
+          ? product.costPrice.toString()
+          : '0';
       _categoryId = product.categoryId;
       _type = product.type;
       _selectedToppingIds
@@ -205,12 +230,20 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
           final option = _VariantOptionRowState(id: id);
           option.nameController.text = variant.name;
           option.priceController.text = variant.price.toString();
+          option.costPriceController.text = variant.costPrice.toString();
           _variantOptions.add(option);
           if (variant.isDefault) {
             _defaultVariantOptionId = id;
           }
         }
       }
+
+      for (final recipe in _recipeRows) {
+        recipe.dispose();
+      }
+      _recipeRows
+        ..clear()
+        ..addAll(product.recipes.map(_RecipeRowState.fromDraft));
     });
   }
 }
@@ -224,12 +257,14 @@ class _AccessReadyContent extends ConsumerWidget {
   final TextEditingController descriptionController;
   final TextEditingController preparationTimeController;
   final TextEditingController basePriceController;
+  final TextEditingController costPriceController;
   final int? categoryId;
   final ProductType type;
   final bool hasMultipleSizes;
   final List<_VariantOptionRowState> variantOptions;
   final int? defaultVariantOptionId;
   final Set<int> selectedToppingIds;
+  final List<_RecipeRowState> recipeRows;
   final bool didPrefillProduct;
   final ValueChanged<Product> onEditProductLoaded;
   final ValueChanged<int?> onCategoryChanged;
@@ -240,6 +275,7 @@ class _AccessReadyContent extends ConsumerWidget {
   final ValueChanged<int> onDefaultVariantOptionToggled;
   final void Function(int toppingId, bool isSelected) onToppingChanged;
   final ValueChanged<Set<int>> onToppingSelectionChanged;
+  final ValueChanged<List<_RecipeRowState>> onRecipeRowsChanged;
 
   const _AccessReadyContent({
     required this.storeId,
@@ -250,12 +286,14 @@ class _AccessReadyContent extends ConsumerWidget {
     required this.descriptionController,
     required this.preparationTimeController,
     required this.basePriceController,
+    required this.costPriceController,
     required this.categoryId,
     required this.type,
     required this.hasMultipleSizes,
     required this.variantOptions,
     required this.defaultVariantOptionId,
     required this.selectedToppingIds,
+    required this.recipeRows,
     required this.didPrefillProduct,
     required this.onEditProductLoaded,
     required this.onCategoryChanged,
@@ -266,6 +304,7 @@ class _AccessReadyContent extends ConsumerWidget {
     required this.onDefaultVariantOptionToggled,
     required this.onToppingChanged,
     required this.onToppingSelectionChanged,
+    required this.onRecipeRowsChanged,
   });
 
   @override
@@ -340,12 +379,14 @@ class _AccessReadyContent extends ConsumerWidget {
               descriptionController: descriptionController,
               preparationTimeController: preparationTimeController,
               basePriceController: basePriceController,
+              costPriceController: costPriceController,
               categoryId: categoryId,
               type: type,
               hasMultipleSizes: hasMultipleSizes,
               variantOptions: variantOptions,
               defaultVariantOptionId: defaultVariantOptionId,
               selectedToppingIds: selectedToppingIds,
+              recipeRows: recipeRows,
               access: access,
               notifier: notifier,
               onCategoryChanged: onCategoryChanged,
@@ -356,6 +397,7 @@ class _AccessReadyContent extends ConsumerWidget {
               onDefaultVariantOptionToggled: onDefaultVariantOptionToggled,
               onToppingChanged: onToppingChanged,
               onToppingSelectionChanged: onToppingSelectionChanged,
+              onRecipeRowsChanged: onRecipeRowsChanged,
               onSubmit: () => _submit(context, state, notifier, isEditing),
               onDelete: isEditing
                   ? () => _confirmDelete(context, state, notifier)
@@ -392,9 +434,11 @@ class _AccessReadyContent extends ConsumerWidget {
         preparationTime:
             int.tryParse(preparationTimeController.text.trim()) ?? 0,
         basePrice: int.tryParse(basePriceController.text.trim()),
+        costPrice: int.tryParse(costPriceController.text.trim()),
         hasMultipleSizes: hasMultipleSizes,
         variants: _buildVariants(),
         toppingIds: selectedToppingIds.toList(),
+        recipes: _buildRecipes(),
       );
       if (isEditing) {
         await notifier.update(input);
@@ -426,7 +470,20 @@ class _AccessReadyContent extends ConsumerWidget {
         ProductVariantDraft(
           name: option.nameController.text.trim(),
           price: int.tryParse(option.priceController.text.trim()) ?? 0,
+          costPrice: int.tryParse(option.costPriceController.text.trim()) ?? 0,
           isDefault: defaultVariantOptionId == option.id,
+        ),
+    ];
+  }
+
+  List<ProductRecipeDraft> _buildRecipes() {
+    return [
+      for (final row in recipeRows)
+        ProductRecipeDraft(
+          ingredientId: row.ingredient.id,
+          ingredient: row.ingredient,
+          quantity: int.tryParse(row.quantityController.text.trim()) ?? 0,
+          capacity: int.tryParse(row.capacityController.text.trim()) ?? 0,
         ),
     ];
   }
@@ -483,12 +540,14 @@ class _ReadyCreateForm extends StatelessWidget {
   final TextEditingController descriptionController;
   final TextEditingController preparationTimeController;
   final TextEditingController basePriceController;
+  final TextEditingController costPriceController;
   final int? categoryId;
   final ProductType type;
   final bool hasMultipleSizes;
   final List<_VariantOptionRowState> variantOptions;
   final int? defaultVariantOptionId;
   final Set<int> selectedToppingIds;
+  final List<_RecipeRowState> recipeRows;
   final ProductCreateAccess access;
   final ProductCreateNotifier notifier;
   final ValueChanged<int?> onCategoryChanged;
@@ -499,6 +558,7 @@ class _ReadyCreateForm extends StatelessWidget {
   final ValueChanged<int> onDefaultVariantOptionToggled;
   final void Function(int toppingId, bool isSelected) onToppingChanged;
   final ValueChanged<Set<int>> onToppingSelectionChanged;
+  final ValueChanged<List<_RecipeRowState>> onRecipeRowsChanged;
   final VoidCallback onSubmit;
   final VoidCallback? onDelete;
 
@@ -509,12 +569,14 @@ class _ReadyCreateForm extends StatelessWidget {
     required this.descriptionController,
     required this.preparationTimeController,
     required this.basePriceController,
+    required this.costPriceController,
     required this.categoryId,
     required this.type,
     required this.hasMultipleSizes,
     required this.variantOptions,
     required this.defaultVariantOptionId,
     required this.selectedToppingIds,
+    required this.recipeRows,
     required this.access,
     required this.notifier,
     required this.onCategoryChanged,
@@ -525,6 +587,7 @@ class _ReadyCreateForm extends StatelessWidget {
     required this.onDefaultVariantOptionToggled,
     required this.onToppingChanged,
     required this.onToppingSelectionChanged,
+    required this.onRecipeRowsChanged,
     required this.onSubmit,
     this.onDelete,
   });
@@ -630,8 +693,10 @@ class _ReadyCreateForm extends StatelessWidget {
                       child: TextFormField(
                         key: const Key('product_create_base_price_field'),
                         controller: basePriceController,
+                        enabled: !hasMultipleSizes && !isSubmitting,
                         decoration: const InputDecoration(
-                          labelText: 'Giá cơ bản',
+                          labelText: 'Giá bán',
+                          suffixText: 'đ',
                         ),
                         keyboardType: TextInputType.number,
                         inputFormatters: [
@@ -645,6 +710,34 @@ class _ReadyCreateForm extends StatelessWidget {
                           final price = int.tryParse(value ?? '');
                           if (price == null || price <= 0) {
                             return 'Nhập giá hợp lệ';
+                          }
+
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: AppConstants.spacingMd),
+                    Expanded(
+                      child: TextFormField(
+                        key: const Key('product_create_cost_price_field'),
+                        controller: costPriceController,
+                        enabled: !hasMultipleSizes && !isSubmitting,
+                        decoration: const InputDecoration(
+                          labelText: 'Giá vốn',
+                          suffixText: 'đ',
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        validator: (value) {
+                          if (hasMultipleSizes) {
+                            return null;
+                          }
+
+                          final price = int.tryParse(value ?? '');
+                          if (price == null || price < 0) {
+                            return 'Nhập giá vốn hợp lệ';
                           }
 
                           return null;
@@ -687,6 +780,17 @@ class _ReadyCreateForm extends StatelessWidget {
                   onTap: isSubmitting
                       ? null
                       : () => _showToppingPicker(context),
+                ),
+                const SizedBox(height: AppConstants.spacingXl),
+                _SectionTitle('4. Nguyên liệu / Công thức'),
+                const SizedBox(height: AppConstants.spacingSm),
+                _SelectionField(
+                  key: const Key('product_create_recipe_field'),
+                  label: 'Nguyên liệu',
+                  value: _recipeSummary(recipeRows),
+                  hint: 'Chọn nguyên liệu sử dụng',
+                  icon: Icons.inventory_2_outlined,
+                  onTap: isSubmitting ? null : () => _showRecipePicker(context),
                 ),
               ],
             ),
@@ -735,6 +839,18 @@ class _ReadyCreateForm extends StatelessWidget {
     return '${selectedToppings.length} topping đã chọn';
   }
 
+  String? _recipeSummary(List<_RecipeRowState> recipes) {
+    if (recipes.isEmpty) {
+      return null;
+    }
+
+    if (recipes.length <= 2) {
+      return recipes.map((recipe) => recipe.ingredient.name).join(', ');
+    }
+
+    return '${recipes.length} nguyên liệu đã chọn';
+  }
+
   Future<void> _showCategoryPicker(
     BuildContext context,
     int? selectedCategoryId,
@@ -776,6 +892,22 @@ class _ReadyCreateForm extends StatelessWidget {
             onDeleteTopping: notifier.deleteTopping,
             onSelectionChanged: onToppingSelectionChanged,
           ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showRecipePicker(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _RecipePickerBottomSheet(
+          ingredients: state.ingredients,
+          recipeRows: recipeRows,
+          onRecipesChanged: onRecipeRowsChanged,
         );
       },
     );
@@ -891,14 +1023,65 @@ class _VariantOptionRowState {
   final int id;
   final TextEditingController nameController;
   final TextEditingController priceController;
+  final TextEditingController costPriceController;
 
   _VariantOptionRowState({required this.id})
     : nameController = TextEditingController(),
-      priceController = TextEditingController();
+      priceController = TextEditingController(),
+      costPriceController = TextEditingController(text: '0');
 
   void dispose() {
     nameController.dispose();
     priceController.dispose();
+    costPriceController.dispose();
+  }
+}
+
+class _RecipeRowState {
+  final ProductIngredient ingredient;
+  final TextEditingController quantityController;
+  final TextEditingController capacityController;
+
+  _RecipeRowState({
+    required this.ingredient,
+    String quantity = '0',
+    String capacity = '0',
+  }) : quantityController = TextEditingController(text: quantity),
+       capacityController = TextEditingController(text: capacity);
+
+  factory _RecipeRowState.fromDraft(ProductRecipeDraft draft) {
+    final ingredient = draft.ingredient;
+    return _RecipeRowState(
+      ingredient:
+          ingredient ??
+          ProductIngredient(
+            id: draft.ingredientId,
+            storeId: 0,
+            name: 'Nguyên liệu #${draft.ingredientId}',
+            itemType: 1,
+            unit: '',
+            quantity: 0,
+            capacity: 0,
+            currentCapacity: 0,
+            isActive: true,
+            isDeleted: false,
+          ),
+      quantity: draft.quantity.toString(),
+      capacity: draft.capacity.toString(),
+    );
+  }
+
+  _RecipeRowState clone() {
+    return _RecipeRowState(
+      ingredient: ingredient,
+      quantity: quantityController.text,
+      capacity: capacityController.text,
+    );
+  }
+
+  void dispose() {
+    quantityController.dispose();
+    capacityController.dispose();
   }
 }
 
@@ -976,12 +1159,26 @@ class _VariantOptionRow extends StatelessWidget {
         ),
         const SizedBox(width: AppConstants.spacingSm),
         Expanded(
-          flex: 4,
+          flex: 3,
           child: TextFormField(
             key: Key('product_create_variant_${option.id}_price_field'),
             controller: option.priceController,
             decoration: const InputDecoration(
               labelText: 'Giá',
+              suffixText: 'đ',
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
+        ),
+        const SizedBox(width: AppConstants.spacingSm),
+        Expanded(
+          flex: 3,
+          child: TextFormField(
+            key: Key('product_create_variant_${option.id}_cost_price_field'),
+            controller: option.costPriceController,
+            decoration: const InputDecoration(
+              labelText: 'Giá vốn',
               suffixText: 'đ',
             ),
             keyboardType: TextInputType.number,
@@ -1451,6 +1648,202 @@ class _ToppingPickerBottomSheetState extends State<_ToppingPickerBottomSheet> {
         _showMessage(context, _cleanError(error));
       }
     }
+  }
+}
+
+class _RecipePickerBottomSheet extends StatefulWidget {
+  final List<ProductIngredient> ingredients;
+  final List<_RecipeRowState> recipeRows;
+  final ValueChanged<List<_RecipeRowState>> onRecipesChanged;
+
+  const _RecipePickerBottomSheet({
+    required this.ingredients,
+    required this.recipeRows,
+    required this.onRecipesChanged,
+  });
+
+  @override
+  State<_RecipePickerBottomSheet> createState() =>
+      _RecipePickerBottomSheetState();
+}
+
+class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
+  final _searchController = TextEditingController();
+  late List<_RecipeRowState> _recipeRows;
+  String _query = '';
+  bool _submitted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _recipeRows = widget.recipeRows.map((row) => row.clone()).toList();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    if (!_submitted) {
+      for (final row in _recipeRows) {
+        row.dispose();
+      }
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ingredients = _filteredIngredients();
+
+    return _PickerSheetFrame(
+      key: const Key('product_create_recipe_picker_sheet'),
+      title: 'Nguyên liệu',
+      searchController: _searchController,
+      searchHint: 'Tìm nguyên liệu',
+      addTooltip: 'Thêm nguyên liệu',
+      onSearchChanged: (value) => setState(() => _query = value.trim()),
+      onAdd: null,
+      footer: _PickerFooter(
+        updateKey: const Key('product_create_recipe_picker_update_button'),
+        onCancel: () => Navigator.of(context).pop(),
+        onUpdate: _submit,
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: ingredients.isEmpty
+                ? const _InlineEmptyState(
+                    icon: Icons.inventory_2_outlined,
+                    message: 'Chưa có nguyên liệu phù hợp.',
+                  )
+                : GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppConstants.spacingLg,
+                      0,
+                      AppConstants.spacingLg,
+                      AppConstants.spacingXl,
+                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 132,
+                          mainAxisSpacing: AppConstants.spacingMd,
+                          crossAxisSpacing: AppConstants.spacingMd,
+                          mainAxisExtent: 130,
+                        ),
+                    itemCount: ingredients.length,
+                    itemBuilder: (context, index) {
+                      final ingredient = ingredients[index];
+                      return _PickerGridItem(
+                        key: Key(
+                          'product_create_recipe_picker_item_${ingredient.id}',
+                        ),
+                        title: ingredient.name,
+                        subtitle: ingredient.unit.isEmpty
+                            ? null
+                            : 'Đơn vị: ${ingredient.unit}',
+                        icon: Icons.inventory_2_outlined,
+                        visualSize: 70,
+                        textAreaHeight: 46,
+                        isSelected: _hasIngredient(ingredient.id),
+                        onTap: () => _toggleIngredient(ingredient),
+                      );
+                    },
+                  ),
+          ),
+          if (_recipeRows.isNotEmpty) _RecipeDraftList(rows: _recipeRows),
+        ],
+      ),
+    );
+  }
+
+  List<ProductIngredient> _filteredIngredients() {
+    if (_query.isEmpty) {
+      return widget.ingredients;
+    }
+
+    final query = _query.toLowerCase();
+    return widget.ingredients
+        .where((ingredient) => ingredient.name.toLowerCase().contains(query))
+        .toList();
+  }
+
+  bool _hasIngredient(int ingredientId) {
+    return _recipeRows.any((row) => row.ingredient.id == ingredientId);
+  }
+
+  void _toggleIngredient(ProductIngredient ingredient) {
+    setState(() {
+      final index = _recipeRows.indexWhere(
+        (row) => row.ingredient.id == ingredient.id,
+      );
+      if (index == -1) {
+        _recipeRows.add(_RecipeRowState(ingredient: ingredient));
+      } else {
+        final row = _recipeRows.removeAt(index);
+        row.dispose();
+      }
+    });
+  }
+
+  void _submit() {
+    _submitted = true;
+    widget.onRecipesChanged(_recipeRows);
+    Navigator.of(context).pop();
+  }
+}
+
+class _RecipeDraftList extends StatelessWidget {
+  final List<_RecipeRowState> rows;
+
+  const _RecipeDraftList({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 220),
+      padding: const EdgeInsets.fromLTRB(
+        AppConstants.spacingLg,
+        0,
+        AppConstants.spacingLg,
+        AppConstants.spacingMd,
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        itemCount: rows.length,
+        separatorBuilder: (_, _) =>
+            const SizedBox(height: AppConstants.spacingSm),
+        itemBuilder: (context, index) {
+          final row = rows[index];
+          return Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Text(row.ingredient.name, style: AppTextStyles.labelSm),
+              ),
+              const SizedBox(width: AppConstants.spacingSm),
+              Expanded(
+                child: TextFormField(
+                  key: Key('recipe_${row.ingredient.id}_quantity_field'),
+                  controller: row.quantityController,
+                  decoration: const InputDecoration(labelText: 'SL'),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+              ),
+              const SizedBox(width: AppConstants.spacingSm),
+              Expanded(
+                child: TextFormField(
+                  key: Key('recipe_${row.ingredient.id}_capacity_field'),
+                  controller: row.capacityController,
+                  decoration: const InputDecoration(labelText: 'Dung lượng'),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
 

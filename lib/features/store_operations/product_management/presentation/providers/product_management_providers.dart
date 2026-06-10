@@ -11,6 +11,7 @@ import '../../domain/usecases/delete_product_topping_use_case.dart';
 import '../../domain/usecases/delete_product_use_case.dart';
 import '../../domain/usecases/load_product_categories_use_case.dart';
 import '../../domain/usecases/load_product_detail_use_case.dart';
+import '../../domain/usecases/load_product_ingredients_use_case.dart';
 import '../../domain/usecases/load_product_toppings_use_case.dart';
 import '../../domain/usecases/load_products_use_case.dart';
 import '../../domain/usecases/update_product_category_use_case.dart';
@@ -42,6 +43,11 @@ final loadProductToppingsUseCaseProvider = Provider<LoadProductToppingsUseCase>(
     return locator<LoadProductToppingsUseCase>();
   },
 );
+
+final loadProductIngredientsUseCaseProvider =
+    Provider<LoadProductIngredientsUseCase>((ref) {
+      return locator<LoadProductIngredientsUseCase>();
+    });
 
 final createProductToppingUseCaseProvider =
     Provider<CreateProductToppingUseCase>((ref) {

@@ -1,4 +1,6 @@
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_ingredient.dart';
+import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
 import '../../domain/entities/product_variant_draft.dart';
@@ -13,9 +15,11 @@ class ProductModel {
   final String description;
   final int preparationTime;
   final int price;
+  final int costPrice;
   final ProductType type;
   final List<ProductVariantDraft> variants;
   final List<ProductTopping> toppings;
+  final List<ProductRecipeDraft> recipes;
   final bool isSell;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -31,9 +35,11 @@ class ProductModel {
     required this.description,
     required this.preparationTime,
     required this.price,
+    required this.costPrice,
     required this.type,
     this.variants = const [],
     this.toppings = const [],
+    this.recipes = const [],
     required this.isSell,
     this.createdAt,
     this.updatedAt,
@@ -65,9 +71,11 @@ class ProductModel {
       description: _stringValue(json['description']),
       preparationTime: _intValue(json['preparationTime']),
       price: _intValue(json['price']),
+      costPrice: _intValue(json['costPrice']),
       type: ProductType.fromValue(json['type']),
       variants: _variantDrafts(json['variants']),
       toppings: _toppings(json['toppings'], storeId),
+      recipes: _recipes(json['recipes']),
       isSell: _boolValue(json['isSell'], fallback: true),
       createdAt: _dateValue(json['createdAt']),
       updatedAt: _dateValue(json['updatedAt']),
@@ -105,9 +113,11 @@ class ProductModel {
       description: description,
       preparationTime: preparationTime,
       price: price,
+      costPrice: costPrice,
       type: type,
       variants: variants,
       toppings: toppings,
+      recipes: recipes,
       isSell: isSell,
       createdAt: createdAt,
       updatedAt: updatedAt,
@@ -170,6 +180,7 @@ class ProductModel {
           (variant) => ProductVariantDraft(
             name: _stringValue(variant['name'], fallback: 'Mặc định'),
             price: _intValue(variant['price']),
+            costPrice: _intValue(variant['costPrice']),
             isDefault: _boolValue(variant['isDefault']),
           ),
         )
@@ -195,6 +206,44 @@ class ProductModel {
           ),
         )
         .toList();
+  }
+
+  static List<ProductRecipeDraft> _recipes(Object? value) {
+    if (value is! List) {
+      return const [];
+    }
+
+    return value.whereType<Map<String, dynamic>>().map((recipe) {
+      final ingredientJson = recipe['ingredient'];
+      final ingredient = ingredientJson is Map<String, dynamic>
+          ? ProductIngredient(
+              id: _intValue(
+                ingredientJson['id'] ?? ingredientJson['ingredientId'],
+              ),
+              storeId: _intValue(ingredientJson['storeId']),
+              name: _stringValue(
+                ingredientJson['name'],
+                fallback: 'Nguyên liệu',
+              ),
+              itemType: _intValue(ingredientJson['itemType']),
+              unit: _stringValue(ingredientJson['unit']),
+              quantity: _intValue(ingredientJson['quantity']),
+              capacity: _intValue(ingredientJson['capacity']),
+              currentCapacity: _intValue(ingredientJson['currentCapacity']),
+              isActive: _boolValue(ingredientJson['isActive'], fallback: true),
+              isDeleted: _boolValue(ingredientJson['isDeleted']),
+            )
+          : null;
+
+      final recipeId = _intValue(recipe['id']);
+      return ProductRecipeDraft(
+        id: recipeId == 0 ? null : recipeId,
+        ingredientId: _intValue(recipe['ingredientId'] ?? ingredient?.id),
+        ingredient: ingredient,
+        quantity: _intValue(recipe['quantity']),
+        capacity: _intValue(recipe['capacity']),
+      );
+    }).toList();
   }
 
   static DateTime? _dateValue(Object? value) {

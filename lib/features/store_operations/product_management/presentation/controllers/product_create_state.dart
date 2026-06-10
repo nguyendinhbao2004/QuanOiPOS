@@ -1,5 +1,7 @@
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
+import '../../domain/entities/product_ingredient.dart';
+import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
 import '../../domain/entities/product_variant_draft.dart';
@@ -17,12 +19,14 @@ enum ProductCreateStatus {
 class ProductCreateSeedData {
   final List<ProductCategory> categories;
   final List<ProductTopping> toppings;
+  final List<ProductIngredient> ingredients;
   final int? editingProductId;
   final Product? editingProduct;
 
   const ProductCreateSeedData({
     required this.categories,
     required this.toppings,
+    this.ingredients = const [],
     this.editingProductId,
     this.editingProduct,
   });
@@ -74,9 +78,11 @@ class ProductCreateInput {
   final String description;
   final int preparationTime;
   final int? basePrice;
+  final int? costPrice;
   final bool hasMultipleSizes;
   final List<ProductVariantDraft> variants;
   final List<int> toppingIds;
+  final List<ProductRecipeDraft> recipes;
 
   const ProductCreateInput({
     required this.name,
@@ -85,9 +91,11 @@ class ProductCreateInput {
     required this.description,
     required this.preparationTime,
     required this.basePrice,
+    this.costPrice = 0,
     required this.hasMultipleSizes,
     required this.variants,
     required this.toppingIds,
+    this.recipes = const [],
   });
 }
 
@@ -95,6 +103,7 @@ class ProductCreateState {
   final ProductCreateStatus status;
   final List<ProductCategory> categories;
   final List<ProductTopping> toppings;
+  final List<ProductIngredient> ingredients;
   final Product? editingProduct;
   final String? errorMessage;
 
@@ -102,6 +111,7 @@ class ProductCreateState {
     required this.status,
     this.categories = const [],
     this.toppings = const [],
+    this.ingredients = const [],
     this.editingProduct,
     this.errorMessage,
   });
@@ -110,6 +120,7 @@ class ProductCreateState {
     : status = ProductCreateStatus.initial,
       categories = const [],
       toppings = const [],
+      ingredients = const [],
       editingProduct = null,
       errorMessage = null;
 
@@ -121,6 +132,7 @@ class ProductCreateState {
     ProductCreateStatus? status,
     List<ProductCategory>? categories,
     List<ProductTopping>? toppings,
+    List<ProductIngredient>? ingredients,
     Product? editingProduct,
     String? errorMessage,
     bool clearError = false,
@@ -129,6 +141,7 @@ class ProductCreateState {
       status: status ?? this.status,
       categories: categories ?? this.categories,
       toppings: toppings ?? this.toppings,
+      ingredients: ingredients ?? this.ingredients,
       editingProduct: editingProduct ?? this.editingProduct,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );

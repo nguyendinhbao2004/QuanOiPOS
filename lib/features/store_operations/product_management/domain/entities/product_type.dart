@@ -1,7 +1,6 @@
 enum ProductType {
   food(1, 'Thực phẩm'),
-  drink(2, 'Đồ uống'),
-  combo(3, 'Combo');
+  drink(2, 'Đồ uống');
 
   final int value;
   final String label;
@@ -26,7 +25,6 @@ enum ProductType {
     return switch (text.toLowerCase()) {
       'food' => food,
       'drink' => drink,
-      'combo' => combo,
       _ => drink,
     };
   }
@@ -35,7 +33,6 @@ enum ProductType {
     return switch (value) {
       1 => food,
       2 => drink,
-      3 => combo,
       _ => drink,
     };
   }

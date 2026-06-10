@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/product_category.dart';
+import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_variant_draft.dart';
 import '../providers/product_management_providers.dart';
@@ -21,15 +22,20 @@ class ProductCreateNotifier
         status: ProductCreateStatus.loading,
         categories: seedData.categories,
         toppings: seedData.toppings,
+        ingredients: seedData.ingredients,
         editingProduct: seedData.editingProduct,
       );
     }
 
     if (arg.canCreateProduct && seedData != null) {
+      if (seedData.ingredients.isEmpty) {
+        Future.microtask(load);
+      }
       return ProductCreateState(
         status: ProductCreateStatus.ready,
         categories: seedData.categories,
         toppings: seedData.toppings,
+        ingredients: seedData.ingredients,
       );
     }
 
@@ -73,6 +79,11 @@ class ProductCreateNotifier
       final toppings = seedData?.toppings.isNotEmpty == true
           ? seedData!.toppings
           : await ref.read(loadProductToppingsUseCaseProvider)(_access.storeId);
+      final ingredients = seedData?.ingredients.isNotEmpty == true
+          ? seedData!.ingredients
+          : await ref.read(loadProductIngredientsUseCaseProvider)(
+              _access.storeId,
+            );
       final editingProductId =
           seedData?.editingProductId ?? seedData?.editingProduct?.id;
       final editingProduct = editingProductId == null
@@ -83,6 +94,7 @@ class ProductCreateNotifier
         status: ProductCreateStatus.ready,
         categories: categories,
         toppings: toppings,
+        ingredients: ingredients,
         editingProduct: editingProduct,
         clearError: true,
       );
@@ -110,6 +122,8 @@ class ProductCreateNotifier
         ? _validatedVariants(input.variants)
         : null;
     final price = _resolvePrice(input.basePrice, variants);
+    final costPrice = _resolveCostPrice(input.costPrice, variants);
+    final recipes = _validatedRecipes(input.recipes);
 
     state = state.copyWith(
       status: ProductCreateStatus.submitting,
@@ -125,9 +139,11 @@ class ProductCreateNotifier
         description: input.description.trim(),
         preparationTime: input.preparationTime,
         price: price,
+        costPrice: costPrice,
         type: input.type,
         variants: variants,
         toppingIds: input.toppingIds,
+        recipes: recipes,
       );
       state = state.copyWith(
         status: ProductCreateStatus.success,
@@ -164,6 +180,8 @@ class ProductCreateNotifier
 
     final variants = _resolvedUpdateVariants(input);
     final price = _resolvePrice(input.basePrice, variants);
+    final costPrice = _resolveCostPrice(input.costPrice, variants);
+    final recipes = _validatedRecipes(input.recipes);
 
     state = state.copyWith(
       status: ProductCreateStatus.submitting,
@@ -179,9 +197,11 @@ class ProductCreateNotifier
         description: input.description.trim(),
         preparationTime: input.preparationTime,
         price: price,
+        costPrice: costPrice,
         type: input.type,
         variants: variants,
         toppingIds: input.toppingIds,
+        recipes: recipes,
       );
       state = state.copyWith(
         status: ProductCreateStatus.success,
@@ -315,7 +335,7 @@ class ProductCreateNotifier
       throw Exception('Vui lòng nhập ít nhất một tùy chọn hợp lệ');
     }
 
-    return cleanVariants;
+    return _validatedStrictVariants(cleanVariants);
   }
 
   List<ProductVariantDraft> _resolvedUpdateVariants(ProductCreateInput input) {
@@ -337,10 +357,15 @@ class ProductCreateNotifier
         throw Exception('Vui lòng nhập đầy đủ tên và giá tùy chọn');
       }
 
+      if (variant.costPrice < 0) {
+        throw Exception('Vui lòng nhập giá vốn tùy chọn hợp lệ');
+      }
+
       cleanVariants.add(
         ProductVariantDraft(
           name: cleanName,
           price: variant.price,
+          costPrice: variant.costPrice,
           isDefault: variant.isDefault,
         ),
       );
@@ -350,20 +375,50 @@ class ProductCreateNotifier
   }
 
   int _resolvePrice(int? basePrice, List<ProductVariantDraft>? variants) {
+    if (variants != null && variants.isNotEmpty) {
+      return 0;
+    }
+
     if (basePrice != null && basePrice > 0) {
       return basePrice;
     }
 
+    throw Exception('Vui lòng nhập giá cơ bản');
+  }
+
+  int _resolveCostPrice(int? costPrice, List<ProductVariantDraft>? variants) {
     if (variants != null && variants.isNotEmpty) {
-      return variants
-          .firstWhere(
-            (variant) => variant.isDefault,
-            orElse: () => variants.first,
-          )
-          .price;
+      return 0;
     }
 
-    throw Exception('Vui lòng nhập giá cơ bản');
+    if (costPrice != null && costPrice >= 0) {
+      return costPrice;
+    }
+
+    throw Exception('Vui lòng nhập giá vốn');
+  }
+
+  List<ProductRecipeDraft> _validatedRecipes(List<ProductRecipeDraft> recipes) {
+    final cleanRecipes = <ProductRecipeDraft>[];
+    final ingredientIds = <int>{};
+
+    for (final recipe in recipes) {
+      if (recipe.ingredientId <= 0) {
+        throw Exception('Vui lòng chọn nguyên liệu hợp lệ');
+      }
+
+      if (!ingredientIds.add(recipe.ingredientId)) {
+        throw Exception('Một nguyên liệu chỉ được chọn một lần');
+      }
+
+      if (recipe.quantity < 0 || recipe.capacity < 0) {
+        throw Exception('Vui lòng nhập định mức nguyên liệu hợp lệ');
+      }
+
+      cleanRecipes.add(recipe);
+    }
+
+    return cleanRecipes;
   }
 
   String _cleanError(Object error) {

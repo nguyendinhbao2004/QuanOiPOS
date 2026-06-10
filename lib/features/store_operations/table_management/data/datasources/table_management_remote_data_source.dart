@@ -4,6 +4,7 @@ import '../models/area_request_models.dart';
 import '../models/dining_table_model.dart';
 import '../models/table_request_models.dart';
 import '../models/table_area_group_model.dart';
+import '../models/table_session_model.dart';
 
 class TableManagementRemoteDataSource {
   final DioClient _dioClient;
@@ -42,6 +43,40 @@ class TableManagementRemoteDataSource {
         response.message,
         response.errors,
         'Không thể tải danh sách bàn',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<DiningTableModel> getTableById(int tableId) async {
+    final response = await _dioClient.getResponse<DiningTableModel>(
+      '/tables/$tableId',
+      dataFromJson: DiningTableModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể tải chi tiết bàn',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<AreaModel> getAreaById(int areaId) async {
+    final response = await _dioClient.getResponse<AreaModel>(
+      '/areas/$areaId',
+      dataFromJson: AreaModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể tải khu vực',
       );
     }
 
@@ -99,6 +134,61 @@ class TableManagementRemoteDataSource {
         response.message,
         response.errors,
         'Không thể cập nhật bàn',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<void> updateTableStatus({
+    required int tableId,
+    required UpdateTableStatusRequestModel request,
+  }) async {
+    final response = await _dioClient.putResponse<Object?>(
+      '/tables/$tableId/status',
+      data: request.toJson(),
+    );
+
+    if (!response.succeeded) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể cập nhật trạng thái bàn',
+      );
+    }
+  }
+
+  Future<List<TableSessionModel>> getTableSessionsByTable(int tableId) async {
+    final response = await _dioClient.getResponse<List<TableSessionModel>>(
+      '/table-sessions/table/$tableId',
+      dataFromJson: TableSessionModel.listFromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể tải phiên bàn',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<TableSessionModel> openTableSession(
+    OpenTableSessionRequestModel request,
+  ) async {
+    final response = await _dioClient.postResponse<TableSessionModel>(
+      '/table-sessions',
+      data: request.toJson(),
+      dataFromJson: TableSessionModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể mở phiên bàn',
       );
     }
 

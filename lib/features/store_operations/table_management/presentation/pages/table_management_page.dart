@@ -11,6 +11,7 @@ import '../../../../workspace_context/presentation/providers/workspace_context_p
 import '../../domain/entities/area.dart';
 import '../../domain/entities/dining_table.dart';
 import '../../domain/entities/table_area_group.dart';
+import '../controllers/table_management_notifier.dart';
 import '../controllers/table_management_state.dart';
 import '../providers/table_management_providers.dart';
 import '../widgets/area_filter_chips.dart';
@@ -143,7 +144,8 @@ class _AccessReadyView extends ConsumerWidget {
               onRefresh: notifier.load,
               onAreaSelected: notifier.selectArea,
               onAddTableTap: (area) => _showTableForm(context, access, area),
-              onTableTap: (table) => _showComingSoon(context, table.name),
+              onTableTap: (table) =>
+                  _openTableDetail(context, storeId, table, notifier),
             ),
           },
         ),
@@ -451,6 +453,25 @@ Future<void> _showTableForm(
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Thêm bàn thành công!')));
+  }
+}
+
+Future<void> _openTableDetail(
+  BuildContext context,
+  int storeId,
+  DiningTable table,
+  TableManagementNotifier notifier,
+) async {
+  final changed = await context.pushNamed<bool>(
+    RouteNames.storeTableDetail,
+    pathParameters: {
+      'storeId': storeId.toString(),
+      'tableId': table.id.toString(),
+    },
+  );
+
+  if (changed == true) {
+    await notifier.load();
   }
 }
 

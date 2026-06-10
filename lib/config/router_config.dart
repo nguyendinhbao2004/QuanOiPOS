@@ -42,6 +42,7 @@ import '../features/store_operations/staff_management/presentation/pages/staff_d
 import '../features/store_operations/staff_management/presentation/pages/staff_management_page.dart';
 import '../features/store_operations/staff_management/presentation/pages/staff_role_form_page.dart';
 import '../features/store_operations/table_management/presentation/pages/table_management_page.dart';
+import '../features/store_operations/table_management/presentation/pages/table_detail_page.dart';
 import '../features/store_operations/table_management/presentation/pages/table_settings_page.dart';
 import '../features/store_operations/voice_order/presentation/pages/voice_order_page.dart';
 import '../features/subscription/presentation/pages/store_subscription_page.dart';
@@ -89,6 +90,7 @@ abstract final class RouteNames {
   static const String storeVoiceOrder = 'store-voice-order';
   static const String storeTableManagement = 'store-table-management';
   static const String storeTableSettings = 'store-table-settings';
+  static const String storeTableDetail = 'store-table-detail';
   static const String storeStaffManagement = 'store-staff-management';
   static const String storeStaffUserDetail = 'store-staff-user-detail';
   static const String storeStaffInvitationDetail =
@@ -519,6 +521,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
 
           return TableSettingsPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/tables/:tableId',
+        name: RouteNames.storeTableDetail,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          final tableId = int.tryParse(state.pathParameters['tableId'] ?? '');
+
+          if (storeId == null || tableId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Bàn không hợp lệ')),
+            );
+          }
+
+          return TableDetailPage(storeId: storeId, tableId: tableId);
         },
       ),
       GoRoute(

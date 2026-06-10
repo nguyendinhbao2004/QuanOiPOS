@@ -9,15 +9,21 @@ import 'package:quan_oi/core/theme/index.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/entities/area.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/entities/dining_table.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/entities/table_area_group.dart';
+import 'package:quan_oi/features/store_operations/table_management/domain/entities/table_session.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/entities/table_status.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/repositories/table_management_repository.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/create_area_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/create_table_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/delete_area_use_case.dart';
+import 'package:quan_oi/features/store_operations/table_management/domain/usecases/load_area_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/load_areas_use_case.dart';
+import 'package:quan_oi/features/store_operations/table_management/domain/usecases/load_table_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/load_table_groups_use_case.dart';
+import 'package:quan_oi/features/store_operations/table_management/domain/usecases/load_table_sessions_use_case.dart';
+import 'package:quan_oi/features/store_operations/table_management/domain/usecases/open_table_session_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/update_area_display_order_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/update_area_use_case.dart';
+import 'package:quan_oi/features/store_operations/table_management/domain/usecases/update_table_status_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/update_table_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/presentation/controllers/table_management_state.dart';
 import 'package:quan_oi/features/store_operations/table_management/presentation/pages/table_management_page.dart';
@@ -995,6 +1001,15 @@ Future<void> _pumpPage(
         loadTableGroupsUseCaseProvider.overrideWithValue(
           LoadTableGroupsUseCase(tableRepository),
         ),
+        loadTableDetailUseCaseProvider.overrideWithValue(
+          LoadTableDetailUseCase(tableRepository),
+        ),
+        loadAreaDetailUseCaseProvider.overrideWithValue(
+          LoadAreaDetailUseCase(tableRepository),
+        ),
+        loadTableSessionsUseCaseProvider.overrideWithValue(
+          LoadTableSessionsUseCase(tableRepository),
+        ),
         createAreaUseCaseProvider.overrideWithValue(
           CreateAreaUseCase(tableRepository),
         ),
@@ -1006,6 +1021,12 @@ Future<void> _pumpPage(
         ),
         updateTableUseCaseProvider.overrideWithValue(
           UpdateTableUseCase(tableRepository),
+        ),
+        updateTableStatusUseCaseProvider.overrideWithValue(
+          UpdateTableStatusUseCase(tableRepository),
+        ),
+        openTableSessionUseCaseProvider.overrideWithValue(
+          OpenTableSessionUseCase(tableRepository),
         ),
         updateAreaDisplayOrderUseCaseProvider.overrideWithValue(
           UpdateAreaDisplayOrderUseCase(tableRepository),
@@ -1088,6 +1109,15 @@ List<Override> _overrides(
     loadTableGroupsUseCaseProvider.overrideWithValue(
       LoadTableGroupsUseCase(tableRepository),
     ),
+    loadTableDetailUseCaseProvider.overrideWithValue(
+      LoadTableDetailUseCase(tableRepository),
+    ),
+    loadAreaDetailUseCaseProvider.overrideWithValue(
+      LoadAreaDetailUseCase(tableRepository),
+    ),
+    loadTableSessionsUseCaseProvider.overrideWithValue(
+      LoadTableSessionsUseCase(tableRepository),
+    ),
     createAreaUseCaseProvider.overrideWithValue(
       CreateAreaUseCase(tableRepository),
     ),
@@ -1099,6 +1129,12 @@ List<Override> _overrides(
     ),
     updateTableUseCaseProvider.overrideWithValue(
       UpdateTableUseCase(tableRepository),
+    ),
+    updateTableStatusUseCaseProvider.overrideWithValue(
+      UpdateTableStatusUseCase(tableRepository),
+    ),
+    openTableSessionUseCaseProvider.overrideWithValue(
+      OpenTableSessionUseCase(tableRepository),
     ),
     updateAreaDisplayOrderUseCaseProvider.overrideWithValue(
       UpdateAreaDisplayOrderUseCase(tableRepository),
@@ -1252,6 +1288,29 @@ class _FakeTableManagementRepository implements TableManagementRepository {
   }
 
   @override
+  Future<DiningTable> loadTableDetail(int tableId) async {
+    for (final group in _tableGroups) {
+      for (final table in group.tables) {
+        if (table.id == tableId) {
+          return table;
+        }
+      }
+    }
+
+    throw Exception('Không tìm thấy bàn');
+  }
+
+  @override
+  Future<Area> loadAreaDetail(int areaId) async {
+    return _areas.firstWhere((area) => area.id == areaId);
+  }
+
+  @override
+  Future<List<TableSession>> loadTableSessions(int tableId) async {
+    return const [];
+  }
+
+  @override
   Future<Area> createArea({
     required int storeId,
     required String name,
@@ -1313,6 +1372,23 @@ class _FakeTableManagementRepository implements TableManagementRepository {
       name: name,
       capacity: capacity,
       status: TableStatus.available,
+      isDeleted: false,
+    );
+  }
+
+  @override
+  Future<void> updateTableStatus({
+    required int tableId,
+    required TableStatus status,
+  }) async {}
+
+  @override
+  Future<TableSession> openTableSession(int tableId) async {
+    return TableSession(
+      id: 99,
+      tableId: tableId,
+      openTime: DateTime(2026, 6, 10, 12),
+      status: TableSessionStatus.open,
       isDeleted: false,
     );
   }

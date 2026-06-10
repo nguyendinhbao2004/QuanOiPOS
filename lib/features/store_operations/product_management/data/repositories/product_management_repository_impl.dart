@@ -1,5 +1,7 @@
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
+import '../../domain/entities/product_ingredient.dart';
+import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
 import '../../domain/entities/product_variant_draft.dart';
@@ -27,6 +29,15 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     return toppings
         .map((topping) => topping.toEntity())
         .where((topping) => !topping.isDeleted)
+        .toList();
+  }
+
+  @override
+  Future<List<ProductIngredient>> loadIngredients(int storeId) async {
+    final ingredients = await _remoteDataSource.getIngredientsByStore(storeId);
+    return ingredients
+        .map((ingredient) => ingredient.toEntity())
+        .where((ingredient) => ingredient.isActive && !ingredient.isDeleted)
         .toList();
   }
 
@@ -116,9 +127,11 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     required String description,
     required int preparationTime,
     required int price,
+    required int costPrice,
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+    required List<ProductRecipeDraft> recipes,
   }) async {
     final product = await _remoteDataSource.createProduct(
       CreateProductRequestModel(
@@ -129,9 +142,11 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
         description: description,
         preparationTime: preparationTime,
         price: price,
+        costPrice: costPrice,
         type: type,
         variants: variants,
         toppingIds: toppingIds,
+        recipes: recipes,
       ),
     );
     return product.toEntity();
@@ -146,9 +161,11 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     required String description,
     required int preparationTime,
     required int price,
+    required int costPrice,
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+    required List<ProductRecipeDraft> recipes,
   }) async {
     final product = await _remoteDataSource.updateProduct(
       productId: productId,
@@ -159,9 +176,11 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
         description: description,
         preparationTime: preparationTime,
         price: price,
+        costPrice: costPrice,
         type: type,
         variants: variants,
         toppingIds: toppingIds,
+        recipes: recipes,
       ),
     );
     return product.toEntity();

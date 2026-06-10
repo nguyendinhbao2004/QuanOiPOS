@@ -1,5 +1,6 @@
 import '../../../../../core/network/dio/dio_client.dart';
 import '../models/product_category_model.dart';
+import '../models/product_ingredient_model.dart';
 import '../models/product_management_request_models.dart';
 import '../models/product_model.dart';
 import '../models/product_topping_model.dart';
@@ -37,6 +38,25 @@ class ProductManagementRemoteDataSource {
         response.message,
         response.errors,
         'Không thể tải topping',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<List<ProductIngredientModel>> getIngredientsByStore(
+    int storeId,
+  ) async {
+    final response = await _dioClient.getResponse<List<ProductIngredientModel>>(
+      '/ingredients/store/$storeId',
+      dataFromJson: ProductIngredientModel.listFromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể tải nguyên liệu',
       );
     }
 

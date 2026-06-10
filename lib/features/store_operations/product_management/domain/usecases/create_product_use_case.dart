@@ -1,4 +1,5 @@
 import '../entities/product.dart';
+import '../entities/product_recipe_draft.dart';
 import '../entities/product_type.dart';
 import '../entities/product_variant_draft.dart';
 import '../repositories/product_management_repository.dart';
@@ -16,9 +17,11 @@ class CreateProductUseCase {
     required String description,
     required int preparationTime,
     required int price,
+    required int costPrice,
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+    required List<ProductRecipeDraft> recipes,
   }) {
     return _repository.createProduct(
       storeId: storeId,
@@ -28,9 +31,11 @@ class CreateProductUseCase {
       description: description,
       preparationTime: preparationTime,
       price: price,
+      costPrice: costPrice,
       type: type,
       variants: variants,
       toppingIds: toppingIds,
+      recipes: recipes,
     );
   }
 }

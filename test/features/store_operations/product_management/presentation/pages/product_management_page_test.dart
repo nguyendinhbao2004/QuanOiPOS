@@ -7,6 +7,8 @@ import 'package:quan_oi/core/constants/app_permission_codes.dart';
 import 'package:quan_oi/core/theme/index.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_category.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_ingredient.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_recipe_draft.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_topping.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_variant_draft.dart';
@@ -19,6 +21,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
@@ -775,6 +778,9 @@ Future<void> _pumpPage(
         loadProductToppingsUseCaseProvider.overrideWithValue(
           LoadProductToppingsUseCase(productRepository),
         ),
+        loadProductIngredientsUseCaseProvider.overrideWithValue(
+          LoadProductIngredientsUseCase(productRepository),
+        ),
         createProductToppingUseCaseProvider.overrideWithValue(
           CreateProductToppingUseCase(productRepository),
         ),
@@ -926,6 +932,9 @@ List<Override> _productOverrides(
     ),
     loadProductToppingsUseCaseProvider.overrideWithValue(
       LoadProductToppingsUseCase(productRepository),
+    ),
+    loadProductIngredientsUseCaseProvider.overrideWithValue(
+      LoadProductIngredientsUseCase(productRepository),
     ),
     createProductToppingUseCaseProvider.overrideWithValue(
       CreateProductToppingUseCase(productRepository),
@@ -1101,6 +1110,10 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   }
 
   @override
+  Future<List<ProductIngredient>> loadIngredients(int storeId) async =>
+      const [];
+
+  @override
   Future<ProductTopping> createTopping({
     required int storeId,
     required String name,
@@ -1197,9 +1210,11 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required String description,
     required int preparationTime,
     required int price,
+    required int costPrice,
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+    required List<ProductRecipeDraft> recipes,
   }) async {
     createProductCallCount += 1;
     lastVariants = variants;
@@ -1229,9 +1244,11 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required String description,
     required int preparationTime,
     required int price,
+    required int costPrice,
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+    required List<ProductRecipeDraft> recipes,
   }) async {
     updateProductCallCount += 1;
     lastUpdatedProductName = name;

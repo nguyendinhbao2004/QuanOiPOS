@@ -1,6 +1,8 @@
 import '../../domain/entities/area.dart';
 import '../../domain/entities/dining_table.dart';
 import '../../domain/entities/table_area_group.dart';
+import '../../domain/entities/table_session.dart';
+import '../../domain/entities/table_status.dart';
 import '../../domain/repositories/table_management_repository.dart';
 import '../datasources/table_management_remote_data_source.dart';
 import '../models/area_request_models.dart';
@@ -66,6 +68,18 @@ class TableManagementRepositoryImpl implements TableManagementRepository {
   }
 
   @override
+  Future<DiningTable> loadTableDetail(int tableId) async {
+    final table = await _remoteDataSource.getTableById(tableId);
+    return table.toEntity();
+  }
+
+  @override
+  Future<Area> loadAreaDetail(int areaId) async {
+    final area = await _remoteDataSource.getAreaById(areaId);
+    return area.toEntity();
+  }
+
+  @override
   Future<Area> createArea({
     required int storeId,
     required String name,
@@ -118,6 +132,42 @@ class TableManagementRepositoryImpl implements TableManagementRepository {
     );
 
     return table.toEntity();
+  }
+
+  @override
+  Future<void> updateTableStatus({
+    required int tableId,
+    required TableStatus status,
+  }) {
+    return _remoteDataSource.updateTableStatus(
+      tableId: tableId,
+      request: UpdateTableStatusRequestModel(status: status.apiValue),
+    );
+  }
+
+  @override
+  Future<List<TableSession>> loadTableSessions(int tableId) async {
+    final sessions = await _remoteDataSource.getTableSessionsByTable(tableId);
+    final entities = sessions
+        .where((session) => !session.isDeleted)
+        .map((session) => session.toEntity())
+        .toList();
+
+    entities.sort((left, right) {
+      final leftTime = left.openTime ?? left.createdAt ?? DateTime(0);
+      final rightTime = right.openTime ?? right.createdAt ?? DateTime(0);
+      return rightTime.compareTo(leftTime);
+    });
+
+    return entities;
+  }
+
+  @override
+  Future<TableSession> openTableSession(int tableId) async {
+    final session = await _remoteDataSource.openTableSession(
+      OpenTableSessionRequestModel(tableId: tableId),
+    );
+    return session.toEntity();
   }
 
   @override

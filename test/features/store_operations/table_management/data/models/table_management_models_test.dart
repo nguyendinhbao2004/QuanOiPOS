@@ -4,6 +4,8 @@ import 'package:quan_oi/features/store_operations/table_management/data/models/a
 import 'package:quan_oi/features/store_operations/table_management/data/models/dining_table_model.dart';
 import 'package:quan_oi/features/store_operations/table_management/data/models/table_area_group_model.dart';
 import 'package:quan_oi/features/store_operations/table_management/data/models/table_request_models.dart';
+import 'package:quan_oi/features/store_operations/table_management/data/models/table_session_model.dart';
+import 'package:quan_oi/features/store_operations/table_management/domain/entities/table_session.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/entities/table_status.dart';
 
 void main() {
@@ -136,6 +138,7 @@ void main() {
       );
       expect(DiningTableModel.statusFromJson('Occupied'), TableStatus.occupied);
       expect(DiningTableModel.statusFromJson('Reserved'), TableStatus.reserved);
+      expect(DiningTableModel.statusFromJson('Disabled'), TableStatus.disabled);
       expect(DiningTableModel.statusFromJson('Cleaning'), TableStatus.unknown);
     });
   });
@@ -158,6 +161,77 @@ void main() {
           capacity: 2,
         ).toJson(),
         {'areaId': 7, 'name': 'Bàn 3', 'capacity': 2},
+      );
+      expect(const UpdateTableStatusRequestModel(status: 4).toJson(), {
+        'status': 4,
+      });
+      expect(const OpenTableSessionRequestModel(tableId: 1).toJson(), {
+        'tableId': 1,
+      });
+    });
+  });
+
+  group('TableSessionModel', () {
+    test('parses table session list and maps statuses', () {
+      final sessions = TableSessionModel.listFromJson([
+        {
+          'id': 10,
+          'tableId': 1,
+          'openTime': '2026-06-10T11:45:17.733Z',
+          'closeTime': null,
+          'status': 1,
+          'createdAt': '2026-06-10T11:45:17.733Z',
+          'createdBy': 'owner',
+          'updatedAt': null,
+          'updatedBy': null,
+          'isDeleted': false,
+        },
+        {
+          'id': 11,
+          'tableId': 1,
+          'openTime': '2026-06-09T11:45:17.733Z',
+          'closeTime': '2026-06-09T12:45:17.733Z',
+          'status': 2,
+          'createdAt': '2026-06-09T11:45:17.733Z',
+          'createdBy': 'owner',
+          'updatedAt': null,
+          'updatedBy': null,
+          'isDeleted': false,
+        },
+        {
+          'id': 12,
+          'tableId': 1,
+          'openTime': '2026-06-08T11:45:17.733Z',
+          'closeTime': '2026-06-08T12:45:17.733Z',
+          'status': 3,
+          'createdAt': '2026-06-08T11:45:17.733Z',
+          'createdBy': 'owner',
+          'updatedAt': null,
+          'updatedBy': null,
+          'isDeleted': false,
+        },
+      ]);
+
+      expect(sessions, hasLength(3));
+      expect(sessions[0].status, TableSessionStatus.open);
+      expect(sessions[1].status, TableSessionStatus.closed);
+      expect(sessions[2].status, TableSessionStatus.cancelled);
+      expect(sessions[0].toEntity().openTime, isNotNull);
+    });
+
+    test('maps string session statuses', () {
+      expect(TableSessionModel.statusFromJson('Open'), TableSessionStatus.open);
+      expect(
+        TableSessionModel.statusFromJson('Closed'),
+        TableSessionStatus.closed,
+      );
+      expect(
+        TableSessionModel.statusFromJson('Cancelled'),
+        TableSessionStatus.cancelled,
+      );
+      expect(
+        TableSessionModel.statusFromJson('Unknown'),
+        TableSessionStatus.unknown,
       );
     });
   });
