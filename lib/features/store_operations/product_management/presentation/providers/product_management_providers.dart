@@ -4,9 +4,11 @@ import '../../../../../core/di/injection.dart';
 import '../../data/datasources/product_management_remote_data_source.dart';
 import '../../domain/repositories/product_management_repository.dart';
 import '../../domain/usecases/create_product_category_use_case.dart';
+import '../../domain/usecases/create_product_ingredient_use_case.dart';
 import '../../domain/usecases/create_product_topping_use_case.dart';
 import '../../domain/usecases/create_product_use_case.dart';
 import '../../domain/usecases/delete_product_category_use_case.dart';
+import '../../domain/usecases/delete_product_ingredient_use_case.dart';
 import '../../domain/usecases/delete_product_topping_use_case.dart';
 import '../../domain/usecases/delete_product_use_case.dart';
 import '../../domain/usecases/load_product_categories_use_case.dart';
@@ -15,6 +17,7 @@ import '../../domain/usecases/load_product_ingredients_use_case.dart';
 import '../../domain/usecases/load_product_toppings_use_case.dart';
 import '../../domain/usecases/load_products_use_case.dart';
 import '../../domain/usecases/update_product_category_use_case.dart';
+import '../../domain/usecases/update_product_ingredient_use_case.dart';
 import '../../domain/usecases/update_product_sell_status_use_case.dart';
 import '../../domain/usecases/update_product_topping_use_case.dart';
 import '../../domain/usecases/update_product_use_case.dart';
@@ -47,6 +50,21 @@ final loadProductToppingsUseCaseProvider = Provider<LoadProductToppingsUseCase>(
 final loadProductIngredientsUseCaseProvider =
     Provider<LoadProductIngredientsUseCase>((ref) {
       return locator<LoadProductIngredientsUseCase>();
+    });
+
+final createProductIngredientUseCaseProvider =
+    Provider<CreateProductIngredientUseCase>((ref) {
+      return locator<CreateProductIngredientUseCase>();
+    });
+
+final updateProductIngredientUseCaseProvider =
+    Provider<UpdateProductIngredientUseCase>((ref) {
+      return locator<UpdateProductIngredientUseCase>();
+    });
+
+final deleteProductIngredientUseCaseProvider =
+    Provider<DeleteProductIngredientUseCase>((ref) {
+      return locator<DeleteProductIngredientUseCase>();
     });
 
 final createProductToppingUseCaseProvider =

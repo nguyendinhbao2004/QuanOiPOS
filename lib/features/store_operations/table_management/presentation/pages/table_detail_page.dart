@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../../config/router_config.dart';
 import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/constants/app_permission_codes.dart';
 import '../../../../../core/theme/index.dart';
@@ -121,6 +122,17 @@ class _AccessReadyView extends ConsumerWidget {
           notifier.openSession,
           successMessage: 'Đã mở phiên bàn',
         ),
+        onSessionTap: (session) => context.pushNamed(
+          RouteNames.storeOrderList,
+          pathParameters: {
+            'storeId': '$storeId',
+            'tableSessionId': '${session.id}',
+          },
+          queryParameters: {
+            'sessionOpen': (session.status == TableSessionStatus.open)
+                .toString(),
+          },
+        ),
       ),
     };
   }
@@ -133,6 +145,7 @@ class _ReadyContent extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final VoidCallback onToggleDisabled;
   final VoidCallback onOpenSession;
+  final ValueChanged<TableSession> onSessionTap;
 
   const _ReadyContent({
     required this.state,
@@ -141,6 +154,7 @@ class _ReadyContent extends StatelessWidget {
     required this.onRefresh,
     required this.onToggleDisabled,
     required this.onOpenSession,
+    required this.onSessionTap,
   });
 
   @override
@@ -175,9 +189,13 @@ class _ReadyContent extends StatelessWidget {
             canOpenSession: access.canOpenSession,
             isMutating: state.isMutating,
             onOpenSession: onOpenSession,
+            onSessionTap: onSessionTap,
           ),
           const SizedBox(height: AppConstants.spacingLg),
-          _HistorySection(sessions: state.historySessions),
+          _HistorySection(
+            sessions: state.historySessions,
+            onSessionTap: onSessionTap,
+          ),
         ],
       ),
     );
@@ -313,6 +331,7 @@ class _ActionSection extends StatelessWidget {
   final bool canOpenSession;
   final bool isMutating;
   final VoidCallback onOpenSession;
+  final ValueChanged<TableSession> onSessionTap;
 
   const _ActionSection({
     required this.table,
@@ -320,6 +339,7 @@ class _ActionSection extends StatelessWidget {
     required this.canOpenSession,
     required this.isMutating,
     required this.onOpenSession,
+    required this.onSessionTap,
   });
 
   @override
@@ -338,7 +358,11 @@ class _ActionSection extends StatelessWidget {
         );
       }
 
-      return _SessionCard(title: 'Phiên bàn hiện tại', session: currentSession);
+      return _SessionCard(
+        title: 'Phiên bàn hiện tại',
+        session: currentSession,
+        onTap: () => onSessionTap(currentSession),
+      );
     }
 
     if (table.status == TableStatus.available ||
@@ -374,8 +398,9 @@ class _ActionSection extends StatelessWidget {
 
 class _HistorySection extends StatelessWidget {
   final List<TableSession> sessions;
+  final ValueChanged<TableSession> onSessionTap;
 
-  const _HistorySection({required this.sessions});
+  const _HistorySection({required this.sessions, required this.onSessionTap});
 
   @override
   Widget build(BuildContext context) {
@@ -397,7 +422,10 @@ class _HistorySection extends StatelessWidget {
               )
             else
               for (final session in sessions) ...[
-                _SessionListTile(session: session),
+                _SessionListTile(
+                  session: session,
+                  onTap: () => onSessionTap(session),
+                ),
                 if (session != sessions.last) const Divider(height: 1),
               ],
           ],
@@ -410,8 +438,13 @@ class _HistorySection extends StatelessWidget {
 class _SessionCard extends StatelessWidget {
   final String title;
   final TableSession session;
+  final VoidCallback onTap;
 
-  const _SessionCard({required this.title, required this.session});
+  const _SessionCard({
+    required this.title,
+    required this.session,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -426,7 +459,11 @@ class _SessionCard extends StatelessWidget {
               style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: AppConstants.spacingMd),
-            _SessionListTile(session: session, showDividerPadding: false),
+            _SessionListTile(
+              session: session,
+              showDividerPadding: false,
+              onTap: onTap,
+            ),
           ],
         ),
       ),
@@ -437,48 +474,57 @@ class _SessionCard extends StatelessWidget {
 class _SessionListTile extends StatelessWidget {
   final TableSession session;
   final bool showDividerPadding;
+  final VoidCallback? onTap;
 
   const _SessionListTile({
     required this.session,
     this.showDividerPadding = true,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final statusColor = _sessionStatusColor(session.status);
 
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        vertical: showDividerPadding ? AppConstants.spacingSm : 0,
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: statusColor.withValues(alpha: 0.12),
-            foregroundColor: statusColor,
-            child: const Icon(Icons.receipt_long_outlined),
-          ),
-          const SizedBox(width: AppConstants.spacingSm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Phiên #${session.id}',
-                  style: AppTextStyles.labelSm.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AppConstants.spacingXs),
-                Text(_sessionTimeRange(session), style: AppTextStyles.caption),
-              ],
+    return InkWell(
+      key: Key('table_session_${session.id}'),
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          vertical: showDividerPadding ? AppConstants.spacingSm : 0,
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: statusColor.withValues(alpha: 0.12),
+              foregroundColor: statusColor,
+              child: const Icon(Icons.receipt_long_outlined),
             ),
-          ),
-          Text(
-            session.status.label,
-            style: AppTextStyles.caption.copyWith(color: statusColor),
-          ),
-        ],
+            const SizedBox(width: AppConstants.spacingSm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Phiên #${session.id}',
+                    style: AppTextStyles.labelSm.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.spacingXs),
+                  Text(
+                    _sessionTimeRange(session),
+                    style: AppTextStyles.caption,
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              session.status.label,
+              style: AppTextStyles.caption.copyWith(color: statusColor),
+            ),
+          ],
+        ),
       ),
     );
   }

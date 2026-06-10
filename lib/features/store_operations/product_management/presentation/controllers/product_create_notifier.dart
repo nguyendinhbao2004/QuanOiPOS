@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/product_category.dart';
+import '../../domain/entities/product_ingredient.dart';
 import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_variant_draft.dart';
@@ -275,6 +276,105 @@ class ProductCreateNotifier
 
     state = state.copyWith(toppings: [...state.toppings, topping]);
     return topping;
+  }
+
+  Future<ProductIngredient> createIngredient({
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  }) async {
+    _ensureAllowed(
+      _access.canCreateProduct,
+      'Bạn chưa có quyền thêm nguyên liệu',
+    );
+
+    final cleanName = name.trim();
+    final cleanUnit = unit.trim();
+    if (cleanName.isEmpty) {
+      throw Exception('Vui lòng nhập tên nguyên liệu');
+    }
+    if (cleanUnit.isEmpty) {
+      throw Exception('Vui lòng nhập đơn vị nguyên liệu');
+    }
+    if (itemType != 1 && itemType != 2) {
+      throw Exception('Vui lòng chọn loại nguyên liệu hợp lệ');
+    }
+    if (capacity < 0) {
+      throw Exception('Vui lòng nhập dung lượng hợp lệ');
+    }
+
+    final ingredient = await ref.read(createProductIngredientUseCaseProvider)(
+      storeId: _access.storeId,
+      name: cleanName,
+      itemType: itemType,
+      unit: cleanUnit,
+      capacity: capacity,
+    );
+    state = state.copyWith(
+      ingredients: [...state.ingredients, ingredient],
+      clearError: true,
+    );
+    return ingredient;
+  }
+
+  Future<ProductIngredient> updateIngredient({
+    required int ingredientId,
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  }) async {
+    _ensureAllowed(
+      _access.canUpdateProduct,
+      'Bạn chưa có quyền cập nhật nguyên liệu',
+    );
+
+    final cleanName = name.trim();
+    final cleanUnit = unit.trim();
+    if (cleanName.isEmpty) {
+      throw Exception('Vui lòng nhập tên nguyên liệu');
+    }
+    if (cleanUnit.isEmpty) {
+      throw Exception('Vui lòng nhập đơn vị nguyên liệu');
+    }
+    if (itemType != 1 && itemType != 2) {
+      throw Exception('Vui lòng chọn loại nguyên liệu hợp lệ');
+    }
+    if (capacity < 0) {
+      throw Exception('Vui lòng nhập dung lượng hợp lệ');
+    }
+
+    final ingredient = await ref.read(updateProductIngredientUseCaseProvider)(
+      ingredientId: ingredientId,
+      name: cleanName,
+      itemType: itemType,
+      unit: cleanUnit,
+      capacity: capacity,
+    );
+    state = state.copyWith(
+      ingredients: [
+        for (final item in state.ingredients)
+          if (item.id == ingredientId) ingredient else item,
+      ],
+      clearError: true,
+    );
+    return ingredient;
+  }
+
+  Future<void> deleteIngredient(int ingredientId) async {
+    _ensureAllowed(
+      _access.canDeleteProduct,
+      'Bạn chưa có quyền xóa nguyên liệu',
+    );
+
+    await ref.read(deleteProductIngredientUseCaseProvider)(ingredientId);
+    state = state.copyWith(
+      ingredients: state.ingredients
+          .where((ingredient) => ingredient.id != ingredientId)
+          .toList(),
+      clearError: true,
+    );
   }
 
   Future<ProductTopping> updateTopping({

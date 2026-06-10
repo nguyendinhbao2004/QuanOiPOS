@@ -1,0 +1,1 @@
+ở trang tạo sản phẩm cái chuẩn bị thời gian nên cho nó nằm ở 1 rơ khác, còn giá bán và giá vốn vẫn nằm chung 1 row,khi tạo sản phẩm tôi chưa ấn vào để tạo được nguyên liệu, bạn hãy làm phần tạo và quản lý nguyên liệu giống với bên topping á

@@ -18,6 +18,8 @@ abstract final class AppPermissionCodes {
   static const String tableOpenSession = 'TABLE.OPEN_SESSION';
   static const String tableCloseSession = 'TABLE.CLOSE_SESSION';
   static const String tableTransfer = 'TABLE.TRANSFER';
+  static const String orderView = 'ORDER.VIEW';
+  static const String orderCreate = 'ORDER.CREATE';
   static const String staffView = 'STAFF.VIEW';
   static const String staffInvite = 'STAFF.INVITE';
   static const String staffUpdate = 'STAFF.UPDATE';

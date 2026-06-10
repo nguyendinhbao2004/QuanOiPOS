@@ -42,6 +42,51 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
   }
 
   @override
+  Future<ProductIngredient> createIngredient({
+    required int storeId,
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  }) async {
+    final ingredient = await _remoteDataSource.createIngredient(
+      CreateProductIngredientRequestModel(
+        storeId: storeId,
+        name: name,
+        itemType: itemType,
+        unit: unit,
+        capacity: capacity,
+      ),
+    );
+    return ingredient.toEntity();
+  }
+
+  @override
+  Future<ProductIngredient> updateIngredient({
+    required int ingredientId,
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  }) async {
+    final ingredient = await _remoteDataSource.updateIngredient(
+      ingredientId: ingredientId,
+      request: UpdateProductIngredientRequestModel(
+        name: name,
+        itemType: itemType,
+        unit: unit,
+        capacity: capacity,
+      ),
+    );
+    return ingredient.toEntity();
+  }
+
+  @override
+  Future<void> deleteIngredient(int ingredientId) {
+    return _remoteDataSource.deleteIngredient(ingredientId);
+  }
+
+  @override
   Future<ProductTopping> createTopping({
     required int storeId,
     required String name,

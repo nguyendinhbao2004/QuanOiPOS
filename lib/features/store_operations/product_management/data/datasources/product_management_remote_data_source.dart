@@ -63,6 +63,61 @@ class ProductManagementRemoteDataSource {
     return response.data!;
   }
 
+  Future<ProductIngredientModel> createIngredient(
+    CreateProductIngredientRequestModel request,
+  ) async {
+    final response = await _dioClient.postResponse<ProductIngredientModel>(
+      '/ingredients',
+      data: request.toJson(),
+      dataFromJson: ProductIngredientModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể thêm nguyên liệu',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<ProductIngredientModel> updateIngredient({
+    required int ingredientId,
+    required UpdateProductIngredientRequestModel request,
+  }) async {
+    final response = await _dioClient.putResponse<ProductIngredientModel>(
+      '/ingredients/$ingredientId',
+      data: request.toJson(),
+      dataFromJson: ProductIngredientModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể cập nhật nguyên liệu',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<void> deleteIngredient(int ingredientId) async {
+    final response = await _dioClient.deleteResponse<Object?>(
+      '/ingredients/$ingredientId',
+    );
+
+    if (!response.succeeded) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể xóa nguyên liệu',
+      );
+    }
+  }
+
   Future<ProductToppingModel> createTopping(
     CreateProductToppingRequestModel request,
   ) async {

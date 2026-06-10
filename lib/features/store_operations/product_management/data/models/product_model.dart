@@ -178,6 +178,7 @@ class ProductModel {
         .whereType<Map<String, dynamic>>()
         .map(
           (variant) => ProductVariantDraft(
+            id: _optionalIntValue(variant['id'] ?? variant['variantId']),
             name: _stringValue(variant['name'], fallback: 'Mặc định'),
             price: _intValue(variant['price']),
             costPrice: _intValue(variant['costPrice']),
@@ -244,6 +245,11 @@ class ProductModel {
         capacity: _intValue(recipe['capacity']),
       );
     }).toList();
+  }
+
+  static int? _optionalIntValue(Object? value) {
+    final parsed = _intValue(value);
+    return parsed == 0 ? null : parsed;
   }
 
   static DateTime? _dateValue(Object? value) {

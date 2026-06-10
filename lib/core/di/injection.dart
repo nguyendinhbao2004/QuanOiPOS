@@ -54,13 +54,21 @@ import '../../features/store_operations/table_management/domain/usecases/update_
 import '../../features/store_operations/table_management/domain/usecases/update_area_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/update_table_status_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/update_table_use_case.dart';
+import '../../features/store_operations/order_management/data/datasources/order_management_remote_data_source.dart';
+import '../../features/store_operations/order_management/data/repositories/order_management_repository_impl.dart';
+import '../../features/store_operations/order_management/domain/repositories/order_management_repository.dart';
+import '../../features/store_operations/order_management/domain/usecases/create_order_use_case.dart';
+import '../../features/store_operations/order_management/domain/usecases/load_order_detail_use_case.dart';
+import '../../features/store_operations/order_management/domain/usecases/load_orders_by_table_session_use_case.dart';
 import '../../features/store_operations/product_management/data/datasources/product_management_remote_data_source.dart';
 import '../../features/store_operations/product_management/data/repositories/product_management_repository_impl.dart';
 import '../../features/store_operations/product_management/domain/repositories/product_management_repository.dart';
 import '../../features/store_operations/product_management/domain/usecases/create_product_category_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/create_product_ingredient_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/create_product_topping_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/create_product_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/delete_product_category_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/delete_product_ingredient_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/delete_product_topping_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/delete_product_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
@@ -69,6 +77,7 @@ import '../../features/store_operations/product_management/domain/usecases/load_
 import '../../features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/update_product_ingredient_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_sell_status_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
@@ -341,6 +350,25 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
     () => DeleteAreaUseCase(locator<TableManagementRepository>()),
   );
 
+  // Order management
+  locator.registerLazySingleton<OrderManagementRemoteDataSource>(
+    () => OrderManagementRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<OrderManagementRepository>(
+    () => OrderManagementRepositoryImpl(
+      locator<OrderManagementRemoteDataSource>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadOrdersByTableSessionUseCase>(
+    () => LoadOrdersByTableSessionUseCase(locator<OrderManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadOrderDetailUseCase>(
+    () => LoadOrderDetailUseCase(locator<OrderManagementRepository>()),
+  );
+  locator.registerLazySingleton<CreateOrderUseCase>(
+    () => CreateOrderUseCase(locator<OrderManagementRepository>()),
+  );
+
   // Product management
   locator.registerLazySingleton<ProductManagementRemoteDataSource>(
     () => ProductManagementRemoteDataSource(locator<DioClient>()),
@@ -358,6 +386,18 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<LoadProductIngredientsUseCase>(
     () => LoadProductIngredientsUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<CreateProductIngredientUseCase>(
+    () =>
+        CreateProductIngredientUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<UpdateProductIngredientUseCase>(
+    () =>
+        UpdateProductIngredientUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<DeleteProductIngredientUseCase>(
+    () =>
+        DeleteProductIngredientUseCase(locator<ProductManagementRepository>()),
   );
   locator.registerLazySingleton<CreateProductToppingUseCase>(
     () => CreateProductToppingUseCase(locator<ProductManagementRepository>()),

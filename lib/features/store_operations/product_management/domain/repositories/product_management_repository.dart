@@ -13,6 +13,24 @@ abstract class ProductManagementRepository {
 
   Future<List<ProductIngredient>> loadIngredients(int storeId);
 
+  Future<ProductIngredient> createIngredient({
+    required int storeId,
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  });
+
+  Future<ProductIngredient> updateIngredient({
+    required int ingredientId,
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  });
+
+  Future<void> deleteIngredient(int ingredientId);
+
   Future<ProductTopping> createTopping({
     required int storeId,
     required String name,

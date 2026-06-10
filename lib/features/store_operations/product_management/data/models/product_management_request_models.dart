@@ -56,6 +56,55 @@ class UpdateProductToppingRequestModel {
   }
 }
 
+class CreateProductIngredientRequestModel {
+  final int storeId;
+  final String name;
+  final int itemType;
+  final String unit;
+  final int capacity;
+
+  const CreateProductIngredientRequestModel({
+    required this.storeId,
+    required this.name,
+    required this.itemType,
+    required this.unit,
+    required this.capacity,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'storeId': storeId,
+      'name': name,
+      'itemType': itemType,
+      'unit': unit,
+      'capacity': capacity,
+    };
+  }
+}
+
+class UpdateProductIngredientRequestModel {
+  final String name;
+  final int itemType;
+  final String unit;
+  final int capacity;
+
+  const UpdateProductIngredientRequestModel({
+    required this.name,
+    required this.itemType,
+    required this.unit,
+    required this.capacity,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'itemType': itemType,
+      'unit': unit,
+      'capacity': capacity,
+    };
+  }
+}
+
 class CreateProductRequestModel {
   final int storeId;
   final int categoryId;

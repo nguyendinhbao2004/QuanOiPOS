@@ -292,6 +292,33 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
       const [];
 
   @override
+  Future<ProductIngredient> createIngredient({
+    required int storeId,
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<ProductIngredient> updateIngredient({
+    required int ingredientId,
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteIngredient(int ingredientId) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<ProductTopping> createTopping({
     required int storeId,
     required String name,

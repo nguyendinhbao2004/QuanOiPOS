@@ -38,6 +38,9 @@ import '../features/store_operations/presentation/pages/store_overview_page.dart
 import '../features/store_operations/product_management/presentation/controllers/product_create_state.dart';
 import '../features/store_operations/product_management/presentation/pages/product_create_page.dart';
 import '../features/store_operations/product_management/presentation/pages/product_management_page.dart';
+import '../features/store_operations/order_management/presentation/pages/order_create_page.dart';
+import '../features/store_operations/order_management/presentation/pages/order_detail_page.dart';
+import '../features/store_operations/order_management/presentation/pages/order_list_page.dart';
 import '../features/store_operations/staff_management/presentation/pages/invite_staff_page.dart';
 import '../features/store_operations/staff_management/presentation/pages/staff_detail_page.dart';
 import '../features/store_operations/staff_management/presentation/pages/staff_management_page.dart';
@@ -92,6 +95,9 @@ abstract final class RouteNames {
   static const String storeTableManagement = 'store-table-management';
   static const String storeTableSettings = 'store-table-settings';
   static const String storeTableDetail = 'store-table-detail';
+  static const String storeOrderList = 'store-order-list';
+  static const String storeOrderDetail = 'store-order-detail';
+  static const String storeOrderCreate = 'store-order-create';
   static const String storeStaffManagement = 'store-staff-management';
   static const String storeStaffUserDetail = 'store-staff-user-detail';
   static const String storeStaffInvitationDetail =
@@ -507,6 +513,59 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
 
           return StoreInventoryLedgerPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/table-sessions/:tableSessionId/orders/new',
+        name: RouteNames.storeOrderCreate,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          final tableSessionId = int.tryParse(
+            state.pathParameters['tableSessionId'] ?? '',
+          );
+          if (storeId == null || tableSessionId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Phiên bàn không hợp lệ')),
+            );
+          }
+          return OrderCreatePage(
+            storeId: storeId,
+            tableSessionId: tableSessionId,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/table-sessions/:tableSessionId/orders/:orderId',
+        name: RouteNames.storeOrderDetail,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          final orderId = int.tryParse(state.pathParameters['orderId'] ?? '');
+          if (storeId == null || orderId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Đơn hàng không hợp lệ')),
+            );
+          }
+          return OrderDetailPage(storeId: storeId, orderId: orderId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/table-sessions/:tableSessionId/orders',
+        name: RouteNames.storeOrderList,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          final tableSessionId = int.tryParse(
+            state.pathParameters['tableSessionId'] ?? '',
+          );
+          if (storeId == null || tableSessionId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Phiên bàn không hợp lệ')),
+            );
+          }
+          return OrderListPage(
+            storeId: storeId,
+            tableSessionId: tableSessionId,
+            isSessionOpen: state.uri.queryParameters['sessionOpen'] == 'true',
+          );
         },
       ),
       GoRoute(

@@ -9,14 +9,17 @@ import 'package:quan_oi/features/store_operations/product_management/domain/enti
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_variant_draft.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/repositories/product_management_repository.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/create_product_category_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/create_product_ingredient_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/create_product_topping_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/create_product_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_topping_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_ingredient_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_ingredient_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/controllers/product_create_state.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/providers/product_management_providers.dart';
@@ -489,6 +492,88 @@ void main() {
     expect(repository.updateToppingCallCount, 0);
     expect(repository.deleteToppingCallCount, 0);
   });
+
+  test('ingredient mutations update state', () async {
+    final repository = _FakeProductCreateRepository();
+    final container = _container(repository);
+    addTearDown(container.dispose);
+
+    final access = _access();
+    final notifier = container.read(
+      productCreateNotifierProvider(access).notifier,
+    );
+    await notifier.load();
+
+    final created = await notifier.createIngredient(
+      name: 'Sữa tươi',
+      itemType: 1,
+      unit: 'chai',
+      capacity: 1000,
+    );
+    await notifier.updateIngredient(
+      ingredientId: created.id,
+      name: 'Sữa tươi không đường',
+      itemType: 1,
+      unit: 'chai',
+      capacity: 900,
+    );
+    await notifier.deleteIngredient(created.id);
+
+    final state = container.read(productCreateNotifierProvider(access));
+
+    expect(repository.createIngredientCallCount, 1);
+    expect(repository.updateIngredientCallCount, 1);
+    expect(repository.deleteIngredientCallCount, 1);
+    expect(
+      state.ingredients.any((ingredient) => ingredient.id == created.id),
+      isFalse,
+    );
+  });
+
+  test(
+    'ingredient mutations are blocked without matching permissions',
+    () async {
+      final repository = _FakeProductCreateRepository();
+      final container = _container(repository);
+      addTearDown(container.dispose);
+
+      final access = _access(
+        canCreate: false,
+        canUpdate: false,
+        canDelete: false,
+      );
+      final notifier = container.read(
+        productCreateNotifierProvider(access).notifier,
+      );
+
+      await expectLater(
+        notifier.createIngredient(
+          name: 'Sữa tươi',
+          itemType: 1,
+          unit: 'chai',
+          capacity: 1000,
+        ),
+        throwsA(isA<Exception>()),
+      );
+      await expectLater(
+        notifier.updateIngredient(
+          ingredientId: 1,
+          name: 'Sữa tươi',
+          itemType: 1,
+          unit: 'chai',
+          capacity: 1000,
+        ),
+        throwsA(isA<Exception>()),
+      );
+      await expectLater(
+        notifier.deleteIngredient(1),
+        throwsA(isA<Exception>()),
+      );
+      expect(repository.createIngredientCallCount, 0);
+      expect(repository.updateIngredientCallCount, 0);
+      expect(repository.deleteIngredientCallCount, 0);
+    },
+  );
 }
 
 ProviderContainer _container(_FakeProductCreateRepository repository) {
@@ -505,6 +590,15 @@ ProviderContainer _container(_FakeProductCreateRepository repository) {
       ),
       createProductCategoryUseCaseProvider.overrideWithValue(
         CreateProductCategoryUseCase(repository),
+      ),
+      createProductIngredientUseCaseProvider.overrideWithValue(
+        CreateProductIngredientUseCase(repository),
+      ),
+      updateProductIngredientUseCaseProvider.overrideWithValue(
+        UpdateProductIngredientUseCase(repository),
+      ),
+      deleteProductIngredientUseCaseProvider.overrideWithValue(
+        DeleteProductIngredientUseCase(repository),
       ),
       createProductToppingUseCaseProvider.overrideWithValue(
         CreateProductToppingUseCase(repository),
@@ -580,6 +674,9 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   int createToppingCallCount = 0;
   int updateToppingCallCount = 0;
   int deleteToppingCallCount = 0;
+  int createIngredientCallCount = 0;
+  int updateIngredientCallCount = 0;
+  int deleteIngredientCallCount = 0;
   int createProductCallCount = 0;
   int updateProductCallCount = 0;
   int? lastPrice;
@@ -640,6 +737,65 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   Future<List<ProductIngredient>> loadIngredients(int storeId) async {
     loadIngredientsCallCount += 1;
     return [...ingredients];
+  }
+
+  @override
+  Future<ProductIngredient> createIngredient({
+    required int storeId,
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  }) async {
+    createIngredientCallCount += 1;
+    final ingredient = ProductIngredient(
+      id: ingredients.length + 1,
+      storeId: storeId,
+      name: name,
+      itemType: itemType,
+      unit: unit,
+      quantity: 0,
+      capacity: capacity,
+      currentCapacity: capacity,
+      isActive: true,
+      isDeleted: false,
+    );
+    ingredients.add(ingredient);
+    return ingredient;
+  }
+
+  @override
+  Future<ProductIngredient> updateIngredient({
+    required int ingredientId,
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  }) async {
+    updateIngredientCallCount += 1;
+    final ingredient = ProductIngredient(
+      id: ingredientId,
+      storeId: 5,
+      name: name,
+      itemType: itemType,
+      unit: unit,
+      quantity: 0,
+      capacity: capacity,
+      currentCapacity: capacity,
+      isActive: true,
+      isDeleted: false,
+    );
+    final index = ingredients.indexWhere((item) => item.id == ingredientId);
+    if (index != -1) {
+      ingredients[index] = ingredient;
+    }
+    return ingredient;
+  }
+
+  @override
+  Future<void> deleteIngredient(int ingredientId) async {
+    deleteIngredientCallCount += 1;
+    ingredients.removeWhere((ingredient) => ingredient.id == ingredientId);
   }
 
   @override

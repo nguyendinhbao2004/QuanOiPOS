@@ -672,23 +672,19 @@ class _ReadyCreateForm extends StatelessWidget {
                   maxLines: 3,
                 ),
                 const SizedBox(height: AppConstants.spacingMd),
+                TextFormField(
+                  key: const Key('product_create_preparation_time_field'),
+                  controller: preparationTimeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Thời gian chuẩn bị',
+                    suffixText: 'phút',
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+                const SizedBox(height: AppConstants.spacingMd),
                 Row(
                   children: [
-                    Expanded(
-                      child: TextFormField(
-                        key: const Key('product_create_preparation_time_field'),
-                        controller: preparationTimeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Thời gian chuẩn bị',
-                          suffixText: 'phút',
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppConstants.spacingMd),
                     Expanded(
                       child: TextFormField(
                         key: const Key('product_create_base_price_field'),
@@ -905,8 +901,12 @@ class _ReadyCreateForm extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (context) {
         return _RecipePickerBottomSheet(
+          access: access,
           ingredients: state.ingredients,
           recipeRows: recipeRows,
+          onCreateIngredient: notifier.createIngredient,
+          onUpdateIngredient: notifier.updateIngredient,
+          onDeleteIngredient: notifier.deleteIngredient,
           onRecipesChanged: onRecipeRowsChanged,
         );
       },
@@ -1652,13 +1652,34 @@ class _ToppingPickerBottomSheetState extends State<_ToppingPickerBottomSheet> {
 }
 
 class _RecipePickerBottomSheet extends StatefulWidget {
+  final ProductCreateAccess access;
   final List<ProductIngredient> ingredients;
   final List<_RecipeRowState> recipeRows;
+  final Future<ProductIngredient> Function({
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  })
+  onCreateIngredient;
+  final Future<ProductIngredient> Function({
+    required int ingredientId,
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  })
+  onUpdateIngredient;
+  final Future<void> Function(int ingredientId) onDeleteIngredient;
   final ValueChanged<List<_RecipeRowState>> onRecipesChanged;
 
   const _RecipePickerBottomSheet({
+    required this.access,
     required this.ingredients,
     required this.recipeRows,
+    required this.onCreateIngredient,
+    required this.onUpdateIngredient,
+    required this.onDeleteIngredient,
     required this.onRecipesChanged,
   });
 
@@ -1669,13 +1690,16 @@ class _RecipePickerBottomSheet extends StatefulWidget {
 
 class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
   final _searchController = TextEditingController();
+  late List<ProductIngredient> _ingredients;
   late List<_RecipeRowState> _recipeRows;
   String _query = '';
+  bool _isEditing = false;
   bool _submitted = false;
 
   @override
   void initState() {
     super.initState();
+    _ingredients = [...widget.ingredients];
     _recipeRows = widget.recipeRows.map((row) => row.clone()).toList();
   }
 
@@ -1693,15 +1717,28 @@ class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final ingredients = _filteredIngredients();
+    final canEditList =
+        widget.access.canUpdateProduct || widget.access.canDeleteProduct;
 
     return _PickerSheetFrame(
       key: const Key('product_create_recipe_picker_sheet'),
       title: 'Nguyên liệu',
+      leadingAction: canEditList
+          ? TextButton.icon(
+              key: const Key('edit_product_ingredients_button'),
+              onPressed: () => setState(() => _isEditing = !_isEditing),
+              icon: Icon(
+                _isEditing ? Icons.check_rounded : Icons.edit_outlined,
+                size: 20,
+              ),
+              label: Text(_isEditing ? 'Xong' : 'Chỉnh sửa'),
+            )
+          : null,
       searchController: _searchController,
       searchHint: 'Tìm nguyên liệu',
       addTooltip: 'Thêm nguyên liệu',
       onSearchChanged: (value) => setState(() => _query = value.trim()),
-      onAdd: null,
+      onAdd: widget.access.canCreateProduct ? _showCreateIngredientForm : null,
       footer: _PickerFooter(
         updateKey: const Key('product_create_recipe_picker_update_button'),
         onCancel: () => Navigator.of(context).pop(),
@@ -1744,7 +1781,40 @@ class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
                         visualSize: 70,
                         textAreaHeight: 46,
                         isSelected: _hasIngredient(ingredient.id),
-                        onTap: () => _toggleIngredient(ingredient),
+                        leadingAction: _isEditing
+                            ? _PickerItemActionButton(
+                                key: Key(
+                                  'delete_product_ingredient_${ingredient.id}',
+                                ),
+                                tooltip: widget.access.canDeleteProduct
+                                    ? 'Xóa nguyên liệu'
+                                    : 'Không có quyền xóa',
+                                icon: Icons.remove_circle_rounded,
+                                color: AppColors.error,
+                                onPressed: widget.access.canDeleteProduct
+                                    ? () => _confirmDeleteIngredient(ingredient)
+                                    : null,
+                              )
+                            : null,
+                        trailingAction: _isEditing
+                            ? _PickerItemActionButton(
+                                key: Key(
+                                  'edit_product_ingredient_${ingredient.id}',
+                                ),
+                                tooltip: widget.access.canUpdateProduct
+                                    ? 'Sửa nguyên liệu'
+                                    : 'Không có quyền sửa',
+                                icon: Icons.edit_outlined,
+                                color: AppColors.primary,
+                                onPressed: widget.access.canUpdateProduct
+                                    ? () =>
+                                          _showUpdateIngredientForm(ingredient)
+                                    : null,
+                              )
+                            : null,
+                        onTap: _isEditing
+                            ? null
+                            : () => _toggleIngredient(ingredient),
                       );
                     },
                   ),
@@ -1757,11 +1827,11 @@ class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
 
   List<ProductIngredient> _filteredIngredients() {
     if (_query.isEmpty) {
-      return widget.ingredients;
+      return _ingredients;
     }
 
     final query = _query.toLowerCase();
-    return widget.ingredients
+    return _ingredients
         .where((ingredient) => ingredient.name.toLowerCase().contains(query))
         .toList();
   }
@@ -1782,6 +1852,132 @@ class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
         row.dispose();
       }
     });
+  }
+
+  Future<void> _showCreateIngredientForm() async {
+    final ingredient = await showModalBottomSheet<ProductIngredient>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _IngredientFormBottomSheet(onSubmit: widget.onCreateIngredient);
+      },
+    );
+
+    if (ingredient == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _ingredients = [..._ingredients, ingredient];
+      _recipeRows.add(_RecipeRowState(ingredient: ingredient));
+    });
+  }
+
+  Future<void> _showUpdateIngredientForm(ProductIngredient ingredient) async {
+    final updatedIngredient = await showModalBottomSheet<ProductIngredient>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _IngredientFormBottomSheet(
+          ingredient: ingredient,
+          onSubmit:
+              ({
+                required name,
+                required itemType,
+                required unit,
+                required capacity,
+              }) {
+                return widget.onUpdateIngredient(
+                  ingredientId: ingredient.id,
+                  name: name,
+                  itemType: itemType,
+                  unit: unit,
+                  capacity: capacity,
+                );
+              },
+        );
+      },
+    );
+
+    if (updatedIngredient == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _ingredients = [
+        for (final item in _ingredients)
+          if (item.id == updatedIngredient.id) updatedIngredient else item,
+      ];
+      final rowIndex = _recipeRows.indexWhere(
+        (row) => row.ingredient.id == updatedIngredient.id,
+      );
+      if (rowIndex != -1) {
+        final oldRow = _recipeRows[rowIndex];
+        final newRow = _RecipeRowState(ingredient: updatedIngredient);
+        newRow.quantityController.text = oldRow.quantityController.text;
+        newRow.capacityController.text = oldRow.capacityController.text;
+        oldRow.dispose();
+        _recipeRows[rowIndex] = newRow;
+      }
+    });
+  }
+
+  Future<void> _confirmDeleteIngredient(ProductIngredient ingredient) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Xóa nguyên liệu?'),
+          content: Text(
+            'Nguyên liệu "${ingredient.name}" sẽ bị xóa khỏi cửa hàng.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Hủy'),
+            ),
+            TextButton(
+              key: const Key('confirm_delete_product_ingredient_button'),
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+              child: const Text('Xóa'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await widget.onDeleteIngredient(ingredient.id);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _ingredients = _ingredients
+            .where((item) => item.id != ingredient.id)
+            .toList();
+        final rowIndex = _recipeRows.indexWhere(
+          (row) => row.ingredient.id == ingredient.id,
+        );
+        if (rowIndex != -1) {
+          _recipeRows.removeAt(rowIndex).dispose();
+        }
+      });
+      _showMessage(context, 'Đã xóa nguyên liệu');
+    } catch (error) {
+      if (mounted) {
+        _showMessage(context, _cleanError(error));
+      }
+    }
   }
 
   void _submit() {
@@ -2346,6 +2542,181 @@ class _ToppingFormBottomSheetState extends State<_ToppingFormBottomSheet> {
       );
       if (mounted) {
         Navigator.of(context).pop(topping);
+      }
+    } catch (error) {
+      if (mounted) {
+        _showMessage(context, _cleanError(error));
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+}
+
+class _IngredientFormBottomSheet extends StatefulWidget {
+  final ProductIngredient? ingredient;
+  final Future<ProductIngredient> Function({
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+  })
+  onSubmit;
+
+  const _IngredientFormBottomSheet({this.ingredient, required this.onSubmit});
+
+  @override
+  State<_IngredientFormBottomSheet> createState() =>
+      _IngredientFormBottomSheetState();
+}
+
+class _IngredientFormBottomSheetState
+    extends State<_IngredientFormBottomSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _unitController;
+  late final TextEditingController _capacityController;
+  late int _itemType;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(
+      text: widget.ingredient?.name ?? '',
+    );
+    _unitController = TextEditingController(
+      text: widget.ingredient?.unit ?? '',
+    );
+    _capacityController = TextEditingController(
+      text: widget.ingredient == null
+          ? ''
+          : widget.ingredient!.capacity.toString(),
+    );
+    _itemType = widget.ingredient?.itemType == 2 ? 2 : 1;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _unitController.dispose();
+    _capacityController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _CompactFormSheet(
+      title: widget.ingredient == null ? 'Thêm nguyên liệu' : 'Sửa nguyên liệu',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              key: const Key('ingredient_name_field'),
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: _itemType == 2 ? 'Tên sản phẩm' : 'Tên nguyên liệu',
+              ),
+              textInputAction: TextInputAction.next,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return _itemType == 2
+                      ? 'Vui lòng nhập tên sản phẩm'
+                      : 'Vui lòng nhập tên nguyên liệu';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: AppConstants.spacingMd),
+            DropdownButtonFormField<int>(
+              key: const Key('ingredient_item_type_field'),
+              initialValue: _itemType,
+              decoration: const InputDecoration(labelText: 'Loại'),
+              items: const [
+                DropdownMenuItem(value: 1, child: Text('Nguyên liệu')),
+                DropdownMenuItem(value: 2, child: Text('Sản phẩm bán lại')),
+              ],
+              onChanged: _isSubmitting
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() => _itemType = value);
+                      }
+                    },
+            ),
+            const SizedBox(height: AppConstants.spacingMd),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    key: const Key('ingredient_capacity_field'),
+                    controller: _capacityController,
+                    decoration: const InputDecoration(labelText: 'Dung lượng'),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (value) {
+                      final capacity = int.tryParse(value ?? '');
+                      if (capacity == null || capacity < 0) {
+                        return 'Nhập dung lượng hợp lệ';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: AppConstants.spacingMd),
+                Expanded(
+                  child: TextFormField(
+                    key: const Key('ingredient_unit_field'),
+                    controller: _unitController,
+                    decoration: const InputDecoration(labelText: 'Đơn vị'),
+                    textInputAction: TextInputAction.next,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Nhập đơn vị';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppConstants.spacingLg),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                key: const Key('ingredient_form_submit_button'),
+                onPressed: _isSubmitting ? null : _submit,
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Lưu'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      final ingredient = await widget.onSubmit(
+        name: _nameController.text,
+        itemType: _itemType,
+        unit: _unitController.text,
+        capacity: int.tryParse(_capacityController.text.trim()) ?? 0,
+      );
+      if (mounted) {
+        Navigator.of(context).pop(ingredient);
       }
     } catch (error) {
       if (mounted) {
