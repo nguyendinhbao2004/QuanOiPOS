@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/constants/app_constants.dart';
 import '../core/theme/index.dart';
 import '../features/auth/domain/entities/account_type.dart';
 import '../features/auth/presentation/pages/auth_page.dart';
@@ -836,14 +837,15 @@ String? _storeUserLanding(
 class _BootstrapSplashPage extends StatelessWidget {
   const _BootstrapSplashPage();
 
-  static const _splashAsset = 'assets/images/splash_screen.png';
-
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: AppColors.background,
       body: SizedBox.expand(
-        child: Image(image: AssetImage(_splashAsset), fit: BoxFit.cover),
+        child: Image(
+          image: AssetImage(AppConstants.splashAsset),
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }

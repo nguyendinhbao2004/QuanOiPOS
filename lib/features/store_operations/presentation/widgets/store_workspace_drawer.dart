@@ -309,7 +309,7 @@ class _DrawerMenuPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Image.asset(
-                'assets/images/app_logo.png',
+                AppConstants.logoAsset,
                 width: 48,
                 height: 48,
                 fit: BoxFit.contain,

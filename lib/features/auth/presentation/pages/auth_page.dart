@@ -216,7 +216,7 @@ class _AuthHeader extends StatelessWidget {
             ],
           ),
           padding: const EdgeInsets.all(AppConstants.spacingSm),
-          child: Image.asset('assets/images/app_logo.png', fit: BoxFit.contain),
+          child: Image.asset(AppConstants.logoAsset, fit: BoxFit.contain),
         ),
         const SizedBox(height: AppConstants.spacingLg),
         Text(

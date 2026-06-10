@@ -200,19 +200,19 @@ flutter_launcher_icons:
   android: true
   ios: true
   remove_alpha_ios: true
-  image_path: assets/images/app_logo.png
+  image_path: assets/images/android-chrome-512x512.png
   web:
     generate: true
-    image_path: assets/images/app_logo.png
+    image_path: assets/images/android-chrome-512x512.png
     background_color: "#FFF7E8"
     theme_color: "#EF604A"
   windows:
     generate: true
-    image_path: assets/images/app_logo.png
+    image_path: assets/images/android-chrome-512x512.png
     icon_size: 48
   macos:
     generate: true
-    image_path: assets/images/app_logo.png
+    image_path: assets/images/android-chrome-512x512.png
 
 flutter_native_splash:
   background_image: assets/images/splash_screen.png

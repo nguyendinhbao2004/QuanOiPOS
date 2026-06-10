@@ -35,10 +35,7 @@ class StoreWorkspaceHeader extends StatelessWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.all(AppConstants.spacingXs),
-              child: Image.asset(
-                'assets/images/app_logo.png',
-                fit: BoxFit.contain,
-              ),
+              child: Image.asset(AppConstants.logoAsset, fit: BoxFit.contain),
             ),
           ),
         ),

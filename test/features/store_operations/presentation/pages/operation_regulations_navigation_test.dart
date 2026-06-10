@@ -196,7 +196,7 @@ void main() {
     router.go('/app-settings');
     await tester.pumpAndSettle();
 
-    expect(find.text('SystemAdmin Workspace'), findsOneWidget);
+    expect(find.text('Doanh thu tháng'), findsOneWidget);
     expect(find.byKey(const Key('app_settings_menu_section')), findsNothing);
   });
 
@@ -220,7 +220,7 @@ void main() {
       router.go('/operation-regulations');
       await tester.pumpAndSettle();
 
-      expect(find.text('SystemAdmin Workspace'), findsOneWidget);
+      expect(find.text('Doanh thu tháng'), findsOneWidget);
       expect(
         find.byKey(const Key('operation_regulations_pdf_viewer')),
         findsNothing,
@@ -245,7 +245,7 @@ void main() {
     router.go('/privacy-policy');
     await tester.pumpAndSettle();
 
-    expect(find.text('SystemAdmin Workspace'), findsOneWidget);
+    expect(find.text('Doanh thu tháng'), findsOneWidget);
     expect(find.byKey(const Key('privacy_policy_pdf_viewer')), findsNothing);
   });
 
@@ -266,7 +266,7 @@ void main() {
     router.go('/about-app');
     await tester.pumpAndSettle();
 
-    expect(find.text('SystemAdmin Workspace'), findsOneWidget);
+    expect(find.text('Doanh thu tháng'), findsOneWidget);
     expect(find.byKey(const Key('about_app_content_card')), findsNothing);
   });
 }

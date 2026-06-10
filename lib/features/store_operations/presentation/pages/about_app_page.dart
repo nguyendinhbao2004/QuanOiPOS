@@ -164,7 +164,7 @@ class _AboutAppHeaderCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppConstants.spacingSm),
                   child: Image.asset(
-                    'assets/images/app_logo.png',
+                    AppConstants.logoAsset,
                     key: const Key('about_app_logo'),
                     width: AppConstants.avatarSizeSm,
                     height: AppConstants.avatarSizeSm,

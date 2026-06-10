@@ -5,6 +5,8 @@ abstract final class AppConstants {
   static const String appVersion = '1.0.0';
   static const String supportPhone = '1900 xxxx';
   static const String branchName = 'QUANOI-01';
+  static const String logoAsset = 'assets/images/android-chrome-512x512.png';
+  static const String splashAsset = 'assets/images/splash_screen.png';
 
   // ─── Spacing ───────────────────────────────────────────────────────────────
   static const double spacingXs = 4.0;

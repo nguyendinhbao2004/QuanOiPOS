@@ -150,7 +150,7 @@ void main() {
     router.go('/store-subscription');
     await tester.pumpAndSettle();
 
-    expect(find.text('SystemAdmin Workspace'), findsOneWidget);
+    expect(find.text('Doanh thu tháng'), findsOneWidget);
     expect(find.text('Gói dịch vụ của tôi'), findsNothing);
   });
 }

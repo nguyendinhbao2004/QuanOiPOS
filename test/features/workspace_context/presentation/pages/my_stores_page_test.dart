@@ -195,7 +195,7 @@ void main() {
     router.go('/my-stores');
     await tester.pumpAndSettle();
 
-    expect(find.text('SystemAdmin Workspace'), findsOneWidget);
+    expect(find.text('Doanh thu tháng'), findsOneWidget);
     expect(find.text('Danh sách cửa hàng'), findsNothing);
   });
 
@@ -219,7 +219,7 @@ void main() {
     router.go('/stores/2');
     await tester.pumpAndSettle();
 
-    expect(find.text('SystemAdmin Workspace'), findsOneWidget);
+    expect(find.text('Doanh thu tháng'), findsOneWidget);
     expect(find.text('Tổng quan hôm nay'), findsNothing);
   });
 
