@@ -160,55 +160,6 @@ class _LoginFormState extends State<LoginForm> {
                   )
                 : const Text('ĐĂNG NHẬP NGAY'),
           ),
-          const SizedBox(height: AppConstants.spacingMd),
-          Row(
-            children: [
-              const Expanded(child: Divider()),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppConstants.spacingSm,
-                ),
-                child: Text(
-                  'Hoặc đăng nhập với',
-                  style: AppTextStyles.bodyXs.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-              const Expanded(child: Divider()),
-            ],
-          ),
-          const SizedBox(height: AppConstants.spacingMd),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Google login sẽ triển khai sau'),
-                      ),
-                    );
-                  },
-                  child: const Text('Google'),
-                ),
-              ),
-              const SizedBox(width: AppConstants.spacingSm),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Facebook login sẽ triển khai sau'),
-                      ),
-                    );
-                  },
-                  child: const Text('Facebook'),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );

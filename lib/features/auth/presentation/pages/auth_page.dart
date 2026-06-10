@@ -67,103 +67,127 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     });
 
     final authState = ref.watch(authNotifierProvider);
+    final authForm = _buildAuthForm(authState);
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.primaryLight, AppColors.background],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppConstants.spacingMd),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(40),
-                    side: const BorderSide(color: AppColors.border),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isDesktop = constraints.maxWidth >= 900;
+          final horizontalPadding = isDesktop
+              ? AppConstants.spacingXxl
+              : AppConstants.spacingMd;
+          final verticalPadding = isDesktop
+              ? AppConstants.spacingXl
+              : AppConstants.spacingMd;
+          final contentMinHeight =
+              constraints.maxHeight -
+              (verticalPadding * 2) -
+              MediaQuery.paddingOf(context).vertical;
+
+          return Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primaryLight,
+                  AppColors.background,
+                  AppColors.sidebar,
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: verticalPadding,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: contentMinHeight > 0 ? contentMinHeight : 0,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppConstants.spacingXl),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const _AuthHeader(),
-                        const SizedBox(height: AppConstants.spacingXl),
-                        if (_mode == AuthFormMode.login)
-                          LoginForm(
-                            isLoading: authState.isLoading,
-                            errorMessage: authState.status == AuthStatus.failure
-                                ? authState.errorMessage
-                                : null,
-                            onSubmit: (email, password) async {
-                              await ref
-                                  .read(authNotifierProvider.notifier)
-                                  .login(email: email, password: password);
-                            },
-                            onForgotPasswordPressed: () {
-                              ref
-                                  .read(registerNotifierProvider.notifier)
-                                  .reset();
-                              ref
-                                  .read(forgotPasswordNotifierProvider.notifier)
-                                  .reset();
-                              ref
-                                  .read(authNotifierProvider.notifier)
-                                  .clearError();
-                              setState(
-                                () => _mode = AuthFormMode.forgotPassword,
-                              );
-                            },
-                            onRegisterPressed: () {
-                              ref
-                                  .read(registerNotifierProvider.notifier)
-                                  .reset();
-                              ref
-                                  .read(forgotPasswordNotifierProvider.notifier)
-                                  .reset();
-                              setState(() => _mode = AuthFormMode.register);
-                              ref
-                                  .read(authNotifierProvider.notifier)
-                                  .clearError();
-                            },
-                          )
-                        else if (_mode == AuthFormMode.register)
-                          RegisterForm(
-                            onBackToLoginPressed: () {
-                              setState(() => _mode = AuthFormMode.login);
-                              ref
-                                  .read(forgotPasswordNotifierProvider.notifier)
-                                  .reset();
-                              ref
-                                  .read(authNotifierProvider.notifier)
-                                  .clearError();
-                            },
-                          )
-                        else
-                          ForgotPasswordForm(
-                            onBackToLoginPressed: () {
-                              setState(() => _mode = AuthFormMode.login);
-                              ref
-                                  .read(authNotifierProvider.notifier)
-                                  .clearError();
-                            },
-                          ),
-                      ],
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: _AuthFormCard(child: authForm),
                     ),
                   ),
                 ),
               ),
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAuthForm(AuthState authState) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _AuthHeader(),
+        const SizedBox(height: AppConstants.spacingXl),
+        if (_mode == AuthFormMode.login)
+          LoginForm(
+            isLoading: authState.isLoading,
+            errorMessage: authState.status == AuthStatus.failure
+                ? authState.errorMessage
+                : null,
+            onSubmit: (email, password) async {
+              await ref
+                  .read(authNotifierProvider.notifier)
+                  .login(email: email, password: password);
+            },
+            onForgotPasswordPressed: () {
+              ref.read(registerNotifierProvider.notifier).reset();
+              ref.read(forgotPasswordNotifierProvider.notifier).reset();
+              ref.read(authNotifierProvider.notifier).clearError();
+              setState(() => _mode = AuthFormMode.forgotPassword);
+            },
+            onRegisterPressed: () {
+              ref.read(registerNotifierProvider.notifier).reset();
+              ref.read(forgotPasswordNotifierProvider.notifier).reset();
+              setState(() => _mode = AuthFormMode.register);
+              ref.read(authNotifierProvider.notifier).clearError();
+            },
+          )
+        else if (_mode == AuthFormMode.register)
+          RegisterForm(
+            onBackToLoginPressed: () {
+              setState(() => _mode = AuthFormMode.login);
+              ref.read(forgotPasswordNotifierProvider.notifier).reset();
+              ref.read(authNotifierProvider.notifier).clearError();
+            },
+          )
+        else
+          ForgotPasswordForm(
+            onBackToLoginPressed: () {
+              setState(() => _mode = AuthFormMode.login);
+              ref.read(authNotifierProvider.notifier).clearError();
+            },
           ),
-        ),
+      ],
+    );
+  }
+}
+
+class _AuthFormCard extends StatelessWidget {
+  final Widget child;
+
+  const _AuthFormCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.spacingXl),
+        child: child,
       ),
     );
   }
@@ -176,55 +200,23 @@ class _AuthHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.24),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+        Container(
+          width: 88,
+          height: 88,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.14),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
               ),
-              alignment: Alignment.center,
-              child: const Text('🐵', style: TextStyle(fontSize: 46)),
-            ),
-            Positioned(
-              top: 2,
-              right: 2,
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  shape: BoxShape.circle,
-                ),
-                padding: const EdgeInsets.all(2),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: AppColors.error,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    'Ó',
-                    style: AppTextStyles.labelXs.copyWith(
-                      color: AppColors.surface,
-                      fontSize: 10,
-                      height: 1.0,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
+          padding: const EdgeInsets.all(AppConstants.spacingSm),
+          child: Image.asset('assets/images/app_logo.png', fit: BoxFit.contain),
         ),
         const SizedBox(height: AppConstants.spacingLg),
         Text(
