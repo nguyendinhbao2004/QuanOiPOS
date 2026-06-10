@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/voice_order_item.dart';
 import '../../domain/entities/voice_order_recognition.dart';
+import '../../domain/entities/voice_order_topping.dart';
 import '../../domain/usecases/recognize_voice_order_use_case.dart';
 import '../providers/voice_order_providers.dart';
 import '../services/voice_order_audio_recorder.dart';
@@ -149,9 +150,13 @@ class VoiceOrderNotifier extends AutoDisposeNotifier<VoiceOrderState> {
 
   void updateItem(
     VoiceOrderItem original, {
+    Object? productId = _unchanged,
     required String productName,
+    Object? variantId = _unchanged,
+    Object? variantName = _unchanged,
     required int quantity,
     String? note,
+    List<VoiceOrderTopping>? toppings,
   }) {
     final recognition = state.recognition;
     if (recognition == null) {
@@ -163,16 +168,46 @@ class VoiceOrderNotifier extends AutoDisposeNotifier<VoiceOrderState> {
       return;
     }
 
+    final resolvedVariantId = variantId == _unchanged
+        ? original.variantId
+        : variantId as int?;
+    final resolvedVariantName = variantName == _unchanged
+        ? original.variantName
+        : variantName as String?;
+    final resolvedProductId = productId == _unchanged
+        ? original.productId
+        : productId as int?;
     final updatedItems = List<VoiceOrderItem>.of(recognition.items);
     updatedItems[itemIndex] = original.copyWith(
+      productId: resolvedProductId,
       productName: productName.trim().isEmpty
           ? original.productName
           : productName.trim(),
+      variantId: resolvedVariantId,
+      variantName: resolvedVariantName,
       quantity: quantity < 1 ? 1 : quantity,
       note: note == null || note.trim().isEmpty ? null : note.trim(),
+      toppings: toppings,
     );
 
     _setRecognition(recognition.copyWith(items: updatedItems));
+  }
+
+  void updateTable({int? tableId, String? tableName, String? tableStatus}) {
+    final recognition = state.recognition;
+    if (recognition == null) {
+      return;
+    }
+
+    _setRecognition(
+      recognition.copyWith(
+        tableId: tableId,
+        tableName: tableName == null || tableName.trim().isEmpty
+            ? null
+            : tableName.trim(),
+        tableStatus: tableStatus,
+      ),
+    );
   }
 
   void increaseItemQuantity(VoiceOrderItem item) {
@@ -181,6 +216,7 @@ class VoiceOrderNotifier extends AutoDisposeNotifier<VoiceOrderState> {
       productName: item.productName,
       quantity: item.quantity + 1,
       note: item.note,
+      toppings: item.toppings,
     );
   }
 
@@ -190,6 +226,7 @@ class VoiceOrderNotifier extends AutoDisposeNotifier<VoiceOrderState> {
       productName: item.productName,
       quantity: item.quantity <= 1 ? 1 : item.quantity - 1,
       note: item.note,
+      toppings: item.toppings,
     );
   }
 
@@ -206,3 +243,5 @@ class VoiceOrderNotifier extends AutoDisposeNotifier<VoiceOrderState> {
     return text.isEmpty ? fallback : text;
   }
 }
+
+const Object _unchanged = Object();

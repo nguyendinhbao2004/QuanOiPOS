@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/store_operations/voice_order/domain/entities/unmatched_voice_order_item.dart';
 import 'package:quan_oi/features/store_operations/voice_order/domain/entities/voice_order_item.dart';
 import 'package:quan_oi/features/store_operations/voice_order/domain/entities/voice_order_recognition.dart';
+import 'package:quan_oi/features/store_operations/voice_order/domain/entities/voice_order_topping.dart';
 import 'package:quan_oi/features/store_operations/voice_order/domain/repositories/voice_order_repository.dart';
 import 'package:quan_oi/features/store_operations/voice_order/domain/usecases/recognize_voice_order_use_case.dart';
 import 'package:quan_oi/features/store_operations/voice_order/presentation/controllers/voice_order_state.dart';
@@ -132,6 +133,87 @@ void main() {
     );
     expect(recorder.cancelCallCount, 1);
     expect(speechPreview.cancelCallCount, 0);
+  });
+
+  test(
+    'updates recognized item with product, variant, toppings, and note',
+    () async {
+      final container = _container(
+        repository: _FakeVoiceOrderRepository(recognition: _recognition()),
+        recorder: _FakeVoiceOrderAudioRecorder(),
+        speechPreview: _FakeVoiceOrderSpeechPreviewService(),
+      );
+      addTearDown(container.dispose);
+      final subscription = container.listen(
+        voiceOrderNotifierProvider,
+        (_, _) {},
+        fireImmediately: true,
+      );
+      addTearDown(subscription.close);
+
+      final notifier = container.read(voiceOrderNotifierProvider.notifier);
+      await notifier.startRecording();
+      await notifier.stopAndRecognize(5);
+
+      final original = container
+          .read(voiceOrderNotifierProvider)
+          .recognition!
+          .items
+          .single;
+      notifier.updateItem(
+        original,
+        productId: 23,
+        productName: 'Chân gà sốt Thái',
+        variantId: 36,
+        variantName: 'Nhỏ',
+        quantity: 3,
+        note: 'ít cay',
+        toppings: const [
+          VoiceOrderTopping(id: 201, name: 'Mè rang', quantity: 2),
+        ],
+      );
+
+      final updated = container
+          .read(voiceOrderNotifierProvider)
+          .recognition!
+          .items
+          .single;
+      expect(updated.productId, 23);
+      expect(updated.productName, 'Chân gà sốt Thái');
+      expect(updated.variantId, 36);
+      expect(updated.variantName, 'Nhỏ');
+      expect(updated.quantity, 3);
+      expect(updated.note, 'ít cay');
+      expect(updated.toppings.single.name, 'Mè rang');
+    },
+  );
+
+  test('updates table locally without clearing validation messages', () async {
+    final container = _container(
+      repository: _FakeVoiceOrderRepository(
+        recognition: _recognition(unmatched: true),
+      ),
+      recorder: _FakeVoiceOrderAudioRecorder(),
+      speechPreview: _FakeVoiceOrderSpeechPreviewService(),
+    );
+    addTearDown(container.dispose);
+    final subscription = container.listen(
+      voiceOrderNotifierProvider,
+      (_, _) {},
+      fireImmediately: true,
+    );
+    addTearDown(subscription.close);
+
+    final notifier = container.read(voiceOrderNotifierProvider.notifier);
+    await notifier.startRecording();
+    await notifier.stopAndRecognize(5);
+    notifier.updateTable(tableId: 9, tableName: 'Bàn 9', tableStatus: 'open');
+
+    final recognition = container.read(voiceOrderNotifierProvider).recognition!;
+    expect(recognition.tableId, 9);
+    expect(recognition.tableName, 'Bàn 9');
+    expect(recognition.errors, isNotEmpty);
+    expect(recognition.unmatchedItems, isNotEmpty);
   });
 }
 

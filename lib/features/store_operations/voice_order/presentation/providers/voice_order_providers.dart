@@ -1,6 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../core/di/injection.dart';
+import '../../../product_management/domain/entities/product.dart';
+import '../../../product_management/presentation/providers/product_management_providers.dart';
+import '../../../table_management/domain/entities/dining_table.dart';
+import '../../../table_management/domain/usecases/load_table_groups_use_case.dart';
+import '../../../table_management/presentation/providers/table_management_providers.dart';
 import '../../data/datasources/voice_order_remote_data_source.dart';
 import '../../domain/repositories/voice_order_repository.dart';
 import '../../domain/usecases/recognize_voice_order_use_case.dart';
@@ -36,7 +41,31 @@ final voiceOrderSpeechPreviewServiceProvider =
       return SpeechToTextVoiceOrderSpeechPreviewService();
     });
 
+final voiceOrderProductsProvider = FutureProvider.autoDispose
+    .family<List<Product>, int>((ref, storeId) {
+      final loadProducts = ref.watch(loadProductsUseCaseProvider);
+      return loadProducts(storeId);
+    });
+
+final voiceOrderTablesProvider = FutureProvider.autoDispose
+    .family<List<DiningTable>, int>((ref, storeId) {
+      final loadTableGroups = ref.watch(loadTableGroupsUseCaseProvider);
+      return _loadVoiceOrderTables(loadTableGroups, storeId);
+    });
+
 final voiceOrderNotifierProvider =
     NotifierProvider.autoDispose<VoiceOrderNotifier, VoiceOrderState>(
       VoiceOrderNotifier.new,
     );
+
+Future<List<DiningTable>> _loadVoiceOrderTables(
+  LoadTableGroupsUseCase loadTableGroups,
+  int storeId,
+) async {
+  final groups = await loadTableGroups(storeId: storeId);
+  return [
+    for (final group in groups)
+      for (final table in group.tables)
+        if (!table.isDeleted) table,
+  ];
+}

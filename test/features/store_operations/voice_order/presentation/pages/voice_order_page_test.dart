@@ -9,8 +9,15 @@ import 'package:quan_oi/features/auth/domain/entities/account_type.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_notifier.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_topping.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_variant_draft.dart';
+import 'package:quan_oi/features/store_operations/table_management/domain/entities/dining_table.dart';
+import 'package:quan_oi/features/store_operations/table_management/domain/entities/table_status.dart';
 import 'package:quan_oi/features/store_operations/voice_order/domain/entities/voice_order_item.dart';
 import 'package:quan_oi/features/store_operations/voice_order/domain/entities/voice_order_recognition.dart';
+import 'package:quan_oi/features/store_operations/voice_order/domain/entities/voice_order_topping.dart';
 import 'package:quan_oi/features/store_operations/voice_order/domain/repositories/voice_order_repository.dart';
 import 'package:quan_oi/features/store_operations/voice_order/domain/usecases/recognize_voice_order_use_case.dart';
 import 'package:quan_oi/features/store_operations/voice_order/presentation/pages/voice_order_page.dart';
@@ -29,12 +36,13 @@ import 'package:quan_oi/features/workspace_context/domain/usecases/save_last_act
 import 'package:quan_oi/features/workspace_context/presentation/providers/workspace_context_providers.dart';
 
 void main() {
-  testWidgets('idle page shows sales layout and bottom mic', (tester) async {
+  testWidgets('idle page shows review layout and bottom mic', (tester) async {
     await _pumpVoiceOrderPage(tester);
     await tester.pumpAndSettle();
 
-    expect(find.text('Bán hàng'), findsOneWidget);
-    expect(find.text('Chọn phòng/bàn'), findsOneWidget);
+    expect(find.text('Order bằng giọng nói'), findsOneWidget);
+    expect(find.text('Bàn'), findsOneWidget);
+    expect(find.text('Chưa có order'), findsOneWidget);
     expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
 
     final micCenter = tester.getCenter(find.byIcon(Icons.mic_rounded));
@@ -61,11 +69,11 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    expect(find.text('phòng 8'), findsOneWidget);
+    expect(find.text('Bàn 8'), findsOneWidget);
     expect(find.text('mi hai san'), findsOneWidget);
     expect(find.text('Ghi chú: cay'), findsOneWidget);
-    expect(find.text('Tổng cộng (2)'), findsNothing);
-    expect(find.text('0'), findsWidgets);
+    expect(find.text('Size nhỏ'), findsOneWidget);
+    expect(find.text('Trân châu x2'), findsOneWidget);
   });
 
   testWidgets('release mic shows processing while waiting for backend', (
@@ -92,31 +100,27 @@ void main() {
     completer.complete(_recognition());
     await tester.pumpAndSettle();
 
-    expect(find.text('phòng 8'), findsOneWidget);
+    expect(find.text('Bàn 8'), findsOneWidget);
   });
 
   testWidgets('tap item opens edit sheet', (tester) async {
     await _pumpVoiceOrderPage(tester);
     await tester.pumpAndSettle();
-
-    final gesture = await tester.startGesture(
-      tester.getCenter(find.byIcon(Icons.mic_rounded)),
-    );
-    await tester.pump();
-    await gesture.up();
-    await tester.pumpAndSettle();
+    await _recognizeOrder(tester);
 
     expect(find.text('mi hai san'), findsOneWidget);
 
     await tester.tap(find.text('mi hai san'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Chỉnh sửa'), findsOneWidget);
-    expect(find.text('Tên hàng'), findsOneWidget);
+    expect(find.text('Chỉnh sửa món'), findsOneWidget);
+    expect(find.text('Tên món'), findsOneWidget);
     expect(find.text('Giá bán'), findsNothing);
     expect(find.text('Ghi chú'), findsOneWidget);
-    expect(find.text('Xóa'), findsOneWidget);
+    expect(find.text('Hủy'), findsOneWidget);
     expect(find.text('Lưu'), findsOneWidget);
+    expect(find.text('Kích cỡ'), findsOneWidget);
+    expect(find.text('Topping'), findsOneWidget);
     expect(find.byIcon(Icons.remove_rounded), findsWidgets);
     expect(find.byIcon(Icons.add_rounded), findsWidgets);
   });
@@ -131,8 +135,8 @@ void main() {
     await tester.tap(find.byIcon(Icons.add_rounded).first);
     await tester.pumpAndSettle();
 
-    expect(find.text('Chỉnh sửa'), findsNothing);
-    expect(find.text('2'), findsOneWidget);
+    expect(find.text('Chỉnh sửa món'), findsNothing);
+    expect(find.text('SL 2'), findsOneWidget);
   });
 
   testWidgets('save edit sheet updates rendered item values', (tester) async {
@@ -143,17 +147,59 @@ void main() {
     await tester.tap(find.text('mi hai san'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextFormField).at(0), 'mi xao bo');
-    await tester.enterText(find.byType(TextFormField).at(1), 'it cay');
+    await tester.enterText(find.byType(TextField).at(1), 'mi xao bo');
+    await tester.enterText(find.byType(TextField).last, 'it cay');
     await tester.tap(find.byIcon(Icons.add_rounded).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lưu'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Chỉnh sửa'), findsNothing);
+    expect(find.text('Chỉnh sửa món'), findsNothing);
     expect(find.text('mi xao bo'), findsOneWidget);
     expect(find.text('Ghi chú: it cay'), findsOneWidget);
-    expect(find.text('2'), findsOneWidget);
+    expect(find.text('SL 2'), findsOneWidget);
+  });
+
+  testWidgets('renders missing fields and validation errors', (tester) async {
+    await _pumpVoiceOrderPage(
+      tester,
+      repository: _FakeVoiceOrderRepository(
+        recognition: _recognitionWithValidationErrors(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _recognizeOrder(tester);
+
+    expect(find.text('Thông tin còn thiếu'), findsOneWidget);
+    expect(find.text('• table'), findsOneWidget);
+    expect(find.text('Lỗi xác thực'), findsOneWidget);
+    expect(find.text("• Không tìm thấy bàn 'Bàn 9'."), findsOneWidget);
+  });
+
+  testWidgets('product and table autocomplete suggestions can be selected', (
+    tester,
+  ) async {
+    await _pumpVoiceOrderPage(tester);
+    await tester.pumpAndSettle();
+    await _recognizeOrder(tester);
+
+    await tester.enterText(find.byType(TextField).first, '9');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bàn 9').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bàn 9'), findsOneWidget);
+
+    await tester.tap(find.text('mi hai san'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), 'Coca');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Coca cola').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lưu'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Coca cola'), findsOneWidget);
   });
 
   testWidgets('permission denied microphone state renders message', (
@@ -227,6 +273,8 @@ Future<void> _pumpVoiceOrderPage(
         recognizeVoiceOrderUseCaseProvider.overrideWithValue(
           RecognizeVoiceOrderUseCase(voiceOrderRepository),
         ),
+        voiceOrderProductsProvider(5).overrideWith((ref) async => _products),
+        voiceOrderTablesProvider(5).overrideWith((ref) async => _tables),
         voiceOrderAudioRecorderProvider.overrideWithValue(
           recorder ?? _FakeVoiceOrderAudioRecorder(),
         ),
@@ -245,7 +293,7 @@ Future<void> _pumpVoiceOrderPage(
 VoiceOrderRecognition _recognition() {
   return const VoiceOrderRecognition(
     storeId: 8,
-    transcript: '',
+    transcript: 'bàn tám gọi mì hải sản size nhỏ thêm trân châu',
     validationSucceeded: true,
     validationMessage: '',
     tableName: '8',
@@ -253,9 +301,12 @@ VoiceOrderRecognition _recognition() {
       VoiceOrderItem(
         productId: null,
         productName: 'mi hai san',
+        variantId: 36,
+        variantName: 'nhỏ',
         quantity: 1,
         available: true,
         note: 'cay',
+        toppings: [VoiceOrderTopping(id: 201, name: 'Trân châu', quantity: 2)],
       ),
       VoiceOrderItem(
         productId: null,
@@ -267,6 +318,94 @@ VoiceOrderRecognition _recognition() {
     unmatchedItems: [],
   );
 }
+
+VoiceOrderRecognition _recognitionWithValidationErrors() {
+  return const VoiceOrderRecognition(
+    storeId: 5,
+    transcript: 'bàn chín gọi chân gà',
+    validationSucceeded: false,
+    validationMessage: 'Order voice chưa hợp lệ.',
+    tableName: null,
+    missingFields: ['table'],
+    errors: ["Không tìm thấy bàn 'Bàn 9'."],
+    items: [
+      VoiceOrderItem(
+        productId: 23,
+        productName: 'CHÂN GÀ RÚT XƯƠNG SỐT THÁI',
+        variantId: 36,
+        variantName: 'nhỏ',
+        quantity: 1,
+        available: true,
+      ),
+    ],
+    unmatchedItems: [],
+  );
+}
+
+final _products = [
+  const Product(
+    id: 23,
+    storeId: 5,
+    categoryId: 1,
+    categoryName: 'Đồ ăn',
+    name: 'mi hai san',
+    imageUrl: '',
+    description: '',
+    preparationTime: 5,
+    price: 35000,
+    type: ProductType.food,
+    variants: [
+      ProductVariantDraft(id: 36, name: 'nhỏ', price: 35000, isDefault: true),
+      ProductVariantDraft(id: 37, name: 'lớn', price: 45000, isDefault: false),
+    ],
+    toppings: [
+      ProductTopping(
+        id: 201,
+        storeId: 5,
+        name: 'Trân châu',
+        price: 5000,
+        isDeleted: false,
+      ),
+    ],
+    isSell: true,
+    isDeleted: false,
+  ),
+  const Product(
+    id: 14,
+    storeId: 5,
+    categoryId: 2,
+    categoryName: 'Đồ uống',
+    name: 'Coca cola',
+    imageUrl: '',
+    description: '',
+    preparationTime: 1,
+    price: 15000,
+    type: ProductType.drink,
+    isSell: true,
+    isDeleted: false,
+  ),
+];
+
+const _tables = [
+  DiningTable(
+    id: 8,
+    storeId: 5,
+    areaId: 1,
+    name: 'Bàn 8',
+    capacity: 4,
+    status: TableStatus.available,
+    isDeleted: false,
+  ),
+  DiningTable(
+    id: 9,
+    storeId: 5,
+    areaId: 1,
+    name: 'Bàn 9',
+    capacity: 4,
+    status: TableStatus.available,
+    isDeleted: false,
+  ),
+];
 
 class _FixedAuthNotifier extends AuthNotifier {
   final AuthState fixedState;

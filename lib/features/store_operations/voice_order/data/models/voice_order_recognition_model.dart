@@ -1,6 +1,7 @@
 import '../../domain/entities/unmatched_voice_order_item.dart';
 import '../../domain/entities/voice_order_item.dart';
 import '../../domain/entities/voice_order_recognition.dart';
+import '../../domain/entities/voice_order_topping.dart';
 
 class VoiceOrderRecognitionModel {
   final String filename;
@@ -37,7 +38,9 @@ class VoiceOrderRecognitionModel {
     final validation = _mapValue(json['orderValidation']);
     if (validation != null) {
       final data = _mapValue(validation['data']);
-      final orderJson = _mapValue(data?['orderJson']);
+      final orderJson = _mapValue(
+        data?['orderJson'] ?? validation['orderJson'],
+      );
       final orderData = orderJson ?? data;
       final items = VoiceOrderItemModel.listFromJson(orderData?['items']);
 
@@ -48,9 +51,11 @@ class VoiceOrderRecognitionModel {
         validationSucceeded: _boolValue(validation['succeeded']),
         validationMessage: _stringValue(validation['message']),
         errors: _stringList(validation['errors']),
-        table: VoiceOrderTableModel.fromJsonOrNull(data?['table']),
+        table: VoiceOrderTableModel.fromJsonOrNull(
+          data?['table'] ?? orderData?['table'],
+        ),
         tableName: _stringValueOrNull(
-          orderData?['tableName'] ?? data?['tableName'],
+          orderData?['tableName'] ?? orderData?['table'] ?? data?['tableName'],
         ),
         missingFields: _stringList(orderData?['missingFields']),
         items: items,
@@ -290,18 +295,24 @@ class VoiceOrderTableModel {
 class VoiceOrderItemModel {
   final int? productId;
   final String productName;
+  final int? variantId;
+  final String? variantName;
   final int quantity;
   final bool available;
   final String? message;
   final String? note;
+  final List<VoiceOrderToppingModel> toppings;
 
   const VoiceOrderItemModel({
     required this.productId,
     required this.productName,
+    this.variantId,
+    this.variantName,
     required this.quantity,
     required this.available,
     this.message,
     this.note,
+    this.toppings = const [],
   });
 
   factory VoiceOrderItemModel.fromJson(Object? json) {
@@ -317,6 +328,8 @@ class VoiceOrderItemModel {
             json['productName'] ??
             json['ProductName'],
       ),
+      variantId: _intValueOrNull(json['variantId'] ?? json['VariantId']),
+      variantName: _nullableString(json['variantName'] ?? json['VariantName']),
       quantity: _intValue(json['quantity'] ?? json['Quantity']),
       available: _boolValue(
         json['available'] ?? json['Available'],
@@ -324,6 +337,9 @@ class VoiceOrderItemModel {
       ),
       message: _nullableString(json['message'] ?? json['Message']),
       note: _nullableString(json['note'] ?? json['Note']),
+      toppings: VoiceOrderToppingModel.listFromJson(
+        json['toppings'] ?? json['Toppings'],
+      ),
     );
   }
 
@@ -343,10 +359,13 @@ class VoiceOrderItemModel {
     return VoiceOrderItem(
       productId: productId,
       productName: productName,
+      variantId: variantId,
+      variantName: variantName,
       quantity: quantity,
       available: available,
       message: message,
       note: note,
+      toppings: toppings.map((topping) => topping.toEntity()).toList(),
     );
   }
 
@@ -400,6 +419,81 @@ class VoiceOrderItemModel {
     }
 
     return defaultValue;
+  }
+}
+
+class VoiceOrderToppingModel {
+  final int? id;
+  final String name;
+  final int quantity;
+
+  const VoiceOrderToppingModel({
+    required this.id,
+    required this.name,
+    required this.quantity,
+  });
+
+  factory VoiceOrderToppingModel.fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) {
+      throw const FormatException('Invalid voice order topping data');
+    }
+
+    return VoiceOrderToppingModel(
+      id: _intValueOrNull(
+        json['id'] ?? json['toppingId'] ?? json['Id'] ?? json['ToppingId'],
+      ),
+      name: _stringValue(json['name'] ?? json['toppingName'] ?? json['Name']),
+      quantity: _intValue(json['quantity'] ?? json['Quantity'], fallback: 1),
+    );
+  }
+
+  static List<VoiceOrderToppingModel> listFromJson(Object? json) {
+    if (json == null) {
+      return const [];
+    }
+
+    if (json is List) {
+      return json.map(VoiceOrderToppingModel.fromJson).toList();
+    }
+
+    throw const FormatException('Invalid voice order topping list data');
+  }
+
+  VoiceOrderTopping toEntity() {
+    return VoiceOrderTopping(id: id, name: name, quantity: quantity);
+  }
+
+  static int? _intValueOrNull(Object? value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    if (value is String) {
+      return int.tryParse(value) ?? double.tryParse(value)?.toInt();
+    }
+
+    return null;
+  }
+
+  static int _intValue(Object? value, {int fallback = 0}) {
+    if (value is num) {
+      return value.toInt();
+    }
+
+    if (value is String) {
+      return int.tryParse(value) ?? double.tryParse(value)?.toInt() ?? fallback;
+    }
+
+    return fallback;
+  }
+
+  static String _stringValue(Object? value) {
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty ? 'Topping' : text;
   }
 }
 

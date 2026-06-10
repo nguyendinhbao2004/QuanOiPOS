@@ -49,6 +49,51 @@ void main() {
     expect(model.items.single.note, 'cay');
   });
 
+  test('parses direct orderValidation orderJson with variants and toppings', () {
+    final model = VoiceOrderRecognitionModel.fromApiResponse({
+      'filename': 'voice-order.wav',
+      'text':
+          'bàn chín gọi một phần chân gà sốt thái size nhỏ một lon cô ca cô la',
+      'orderValidation': {
+        'succeeded': false,
+        'message': 'Order voice chưa hợp lệ.',
+        'orderJson': {
+          'storeId': 5,
+          'table': null,
+          'items': [
+            {
+              'productId': 23,
+              'productName': 'CHÂN GÀ RÚT XƯƠNG SỐT THÁI',
+              'variantId': 36,
+              'variantName': 'nhỏ',
+              'quantity': 1,
+              'note': null,
+              'toppings': [
+                {'id': 201, 'name': 'Mè rang', 'quantity': 2},
+              ],
+              'available': true,
+              'message': null,
+            },
+          ],
+          'missingFields': ['table'],
+        },
+        'errors': ["Không tìm thấy bàn 'Bàn 9'."],
+      },
+    });
+
+    expect(model.filename, 'voice-order.wav');
+    expect(model.storeId, 5);
+    expect(model.validationSucceeded, isFalse);
+    expect(model.table, isNull);
+    expect(model.missingFields, ['table']);
+    expect(model.errors.single, contains('Bàn 9'));
+    expect(model.items.single.productId, 23);
+    expect(model.items.single.variantId, 36);
+    expect(model.items.single.variantName, 'nhỏ');
+    expect(model.items.single.toppings.single.name, 'Mè rang');
+    expect(model.items.single.toppings.single.quantity, 2);
+  });
+
   test('parses voice service success response with validated items', () {
     final model = VoiceOrderRecognitionModel.fromApiResponse({
       'filename': 'order.wav',

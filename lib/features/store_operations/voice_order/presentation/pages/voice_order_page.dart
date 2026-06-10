@@ -8,8 +8,13 @@ import '../../../../../core/constants/app_permission_codes.dart';
 import '../../../../../core/theme/index.dart';
 import '../../../../workspace_context/presentation/controllers/store_access_state.dart';
 import '../../../../workspace_context/presentation/providers/workspace_context_providers.dart';
+import '../../../product_management/domain/entities/product.dart';
+import '../../../product_management/domain/entities/product_topping.dart';
+import '../../../product_management/domain/entities/product_variant_draft.dart';
+import '../../../table_management/domain/entities/dining_table.dart';
 import '../../domain/entities/voice_order_item.dart';
 import '../../domain/entities/voice_order_recognition.dart';
+import '../../domain/entities/voice_order_topping.dart';
 import '../controllers/voice_order_state.dart';
 import '../providers/voice_order_providers.dart';
 
@@ -23,6 +28,7 @@ class VoiceOrderPage extends ConsumerWidget {
     final accessState = ref.watch(storeAccessNotifierProvider(storeId));
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
         child: switch (accessState.status) {
@@ -48,7 +54,7 @@ class VoiceOrderPage extends ConsumerWidget {
                     icon: Icons.visibility_off_outlined,
                     title: 'Bạn chưa có quyền dùng order giọng nói',
                     message:
-                        'Vui lòng liên hệ quản trị viên cửa hàng để được cấp quyền xem tổng quan.',
+                        'Vui lòng liên hệ quản trị viên cửa hàng để được cấp quyền.',
                   ),
         },
       ),
@@ -66,13 +72,17 @@ class _VoiceOrderBody extends ConsumerWidget {
     final state = ref.watch(voiceOrderNotifierProvider);
     final notifier = ref.read(voiceOrderNotifierProvider.notifier);
     final recognition = state.recognition;
+    final productsAsync = ref.watch(voiceOrderProductsProvider(storeId));
+    final tablesAsync = ref.watch(voiceOrderTablesProvider(storeId));
+    final products = productsAsync.valueOrNull ?? const <Product>[];
+    final tables = tablesAsync.valueOrNull ?? const <DiningTable>[];
 
     return Stack(
       children: [
-        const Positioned.fill(child: _PastelBackground()),
+        const Positioned.fill(child: _VoiceOrderBackground()),
         Column(
           children: [
-            _Header(storeId: storeId),
+            _Header(storeId: storeId, recognition: recognition),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
@@ -82,30 +92,55 @@ class _VoiceOrderBody extends ConsumerWidget {
                   132,
                 ),
                 children: [
-                  _TableSelector(recognition: recognition),
+                  if (productsAsync.hasError)
+                    const _InlineMessage(
+                      icon: Icons.restaurant_menu_outlined,
+                      message: 'Không thể tải danh sách món để gợi ý.',
+                      tone: _MessageTone.warning,
+                    ),
+                  if (tablesAsync.hasError) ...[
+                    const SizedBox(height: AppConstants.spacingSm),
+                    const _InlineMessage(
+                      icon: Icons.table_restaurant_outlined,
+                      message: 'Không thể tải danh sách bàn để gợi ý.',
+                      tone: _MessageTone.warning,
+                    ),
+                  ],
+                  _TableSelector(
+                    recognition: recognition,
+                    tables: tables,
+                    isLoading: tablesAsync.isLoading,
+                    onTableChanged: notifier.updateTable,
+                  ),
                   const SizedBox(height: AppConstants.spacingMd),
                   if (recognition == null)
                     const _EmptyOrderState()
                   else ...[
+                    _TranscriptPanel(recognition: recognition),
+                    const SizedBox(height: AppConstants.spacingMd),
                     _OrderItemsList(
                       recognition: recognition,
+                      products: products,
                       onIncreaseItem: notifier.increaseItemQuantity,
                       onDecreaseItem: notifier.decreaseItemQuantity,
                       onUpdateItem: notifier.updateItem,
                     ),
                     if (recognition.missingFields.isNotEmpty) ...[
                       const SizedBox(height: AppConstants.spacingMd),
-                      _InlineMessage(
-                        icon: Icons.warning_amber_rounded,
-                        message:
-                            'Thiếu thông tin: ${recognition.missingFields.join(', ')}',
+                      _InfoSection(
+                        title: 'Thông tin còn thiếu',
+                        icon: Icons.rule_folder_outlined,
+                        tone: _MessageTone.warning,
+                        messages: recognition.missingFields,
                       ),
                     ],
                     if (recognition.errors.isNotEmpty) ...[
                       const SizedBox(height: AppConstants.spacingMd),
-                      _InlineMessage(
+                      _InfoSection(
+                        title: 'Lỗi xác thực',
                         icon: Icons.error_outline_rounded,
-                        message: recognition.errors.join('\n'),
+                        tone: _MessageTone.error,
+                        messages: recognition.errors,
                       ),
                     ],
                   ],
@@ -117,6 +152,7 @@ class _VoiceOrderBody extends ConsumerWidget {
                           ? Icons.mic_off_outlined
                           : Icons.error_outline_rounded,
                       message: state.errorMessage!,
+                      tone: _MessageTone.error,
                     ),
                   ],
                 ],
@@ -146,36 +182,34 @@ class _VoiceOrderBody extends ConsumerWidget {
   }
 }
 
-class _PastelBackground extends StatelessWidget {
-  const _PastelBackground();
+class _VoiceOrderBackground extends StatelessWidget {
+  const _VoiceOrderBackground();
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    return const DecoratedBox(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primary.withValues(alpha: 0.13),
-            AppColors.surface,
-            AppColors.info.withValues(alpha: 0.18),
-            AppColors.primary.withValues(alpha: 0.10),
-          ],
-          stops: const [0, 0.38, 0.72, 1],
+        color: AppColors.background,
+        border: Border(
+          top: BorderSide(color: AppColors.primaryLight, width: 6),
         ),
       ),
+      child: ColoredBox(color: Colors.transparent),
     );
   }
 }
 
 class _Header extends StatelessWidget {
   final int storeId;
+  final VoiceOrderRecognition? recognition;
 
-  const _Header({required this.storeId});
+  const _Header({required this.storeId, required this.recognition});
 
   @override
   Widget build(BuildContext context) {
+    final isValid = recognition?.validationSucceeded == true;
+    final hasResult = recognition != null;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppConstants.spacingMd,
@@ -192,20 +226,24 @@ class _Header extends StatelessWidget {
               pathParameters: {'storeId': storeId.toString()},
             ),
           ),
+          const SizedBox(width: AppConstants.spacingSm),
           Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Bán hàng',
+                  'Order bằng giọng nói',
                   style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Hôm nay, 00:33',
-                  style: AppTextStyles.bodyXs,
-                  textAlign: TextAlign.center,
+                  hasResult
+                      ? (isValid ? 'Kết quả hợp lệ' : 'Cần kiểm tra lại')
+                      : 'Nhấn giữ mic để đọc order',
+                  style: AppTextStyles.bodyXs.copyWith(
+                    color: isValid ? AppColors.success : AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
@@ -225,25 +263,113 @@ class _Header extends StatelessWidget {
 
 class _TableSelector extends StatelessWidget {
   final VoiceOrderRecognition? recognition;
+  final List<DiningTable> tables;
+  final bool isLoading;
+  final void Function({int? tableId, String? tableName, String? tableStatus})
+  onTableChanged;
 
-  const _TableSelector({required this.recognition});
+  const _TableSelector({
+    required this.recognition,
+    required this.tables,
+    required this.isLoading,
+    required this.onTableChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return _GlassPanel(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppConstants.spacingMd,
-        vertical: AppConstants.spacingSm,
-      ),
-      child: Row(
+    return _Panel(
+      padding: const EdgeInsets.all(AppConstants.spacingMd),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              _tableLabel(recognition),
-              style: AppTextStyles.labelSm.copyWith(color: AppColors.primary),
-            ),
+          Row(
+            children: [
+              const Icon(
+                Icons.table_restaurant_outlined,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: AppConstants.spacingSm),
+              Expanded(
+                child: Text(
+                  'Bàn',
+                  style: AppTextStyles.labelSm.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (isLoading)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
           ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+          const SizedBox(height: AppConstants.spacingSm),
+          Autocomplete<DiningTable>(
+            key: ValueKey(_tableLabel(recognition)),
+            initialValue: TextEditingValue(text: _tableLabel(recognition)),
+            displayStringForOption: (table) => table.name,
+            optionsBuilder: (value) {
+              final query = value.text.trim().toLowerCase();
+              if (query.isEmpty) {
+                return tables.take(6);
+              }
+
+              return tables
+                  .where((table) => table.name.toLowerCase().contains(query))
+                  .take(8);
+            },
+            onSelected: (table) => onTableChanged(
+              tableId: table.id,
+              tableName: table.name,
+              tableStatus: table.status.name,
+            ),
+            fieldViewBuilder:
+                (context, controller, focusNode, onFieldSubmitted) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: const InputDecoration(
+                      hintText: 'Nhập hoặc chọn bàn',
+                      prefixIcon: Icon(Icons.search_rounded),
+                    ),
+                    onSubmitted: (value) => onTableChanged(
+                      tableId: null,
+                      tableName: value,
+                      tableStatus: null,
+                    ),
+                  );
+                },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TranscriptPanel extends StatelessWidget {
+  final VoiceOrderRecognition recognition;
+
+  const _TranscriptPanel({required this.recognition});
+
+  @override
+  Widget build(BuildContext context) {
+    final transcript = recognition.transcript.trim();
+    if (transcript.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Nội dung nhận diện',
+            style: AppTextStyles.labelSm.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppConstants.spacingXs),
+          Text(transcript, style: AppTextStyles.bodySm),
         ],
       ),
     );
@@ -255,24 +381,55 @@ class _EmptyOrderState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(height: 280);
+    return _Panel(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.spacingMd,
+        vertical: AppConstants.spacingXl,
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.mic_none_rounded,
+            size: 42,
+            color: AppColors.textMuted,
+          ),
+          const SizedBox(height: AppConstants.spacingMd),
+          Text(
+            'Chưa có order',
+            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppConstants.spacingXs),
+          const Text(
+            'Nhấn giữ mic để đọc order, kết quả sẽ xuất hiện tại đây.',
+            style: AppTextStyles.bodySm,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
   }
 }
 
 class _OrderItemsList extends StatelessWidget {
   final VoiceOrderRecognition recognition;
+  final List<Product> products;
   final ValueChanged<VoiceOrderItem> onIncreaseItem;
   final ValueChanged<VoiceOrderItem> onDecreaseItem;
   final void Function(
     VoiceOrderItem original, {
+    int? productId,
     required String productName,
+    Object? variantId,
+    Object? variantName,
     required int quantity,
     String? note,
+    List<VoiceOrderTopping>? toppings,
   })
   onUpdateItem;
 
   const _OrderItemsList({
     required this.recognition,
+    required this.products,
     required this.onIncreaseItem,
     required this.onDecreaseItem,
     required this.onUpdateItem,
@@ -281,16 +438,25 @@ class _OrderItemsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (recognition.items.isEmpty) {
-      return const _GlassPanel(
+      return const _Panel(
         child: Text('Chưa có món nào.', style: AppTextStyles.bodySm),
       );
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppConstants.spacingSm),
+          child: Text(
+            'Món đã nhận diện',
+            style: AppTextStyles.labelSm.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
         for (final item in recognition.items) ...[
           _OrderItemCard(
             item: item,
+            products: products,
             onIncrease: () => onIncreaseItem(item),
             onDecrease: () => onDecreaseItem(item),
             onUpdate: onUpdateItem,
@@ -305,18 +471,24 @@ class _OrderItemsList extends StatelessWidget {
 
 class _OrderItemCard extends StatelessWidget {
   final VoiceOrderItem item;
+  final List<Product> products;
   final VoidCallback onIncrease;
   final VoidCallback onDecrease;
   final void Function(
     VoiceOrderItem original, {
+    int? productId,
     required String productName,
+    Object? variantId,
+    Object? variantName,
     required int quantity,
     String? note,
+    List<VoiceOrderTopping>? toppings,
   })
   onUpdate;
 
   const _OrderItemCard({
     required this.item,
+    required this.products,
     required this.onIncrease,
     required this.onDecrease,
     required this.onUpdate,
@@ -326,8 +498,8 @@ class _OrderItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final note = item.note?.trim();
 
-    return _GlassPanel(
-      onTap: () => _showEditSheet(context, item, onUpdate),
+    return _Panel(
+      onTap: () => _showEditSheet(context, item, products, onUpdate),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -335,25 +507,53 @@ class _OrderItemCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.productName,
-                  style: AppTextStyles.label.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.productName,
+                        style: AppTextStyles.label.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (!item.available)
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: AppColors.error,
+                        size: 20,
+                      ),
+                  ],
                 ),
-                const SizedBox(height: AppConstants.spacingXs),
-                Text('0', style: AppTextStyles.bodySm),
-                const SizedBox(height: AppConstants.spacingMd),
-                Text(
-                  note == null || note.isEmpty
-                      ? 'Ghi chú...'
-                      : 'Ghi chú: $note',
-                  style: AppTextStyles.bodySm.copyWith(
-                    color: note == null || note.isEmpty
-                        ? AppColors.textMuted
-                        : AppColors.textSecondary,
-                  ),
+                const SizedBox(height: AppConstants.spacingSm),
+                Wrap(
+                  spacing: AppConstants.spacingXs,
+                  runSpacing: AppConstants.spacingXs,
+                  children: [
+                    _Tag(text: 'SL ${item.quantity}'),
+                    if (item.variantName?.trim().isNotEmpty == true)
+                      _Tag(text: 'Size ${item.variantName!.trim()}'),
+                    for (final topping in item.toppings)
+                      _Tag(
+                        text: topping.quantity > 1
+                            ? '${topping.name} x${topping.quantity}'
+                            : topping.name,
+                      ),
+                  ],
                 ),
+                if (note != null && note.isNotEmpty) ...[
+                  const SizedBox(height: AppConstants.spacingSm),
+                  Text('Ghi chú: $note', style: AppTextStyles.bodySm),
+                ],
+                if (item.message?.trim().isNotEmpty == true) ...[
+                  const SizedBox(height: AppConstants.spacingSm),
+                  Text(
+                    item.message!.trim(),
+                    style: AppTextStyles.bodySm.copyWith(
+                      color: AppColors.error,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -386,12 +586,16 @@ class _QuantityControl extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _StepperButton(icon: Icons.remove_rounded, onTap: onDecrease),
-        const SizedBox(width: AppConstants.spacingMd),
-        Text(
-          '$quantity',
-          style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+        const SizedBox(width: AppConstants.spacingSm),
+        SizedBox(
+          width: 28,
+          child: Text(
+            '$quantity',
+            style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+            textAlign: TextAlign.center,
+          ),
         ),
-        const SizedBox(width: AppConstants.spacingMd),
+        const SizedBox(width: AppConstants.spacingSm),
         _StepperButton(icon: Icons.add_rounded, onTap: onIncrease),
       ],
     );
@@ -407,7 +611,7 @@ class _StepperButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface.withValues(alpha: 0.88),
+      color: AppColors.primaryLight,
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -415,7 +619,7 @@ class _StepperButton extends StatelessWidget {
         child: SizedBox(
           width: 34,
           height: 34,
-          child: Icon(icon, color: AppColors.textPrimary, size: 18),
+          child: Icon(icon, color: AppColors.primary, size: 18),
         ),
       ),
     );
@@ -447,8 +651,9 @@ class _HoldMicButton extends StatelessWidget {
         onPointerCancel: isProcessing ? null : (_) => onStop(),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: 0.86),
+            color: AppColors.surface,
             shape: BoxShape.circle,
+            border: Border.all(color: AppColors.borderStrong),
             boxShadow: [
               BoxShadow(
                 color: AppColors.textPrimary.withValues(alpha: 0.08),
@@ -498,7 +703,7 @@ class _VoiceStatusPill extends StatelessWidget {
         vertical: AppConstants.spacingSm,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.90),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
         border: Border.all(color: AppColors.border),
       ),
@@ -520,7 +725,7 @@ class _CircleIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface.withValues(alpha: 0.92),
+      color: AppColors.surface,
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -535,12 +740,12 @@ class _CircleIconButton extends StatelessWidget {
   }
 }
 
-class _GlassPanel extends StatelessWidget {
+class _Panel extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
 
-  const _GlassPanel({
+  const _Panel({
     required this.child,
     this.padding = const EdgeInsets.all(AppConstants.spacingMd),
     this.onTap,
@@ -549,17 +754,17 @@ class _GlassPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface.withValues(alpha: 0.88),
-      borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         onTap: onTap,
         child: Container(
           width: double.infinity,
           padding: padding,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-            border: Border.all(color: AppColors.border.withValues(alpha: 0.72)),
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            border: Border.all(color: AppColors.border),
           ),
           child: child,
         ),
@@ -568,24 +773,55 @@ class _GlassPanel extends StatelessWidget {
   }
 }
 
-class _InlineMessage extends StatelessWidget {
-  final IconData icon;
-  final String message;
+class _Tag extends StatelessWidget {
+  final String text;
 
-  const _InlineMessage({required this.icon, required this.message});
+  const _Tag({required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.spacingSm,
+        vertical: AppConstants.spacingXs,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.sidebar,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(text, style: AppTextStyles.labelXs),
+    );
+  }
+}
+
+enum _MessageTone { info, warning, error }
+
+class _InlineMessage extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  final _MessageTone tone;
+
+  const _InlineMessage({
+    required this.icon,
+    required this.message,
+    this.tone = _MessageTone.info,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _toneColor(tone);
+
+    return Container(
       padding: const EdgeInsets.all(AppConstants.spacingMd),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.88),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.primary),
+          Icon(icon, color: color),
           const SizedBox(width: AppConstants.spacingSm),
           Expanded(child: Text(message, style: AppTextStyles.bodySm)),
         ],
@@ -594,23 +830,83 @@ class _InlineMessage extends StatelessWidget {
   }
 }
 
+class _InfoSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final _MessageTone tone;
+  final List<String> messages;
+
+  const _InfoSection({
+    required this.title,
+    required this.icon,
+    required this.tone,
+    required this.messages,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _toneColor(tone);
+
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color),
+              const SizedBox(width: AppConstants.spacingSm),
+              Text(
+                title,
+                style: AppTextStyles.labelSm.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppConstants.spacingSm),
+          for (final message in messages)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppConstants.spacingXs),
+              child: Text('• $message', style: AppTextStyles.bodySm),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+Color _toneColor(_MessageTone tone) {
+  return switch (tone) {
+    _MessageTone.info => AppColors.info,
+    _MessageTone.warning => AppColors.warning,
+    _MessageTone.error => AppColors.error,
+  };
+}
+
 Future<void> _showEditSheet(
   BuildContext context,
   VoiceOrderItem item,
+  List<Product> products,
   void Function(
     VoiceOrderItem original, {
+    int? productId,
     required String productName,
+    Object? variantId,
+    Object? variantName,
     required int quantity,
     String? note,
+    List<VoiceOrderTopping>? toppings,
   })
   onUpdate,
 ) async {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent,
+    useSafeArea: true,
     builder: (sheetContext) => _EditOrderItemSheet(
       item: item,
+      products: products,
       onUpdate: onUpdate,
       onClose: () => Navigator.of(sheetContext).pop(),
     ),
@@ -619,17 +915,23 @@ Future<void> _showEditSheet(
 
 class _EditOrderItemSheet extends StatefulWidget {
   final VoiceOrderItem item;
+  final List<Product> products;
   final VoidCallback onClose;
   final void Function(
     VoiceOrderItem original, {
+    int? productId,
     required String productName,
+    Object? variantId,
+    Object? variantName,
     required int quantity,
     String? note,
+    List<VoiceOrderTopping>? toppings,
   })
   onUpdate;
 
   const _EditOrderItemSheet({
     required this.item,
+    required this.products,
     required this.onClose,
     required this.onUpdate,
   });
@@ -639,134 +941,290 @@ class _EditOrderItemSheet extends StatefulWidget {
 }
 
 class _EditOrderItemSheetState extends State<_EditOrderItemSheet> {
-  late final TextEditingController _nameController;
   late final TextEditingController _noteController;
+  late String _productText;
   late int _quantity;
+  Product? _selectedProduct;
+  ProductVariantDraft? _selectedVariant;
+  late Map<int, int> _toppingQuantities;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.item.productName);
+    _productText = widget.item.productName;
+    _quantity = widget.item.quantity;
     _noteController = TextEditingController(
       text: widget.item.note?.trim() ?? '',
     );
-    _quantity = widget.item.quantity;
+    _selectedProduct = _findProduct(widget.item, widget.products);
+    _selectedVariant = _findVariant(widget.item, _selectedProduct);
+    _toppingQuantities = _initialToppingQuantities(widget.item);
+    _filterToppingsForSelectedProduct();
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
     _noteController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.only(
-        left: AppConstants.spacingSm,
-        right: AppConstants.spacingSm,
-        bottom:
-            MediaQuery.viewInsetsOf(context).bottom + AppConstants.spacingSm,
+    final product = _selectedProduct;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppConstants.spacingMd,
+        AppConstants.spacingMd,
+        AppConstants.spacingMd,
+        MediaQuery.viewInsetsOf(context).bottom + AppConstants.spacingMd,
       ),
-      padding: const EdgeInsets.all(AppConstants.spacingMd),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Chỉnh sửa',
-                      style: AppTextStyles.h3.copyWith(
-                        fontWeight: FontWeight.w700,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Chỉnh sửa món',
+                    style: AppTextStyles.h3.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: widget.onClose,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppConstants.spacingMd),
+            Autocomplete<Product>(
+              initialValue: TextEditingValue(text: widget.item.productName),
+              displayStringForOption: (product) => product.name,
+              optionsBuilder: (value) {
+                final query = value.text.trim().toLowerCase();
+                if (query.isEmpty) {
+                  return widget.products.take(8);
+                }
+
+                return widget.products
+                    .where(
+                      (product) => product.name.toLowerCase().contains(query),
+                    )
+                    .take(8);
+              },
+              onSelected: _selectProduct,
+              fieldViewBuilder:
+                  (context, controller, focusNode, onFieldSubmitted) {
+                    return TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      decoration: const InputDecoration(
+                        labelText: 'Tên món',
+                        hintText: 'Nhập tên món',
+                        prefixIcon: Icon(Icons.search_rounded),
                       ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: widget.onClose,
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppConstants.spacingMd),
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primaryLight,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.ramen_dining_outlined,
-                    color: AppColors.primary,
-                    size: 22,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppConstants.spacingLg),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Tên hàng'),
-              ),
-              const SizedBox(height: AppConstants.spacingSm),
-              TextFormField(
-                controller: _noteController,
-                decoration: const InputDecoration(labelText: 'Ghi chú'),
-              ),
-              const SizedBox(height: AppConstants.spacingLg),
-              Center(
-                child: _EditableQuantityControl(
-                  quantity: _quantity,
-                  onDecrease: () {
-                    if (_quantity <= 1) {
-                      return;
-                    }
-                    setState(() => _quantity -= 1);
-                  },
-                  onIncrease: () => setState(() => _quantity += 1),
-                ),
-              ),
-              const SizedBox(height: AppConstants.spacingLg),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: widget.onClose,
-                      child: const Text('Xóa'),
-                    ),
-                  ),
-                  const SizedBox(width: AppConstants.spacingSm),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        widget.onUpdate(
-                          widget.item,
-                          productName: _nameController.text,
-                          quantity: _quantity,
-                          note: _noteController.text,
-                        );
-                        widget.onClose();
+                      onChanged: (value) {
+                        _productText = value;
+                        final selected = _selectedProduct;
+                        if (selected != null && selected.name != value) {
+                          setState(() {
+                            _selectedProduct = null;
+                            _selectedVariant = null;
+                            _toppingQuantities = {};
+                          });
+                        }
                       },
-                      child: const Text('Lưu'),
+                    );
+                  },
+            ),
+            if (product != null && product.variants.isNotEmpty) ...[
+              const SizedBox(height: AppConstants.spacingLg),
+              Text('Kích cỡ', style: AppTextStyles.labelSm),
+              const SizedBox(height: AppConstants.spacingSm),
+              Wrap(
+                spacing: AppConstants.spacingSm,
+                runSpacing: AppConstants.spacingSm,
+                children: [
+                  for (final variant in product.variants)
+                    ChoiceChip(
+                      label: Text(variant.name),
+                      selected: _sameVariant(_selectedVariant, variant),
+                      onSelected: (_) {
+                        setState(() => _selectedVariant = variant);
+                      },
                     ),
-                  ),
                 ],
               ),
             ],
-          ),
+            if (product != null && product.toppings.isNotEmpty) ...[
+              const SizedBox(height: AppConstants.spacingLg),
+              Text('Topping', style: AppTextStyles.labelSm),
+              const SizedBox(height: AppConstants.spacingSm),
+              for (final topping in product.toppings)
+                _ToppingSelector(
+                  topping: topping,
+                  quantity: _toppingQuantities[topping.id] ?? 0,
+                  onChanged: (quantity) => setState(() {
+                    if (quantity <= 0) {
+                      _toppingQuantities.remove(topping.id);
+                    } else {
+                      _toppingQuantities[topping.id] = quantity;
+                    }
+                  }),
+                ),
+            ],
+            const SizedBox(height: AppConstants.spacingLg),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(
+                labelText: 'Ghi chú',
+                hintText: 'Ít đá, không cay...',
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: AppConstants.spacingLg),
+            Center(
+              child: _EditableQuantityControl(
+                quantity: _quantity,
+                onDecrease: () {
+                  if (_quantity <= 1) {
+                    return;
+                  }
+                  setState(() => _quantity -= 1);
+                },
+                onIncrease: () => setState(() => _quantity += 1),
+              ),
+            ),
+            const SizedBox(height: AppConstants.spacingLg),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: widget.onClose,
+                    child: const Text('Hủy'),
+                  ),
+                ),
+                const SizedBox(width: AppConstants.spacingSm),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _save,
+                    child: const Text('Lưu'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  void _selectProduct(Product product) {
+    setState(() {
+      _selectedProduct = product;
+      _productText = product.name;
+      _selectedVariant = _defaultVariant(product.variants);
+      _toppingQuantities = {};
+    });
+  }
+
+  void _save() {
+    final exactProduct = _selectedProduct ?? _findProductByName(_productText);
+    final selectedProduct = exactProduct;
+    final selectedVariant = selectedProduct == null ? null : _selectedVariant;
+    final toppings = selectedProduct == null
+        ? const <VoiceOrderTopping>[]
+        : [
+            for (final topping in selectedProduct.toppings)
+              if ((_toppingQuantities[topping.id] ?? 0) > 0)
+                VoiceOrderTopping(
+                  id: topping.id,
+                  name: topping.name,
+                  quantity: _toppingQuantities[topping.id]!,
+                ),
+          ];
+
+    widget.onUpdate(
+      widget.item,
+      productId: selectedProduct?.id,
+      productName: selectedProduct?.name ?? _productText,
+      variantId: selectedVariant?.id,
+      variantName: selectedVariant?.name,
+      quantity: _quantity,
+      note: _noteController.text,
+      toppings: toppings,
+    );
+    widget.onClose();
+  }
+
+  Product? _findProductByName(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    for (final product in widget.products) {
+      if (product.name.trim().toLowerCase() == normalized) {
+        return product;
+      }
+    }
+
+    return null;
+  }
+
+  void _filterToppingsForSelectedProduct() {
+    final product = _selectedProduct;
+    if (product == null) {
+      _toppingQuantities = {};
+      return;
+    }
+
+    final validIds = product.toppings.map((topping) => topping.id).toSet();
+    _toppingQuantities.removeWhere((id, _) => !validIds.contains(id));
+  }
+}
+
+class _ToppingSelector extends StatelessWidget {
+  final ProductTopping topping;
+  final int quantity;
+  final ValueChanged<int> onChanged;
+
+  const _ToppingSelector({
+    required this.topping,
+    required this.quantity,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(topping.name, style: AppTextStyles.bodyBase),
+      subtitle: Text(_currency(topping.price), style: AppTextStyles.bodySm),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: quantity == 0 ? null : () => onChanged(quantity - 1),
+            icon: const Icon(Icons.remove_circle_outline),
+          ),
+          SizedBox(
+            width: 28,
+            child: Text(
+              '$quantity',
+              style: AppTextStyles.labelSm,
+              textAlign: TextAlign.center,
+            ),
+          ),
+          IconButton(
+            onPressed: () => onChanged(quantity + 1),
+            icon: const Icon(Icons.add_circle_outline),
+          ),
+        ],
       ),
     );
   }
@@ -801,6 +1259,79 @@ class _EditableQuantityControl extends StatelessWidget {
   }
 }
 
+Product? _findProduct(VoiceOrderItem item, List<Product> products) {
+  for (final product in products) {
+    if (item.productId != null && product.id == item.productId) {
+      return product;
+    }
+  }
+
+  final itemName = item.productName.trim().toLowerCase();
+  for (final product in products) {
+    if (product.name.trim().toLowerCase() == itemName) {
+      return product;
+    }
+  }
+
+  return null;
+}
+
+ProductVariantDraft? _findVariant(VoiceOrderItem item, Product? product) {
+  if (product == null || product.variants.isEmpty) {
+    return null;
+  }
+
+  for (final variant in product.variants) {
+    if (item.variantId != null && variant.id == item.variantId) {
+      return variant;
+    }
+  }
+
+  final variantName = item.variantName?.trim().toLowerCase();
+  if (variantName != null && variantName.isNotEmpty) {
+    for (final variant in product.variants) {
+      if (variant.name.trim().toLowerCase() == variantName) {
+        return variant;
+      }
+    }
+  }
+
+  return _defaultVariant(product.variants);
+}
+
+ProductVariantDraft? _defaultVariant(List<ProductVariantDraft> variants) {
+  if (variants.isEmpty) {
+    return null;
+  }
+
+  for (final variant in variants) {
+    if (variant.isDefault) {
+      return variant;
+    }
+  }
+
+  return variants.first;
+}
+
+bool _sameVariant(ProductVariantDraft? left, ProductVariantDraft right) {
+  if (left == null) {
+    return false;
+  }
+
+  if (left.id != null && right.id != null) {
+    return left.id == right.id;
+  }
+
+  return left.name == right.name;
+}
+
+Map<int, int> _initialToppingQuantities(VoiceOrderItem item) {
+  return {
+    for (final topping in item.toppings)
+      if (topping.id != null) topping.id!: topping.quantity,
+  };
+}
+
 String _statusTitle(VoiceOrderState state) {
   return switch (state.status) {
     VoiceOrderStatus.recording => 'Đang nghe...',
@@ -821,15 +1352,28 @@ String _tableLabel(VoiceOrderRecognition? recognition) {
     if (normalized.startsWith('bàn') || normalized.startsWith('ban')) {
       return tableName;
     }
-    return 'phòng $tableName';
+    return 'Bàn $tableName';
   }
 
   final tableId = recognition?.tableId;
   if (tableId != null) {
-    return 'phòng $tableId';
+    return 'Bàn $tableId';
   }
 
-  return 'Chọn phòng/bàn';
+  return '';
+}
+
+String _currency(int value) {
+  final text = value.toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < text.length; i += 1) {
+    final remaining = text.length - i;
+    buffer.write(text[i]);
+    if (remaining > 1 && remaining % 3 == 1) {
+      buffer.write('.');
+    }
+  }
+  return '$bufferđ';
 }
 
 class _BlockedView extends StatelessWidget {
