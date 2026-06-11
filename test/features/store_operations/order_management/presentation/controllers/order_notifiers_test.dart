@@ -19,7 +19,6 @@ import 'package:quan_oi/features/store_operations/product_management/domain/repo
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/providers/product_management_providers.dart';
-import 'package:quan_oi/features/store_operations/table_management/domain/entities/table_session.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/repositories/table_management_repository.dart';
 import 'package:quan_oi/features/store_operations/table_management/domain/usecases/close_table_session_use_case.dart';
 import 'package:quan_oi/features/store_operations/table_management/presentation/providers/table_management_providers.dart';
@@ -362,18 +361,12 @@ class _CheckoutTableRepository implements TableManagementRepository {
   _CheckoutTableRepository({this.failFirstClose = false});
 
   @override
-  Future<TableSession> closeTableSession(int tableSessionId) async {
+  Future<void> closeTableSession(int tableSessionId) async {
     closeCallCount += 1;
     if (failFirstClose && closeCallCount == 1) {
       throw Exception('Không thể đóng phiên bàn');
     }
     closedSessionIds.add(tableSessionId);
-    return TableSession(
-      id: tableSessionId,
-      tableId: 10,
-      status: TableSessionStatus.closed,
-      isDeleted: false,
-    );
   }
 
   @override

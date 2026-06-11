@@ -1,4 +1,3 @@
-import '../entities/table_session.dart';
 import '../repositories/table_management_repository.dart';
 
 class CloseTableSessionUseCase {
@@ -6,7 +5,7 @@ class CloseTableSessionUseCase {
 
   const CloseTableSessionUseCase(this._repository);
 
-  Future<TableSession> call(int tableSessionId) {
+  Future<void> call(int tableSessionId) {
     return _repository.closeTableSession(tableSessionId);
   }
 }

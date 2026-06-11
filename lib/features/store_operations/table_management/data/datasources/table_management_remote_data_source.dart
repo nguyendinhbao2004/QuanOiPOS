@@ -214,21 +214,18 @@ class TableManagementRemoteDataSource {
     return response.data!;
   }
 
-  Future<TableSessionModel> closeTableSession(int tableSessionId) async {
-    final response = await _dioClient.putResponse<TableSessionModel>(
+  Future<void> closeTableSession(int tableSessionId) async {
+    final response = await _dioClient.putResponse<Object?>(
       '/table-sessions/$tableSessionId/close',
-      dataFromJson: TableSessionModel.fromJson,
     );
 
-    if (!response.succeeded || response.data == null) {
+    if (!response.succeeded) {
       _throwRequestFailure(
         response.message,
         response.errors,
         'Không thể đóng phiên bàn',
       );
     }
-
-    return response.data!;
   }
 
   Future<AreaModel> updateArea({

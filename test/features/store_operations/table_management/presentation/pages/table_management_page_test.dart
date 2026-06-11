@@ -1399,7 +1399,7 @@ class _FakeTableManagementRepository implements TableManagementRepository {
   }
 
   @override
-  Future<TableSession> closeTableSession(int tableSessionId) async {
+  Future<void> closeTableSession(int tableSessionId) async {
     throw UnimplementedError();
   }
 

@@ -186,9 +186,8 @@ class TableManagementRepositoryImpl implements TableManagementRepository {
   }
 
   @override
-  Future<TableSession> closeTableSession(int tableSessionId) async {
-    final session = await _remoteDataSource.closeTableSession(tableSessionId);
-    return session.toEntity();
+  Future<void> closeTableSession(int tableSessionId) {
+    return _remoteDataSource.closeTableSession(tableSessionId);
   }
 
   @override
