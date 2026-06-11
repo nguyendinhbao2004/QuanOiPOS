@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/index.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../widgets/system_admin_dashboard.dart';
 
 enum _SystemAdminSection { dashboard, packages, accounts }
 
@@ -354,75 +355,10 @@ class _SystemAdminContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (section) {
-      _SystemAdminSection.dashboard => const _DashboardSection(),
+      _SystemAdminSection.dashboard => const SystemAdminDashboard(),
       _SystemAdminSection.packages => const _PackageSection(),
       _SystemAdminSection.accounts => const _AccountSection(),
     };
-  }
-}
-
-class _DashboardSection extends StatelessWidget {
-  const _DashboardSection();
-
-  static const List<_MetricData> _metrics = [
-    _MetricData(
-      label: 'Doanh thu tháng',
-      value: '128.4M',
-      helper: '+12% so với tháng trước',
-      icon: Icons.payments_outlined,
-      color: AppColors.success,
-    ),
-    _MetricData(
-      label: 'Cửa hàng hoạt động',
-      value: '42',
-      helper: '38 cửa hàng đang online',
-      icon: Icons.storefront_outlined,
-      color: AppColors.primary,
-    ),
-    _MetricData(
-      label: 'Tài khoản',
-      value: '1,248',
-      helper: '96 tài khoản mới trong tháng',
-      icon: Icons.people_outline,
-      color: AppColors.info,
-    ),
-    _MetricData(
-      label: 'Gói dịch vụ',
-      value: '6',
-      helper: '4 gói đang mở bán',
-      icon: Icons.inventory_2_outlined,
-      color: AppColors.warning,
-    ),
-  ];
-
-  static const List<_StatusData> _activities = [
-    _StatusData(
-      label: 'Gói Pro được mua mới',
-      value: '18 giao dịch',
-      color: AppColors.success,
-    ),
-    _StatusData(
-      label: 'Account chờ xác minh',
-      value: '14 account',
-      color: AppColors.warning,
-    ),
-    _StatusData(
-      label: 'Cửa hàng cần hỗ trợ',
-      value: '5 cửa hàng',
-      color: AppColors.error,
-    ),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _MetricGrid(metrics: _metrics),
-        const SizedBox(height: AppConstants.spacingLg),
-        _StatusPanel(title: 'Hoạt động gần đây', items: _activities),
-      ],
-    );
   }
 }
 

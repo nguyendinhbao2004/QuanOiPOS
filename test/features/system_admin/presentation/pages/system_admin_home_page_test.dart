@@ -16,8 +16,10 @@ void main() {
     expect(find.text('Dashboard'), findsWidgets);
     expect(find.text('Quản lý gói'), findsOneWidget);
     expect(find.text('Quản lý account'), findsOneWidget);
-    expect(find.text('Doanh thu tháng'), findsOneWidget);
-    expect(find.text('Cửa hàng hoạt động'), findsOneWidget);
+    expect(find.text('Doanh thu gói'), findsOneWidget);
+    expect(find.text('Thanh toán thành công'), findsOneWidget);
+    expect(find.text('Doanh thu subscription'), findsOneWidget);
+    expect(find.text('Thanh toán subscription'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -27,7 +29,7 @@ void main() {
     await _pumpSystemAdminPage(tester, const Size(390, 844));
 
     expect(find.text('Dashboard'), findsOneWidget);
-    expect(find.text('Doanh thu tháng'), findsOneWidget);
+    expect(find.text('Doanh thu gói'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
