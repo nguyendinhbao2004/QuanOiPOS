@@ -10,8 +10,10 @@ import '../../../../../core/theme/index.dart';
 import '../../../../workspace_context/presentation/controllers/store_access_state.dart';
 import '../../../../workspace_context/presentation/providers/workspace_context_providers.dart';
 import '../../domain/entities/order.dart';
+import '../controllers/order_notifiers.dart';
 import '../controllers/order_states.dart';
 import '../providers/order_management_providers.dart';
+import '../widgets/payment_method_dialog.dart';
 
 class OrderListPage extends ConsumerWidget {
   final int storeId;
@@ -46,12 +48,52 @@ class OrderListPage extends ConsumerWidget {
       isSessionOpen: isSessionOpen,
       canViewOrder: accessState.can(AppPermissionCodes.orderView),
       canCreateOrder: accessState.can(AppPermissionCodes.orderCreate),
+      canCloseSession: accessState.can(AppPermissionCodes.tableCloseSession),
     );
     final state = ref.watch(orderListNotifierProvider(access));
     final notifier = ref.read(orderListNotifierProvider(access).notifier);
+    final checkoutState = ref.watch(sessionCheckoutNotifierProvider(access));
+    final checkoutNotifier = ref.read(
+      sessionCheckoutNotifierProvider(access).notifier,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      bottomNavigationBar:
+          state.status == OrderLoadStatus.ready &&
+              state.orders.isNotEmpty &&
+              access.isSessionOpen &&
+              access.canViewOrder &&
+              access.canCloseSession
+          ? SafeArea(
+              minimum: const EdgeInsets.all(AppConstants.spacingMd),
+              child: ElevatedButton.icon(
+                key: const Key('checkout_session_button'),
+                onPressed: checkoutState.isProcessing
+                    ? null
+                    : () => _checkoutSession(
+                        context,
+                        ref,
+                        access,
+                        checkoutNotifier,
+                        checkoutState,
+                      ),
+                icon: checkoutState.isProcessing
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.payments_outlined),
+                label: Text(
+                  checkoutState.isProcessing
+                      ? _checkoutStatusLabel(checkoutState.status)
+                      : checkoutState.paymentConfirmed
+                      ? 'Đóng phiên lại'
+                      : 'Thanh toán phiên',
+                ),
+              ),
+            )
+          : null,
       floatingActionButton: access.isSessionOpen && access.canCreateOrder
           ? FloatingActionButton(
               key: const Key('add_order_button'),
@@ -114,17 +156,20 @@ class OrderListPage extends ConsumerWidget {
                     final order = state.orders[index];
                     return _OrderCard(
                       order: order,
-                      onTap: () => context.pushNamed(
-                        RouteNames.storeOrderDetail,
-                        pathParameters: {
-                          'storeId': '$storeId',
-                          'tableSessionId': '$tableSessionId',
-                          'orderId': '${order.id}',
-                        },
-                        queryParameters: {
-                          'sessionOpen': isSessionOpen.toString(),
-                        },
-                      ),
+                      onTap: () async {
+                        final changed = await context.pushNamed<bool>(
+                          RouteNames.storeOrderDetail,
+                          pathParameters: {
+                            'storeId': '$storeId',
+                            'tableSessionId': '$tableSessionId',
+                            'orderId': '${order.id}',
+                          },
+                          queryParameters: {
+                            'sessionOpen': isSessionOpen.toString(),
+                          },
+                        );
+                        if (changed == true) await notifier.load();
+                      },
                     );
                   },
                 ),
@@ -133,6 +178,96 @@ class OrderListPage extends ConsumerWidget {
     );
   }
 }
+
+Future<void> _checkoutSession(
+  BuildContext context,
+  WidgetRef ref,
+  OrderSessionAccess access,
+  SessionCheckoutNotifier notifier,
+  SessionCheckoutState currentState,
+) async {
+  if (currentState.paymentConfirmed) {
+    await _retryCloseSession(context, ref, access, notifier);
+    return;
+  }
+
+  final method = await showPaymentMethodDialog(context);
+  if (method == null || !context.mounted) return;
+
+  try {
+    await notifier.checkout(method);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Thanh toán và đóng phiên thành công')),
+    );
+    context.pop(true);
+  } catch (_) {
+    if (!context.mounted) return;
+    final state = ref.read(sessionCheckoutNotifierProvider(access));
+    await _showCheckoutError(context, ref, access, notifier, state);
+  }
+}
+
+Future<void> _retryCloseSession(
+  BuildContext context,
+  WidgetRef ref,
+  OrderSessionAccess access,
+  SessionCheckoutNotifier notifier,
+) async {
+  try {
+    await notifier.retryCloseSession();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Đã đóng phiên bàn')));
+    context.pop(true);
+  } catch (_) {
+    if (!context.mounted) return;
+    final state = ref.read(sessionCheckoutNotifierProvider(access));
+    await _showCheckoutError(context, ref, access, notifier, state);
+  }
+}
+
+Future<void> _showCheckoutError(
+  BuildContext context,
+  WidgetRef ref,
+  OrderSessionAccess access,
+  SessionCheckoutNotifier notifier,
+  SessionCheckoutState state,
+) {
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(
+        state.paymentConfirmed
+            ? 'Đã thanh toán, chưa đóng phiên'
+            : 'Thanh toán chưa hoàn tất',
+      ),
+      content: Text(state.errorMessage ?? 'Vui lòng thử lại.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('Đóng'),
+        ),
+        if (state.paymentConfirmed)
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              await _retryCloseSession(context, ref, access, notifier);
+            },
+            child: const Text('Thử đóng phiên lại'),
+          ),
+      ],
+    ),
+  );
+}
+
+String _checkoutStatusLabel(SessionCheckoutStatus status) => switch (status) {
+  SessionCheckoutStatus.creatingInvoice => 'Đang tạo hóa đơn...',
+  SessionCheckoutStatus.confirmingPayment => 'Đang xác nhận...',
+  SessionCheckoutStatus.closingSession => 'Đang đóng phiên...',
+  _ => 'Đang xử lý...',
+};
 
 class _OrderCard extends StatelessWidget {
   final Order order;

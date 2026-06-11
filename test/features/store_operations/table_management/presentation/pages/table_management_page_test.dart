@@ -1399,6 +1399,11 @@ class _FakeTableManagementRepository implements TableManagementRepository {
   }
 
   @override
+  Future<TableSession> closeTableSession(int tableSessionId) async {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Area> updateArea({
     required int areaId,
     required String name,

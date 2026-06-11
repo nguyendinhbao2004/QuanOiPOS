@@ -43,6 +43,7 @@ import '../../features/store_operations/table_management/data/repositories/table
 import '../../features/store_operations/table_management/domain/repositories/table_management_repository.dart';
 import '../../features/store_operations/table_management/domain/usecases/create_area_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/create_table_use_case.dart';
+import '../../features/store_operations/table_management/domain/usecases/close_table_session_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/delete_area_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/load_area_detail_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/load_areas_use_case.dart';
@@ -59,6 +60,9 @@ import '../../features/store_operations/order_management/data/datasources/order_
 import '../../features/store_operations/order_management/data/repositories/order_management_repository_impl.dart';
 import '../../features/store_operations/order_management/domain/repositories/order_management_repository.dart';
 import '../../features/store_operations/order_management/domain/usecases/create_order_use_case.dart';
+import '../../features/store_operations/order_management/domain/usecases/create_order_invoice_use_case.dart';
+import '../../features/store_operations/order_management/domain/usecases/create_session_invoice_use_case.dart';
+import '../../features/store_operations/order_management/domain/usecases/confirm_payment_use_case.dart';
 import '../../features/store_operations/order_management/domain/usecases/load_order_detail_use_case.dart';
 import '../../features/store_operations/order_management/domain/usecases/load_orders_by_table_session_use_case.dart';
 import '../../features/store_operations/product_management/data/datasources/product_management_remote_data_source.dart';
@@ -347,6 +351,9 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<OpenTableSessionUseCase>(
     () => OpenTableSessionUseCase(locator<TableManagementRepository>()),
   );
+  locator.registerLazySingleton<CloseTableSessionUseCase>(
+    () => CloseTableSessionUseCase(locator<TableManagementRepository>()),
+  );
   locator.registerLazySingleton<UpdateAreaDisplayOrderUseCase>(
     () => UpdateAreaDisplayOrderUseCase(locator<TableManagementRepository>()),
   );
@@ -371,6 +378,15 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<CreateOrderUseCase>(
     () => CreateOrderUseCase(locator<OrderManagementRepository>()),
+  );
+  locator.registerLazySingleton<CreateSessionInvoiceUseCase>(
+    () => CreateSessionInvoiceUseCase(locator<OrderManagementRepository>()),
+  );
+  locator.registerLazySingleton<CreateOrderInvoiceUseCase>(
+    () => CreateOrderInvoiceUseCase(locator<OrderManagementRepository>()),
+  );
+  locator.registerLazySingleton<ConfirmPaymentUseCase>(
+    () => ConfirmPaymentUseCase(locator<OrderManagementRepository>()),
   );
 
   // Product management

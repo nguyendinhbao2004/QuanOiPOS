@@ -122,17 +122,20 @@ class _AccessReadyView extends ConsumerWidget {
           notifier.openSession,
           successMessage: 'Đã mở phiên bàn',
         ),
-        onSessionTap: (session) => context.pushNamed(
-          RouteNames.storeOrderList,
-          pathParameters: {
-            'storeId': '$storeId',
-            'tableSessionId': '${session.id}',
-          },
-          queryParameters: {
-            'sessionOpen': (session.status == TableSessionStatus.open)
-                .toString(),
-          },
-        ),
+        onSessionTap: (session) async {
+          final changed = await context.pushNamed<bool>(
+            RouteNames.storeOrderList,
+            pathParameters: {
+              'storeId': '$storeId',
+              'tableSessionId': '${session.id}',
+            },
+            queryParameters: {
+              'sessionOpen': (session.status == TableSessionStatus.open)
+                  .toString(),
+            },
+          );
+          if (changed == true) await notifier.load();
+        },
       ),
     };
   }

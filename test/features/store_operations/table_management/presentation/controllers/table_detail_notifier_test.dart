@@ -238,6 +238,11 @@ class _FakeTableDetailRepository implements TableManagementRepository {
   }
 
   @override
+  Future<TableSession> closeTableSession(int tableSessionId) async {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<List<Area>> loadAreas(int storeId) async => const [];
 
   @override

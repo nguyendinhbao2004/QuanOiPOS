@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../product_management/presentation/providers/product_management_providers.dart';
 import '../../domain/entities/create_order_draft.dart';
 import '../../domain/entities/order.dart';
+import '../../domain/entities/session_invoice.dart';
+import '../../../table_management/presentation/providers/table_management_providers.dart';
 import '../providers/order_management_providers.dart';
 import 'order_states.dart';
 
@@ -55,6 +57,81 @@ class OrderListNotifier
   }
 }
 
+class SessionCheckoutNotifier
+    extends
+        AutoDisposeFamilyNotifier<SessionCheckoutState, OrderSessionAccess> {
+  late OrderSessionAccess _access;
+
+  @override
+  SessionCheckoutState build(OrderSessionAccess arg) {
+    _access = arg;
+    return const SessionCheckoutState.idle();
+  }
+
+  Future<void> checkout(PaymentMethod method) async {
+    if (state.isProcessing) return;
+    if (!_access.isSessionOpen ||
+        !_access.canViewOrder ||
+        !_access.canCloseSession) {
+      throw Exception('Bạn không thể thanh toán và đóng phiên bàn này');
+    }
+
+    try {
+      state = state.copyWith(
+        status: SessionCheckoutStatus.creatingInvoice,
+        clearError: true,
+      );
+      final invoice = await ref.read(createSessionInvoiceUseCaseProvider)(
+        tableSessionId: _access.tableSessionId,
+        method: method,
+      );
+
+      state = state.copyWith(
+        status: SessionCheckoutStatus.confirmingPayment,
+        invoice: invoice,
+      );
+      await ref.read(confirmPaymentUseCaseProvider)(invoice.paymentId);
+
+      state = state.copyWith(
+        status: SessionCheckoutStatus.closingSession,
+        paymentConfirmed: true,
+      );
+      await ref.read(closeTableSessionUseCaseProvider)(_access.tableSessionId);
+      state = state.copyWith(
+        status: SessionCheckoutStatus.completed,
+        clearError: true,
+      );
+    } catch (error) {
+      state = state.copyWith(
+        status: SessionCheckoutStatus.error,
+        errorMessage: _cleanError(error),
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> retryCloseSession() async {
+    if (state.isProcessing || !state.paymentConfirmed) return;
+    try {
+      state = state.copyWith(
+        status: SessionCheckoutStatus.closingSession,
+        clearError: true,
+      );
+      await ref.read(closeTableSessionUseCaseProvider)(_access.tableSessionId);
+      state = state.copyWith(
+        status: SessionCheckoutStatus.completed,
+        clearError: true,
+      );
+    } catch (error) {
+      state = state.copyWith(
+        status: SessionCheckoutStatus.error,
+        errorMessage: _cleanError(error),
+      );
+      rethrow;
+    }
+  }
+}
+
 class OrderDetailNotifier
     extends AutoDisposeFamilyNotifier<OrderDetailState, OrderDetailAccess> {
   late OrderDetailAccess _access;
@@ -89,6 +166,54 @@ class OrderDetailNotifier
         status: OrderLoadStatus.error,
         errorMessage: _cleanError(error),
       );
+    }
+  }
+}
+
+class OrderPaymentNotifier
+    extends AutoDisposeFamilyNotifier<OrderPaymentState, OrderDetailAccess> {
+  late OrderDetailAccess _access;
+
+  @override
+  OrderPaymentState build(OrderDetailAccess arg) {
+    _access = arg;
+    return const OrderPaymentState.idle();
+  }
+
+  Future<void> pay(PaymentMethod method) async {
+    if (state.isProcessing) return;
+    if (!_access.canViewOrder) {
+      throw Exception('Bạn chưa có quyền thanh toán đơn hàng');
+    }
+
+    try {
+      var invoice = state.invoice;
+      if (invoice == null) {
+        state = state.copyWith(
+          status: OrderPaymentStatus.creatingInvoice,
+          clearError: true,
+        );
+        invoice = await ref.read(createOrderInvoiceUseCaseProvider)(
+          orderId: _access.orderId,
+          method: method,
+        );
+      }
+
+      state = state.copyWith(
+        status: OrderPaymentStatus.confirmingPayment,
+        invoice: invoice,
+      );
+      await ref.read(confirmPaymentUseCaseProvider)(invoice.paymentId);
+      state = state.copyWith(
+        status: OrderPaymentStatus.completed,
+        clearError: true,
+      );
+    } catch (error) {
+      state = state.copyWith(
+        status: OrderPaymentStatus.error,
+        errorMessage: _cleanError(error),
+      );
+      rethrow;
     }
   }
 }

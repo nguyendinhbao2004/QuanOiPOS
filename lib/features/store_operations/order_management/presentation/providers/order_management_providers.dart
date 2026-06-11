@@ -4,6 +4,9 @@ import '../../../../../core/di/injection.dart';
 import '../../data/datasources/order_management_remote_data_source.dart';
 import '../../domain/repositories/order_management_repository.dart';
 import '../../domain/usecases/create_order_use_case.dart';
+import '../../domain/usecases/create_order_invoice_use_case.dart';
+import '../../domain/usecases/create_session_invoice_use_case.dart';
+import '../../domain/usecases/confirm_payment_use_case.dart';
 import '../../domain/usecases/load_order_detail_use_case.dart';
 import '../../domain/usecases/load_orders_by_table_session_use_case.dart';
 import '../controllers/order_notifiers.dart';
@@ -33,6 +36,21 @@ final createOrderUseCaseProvider = Provider<CreateOrderUseCase>((ref) {
   return locator<CreateOrderUseCase>();
 });
 
+final createSessionInvoiceUseCaseProvider =
+    Provider<CreateSessionInvoiceUseCase>((ref) {
+      return locator<CreateSessionInvoiceUseCase>();
+    });
+
+final createOrderInvoiceUseCaseProvider = Provider<CreateOrderInvoiceUseCase>((
+  ref,
+) {
+  return locator<CreateOrderInvoiceUseCase>();
+});
+
+final confirmPaymentUseCaseProvider = Provider<ConfirmPaymentUseCase>((ref) {
+  return locator<ConfirmPaymentUseCase>();
+});
+
 final orderListNotifierProvider = NotifierProvider.autoDispose
     .family<OrderListNotifier, OrderListState, OrderSessionAccess>(
       OrderListNotifier.new,
@@ -46,4 +64,14 @@ final orderDetailNotifierProvider = NotifierProvider.autoDispose
 final orderCreateNotifierProvider = NotifierProvider.autoDispose
     .family<OrderCreateNotifier, OrderCreateState, OrderSessionAccess>(
       OrderCreateNotifier.new,
+    );
+
+final sessionCheckoutNotifierProvider = NotifierProvider.autoDispose
+    .family<SessionCheckoutNotifier, SessionCheckoutState, OrderSessionAccess>(
+      SessionCheckoutNotifier.new,
+    );
+
+final orderPaymentNotifierProvider = NotifierProvider.autoDispose
+    .family<OrderPaymentNotifier, OrderPaymentState, OrderDetailAccess>(
+      OrderPaymentNotifier.new,
     );

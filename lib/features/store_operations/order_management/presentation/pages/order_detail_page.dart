@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../core/constants/app_constants.dart';
@@ -8,8 +9,11 @@ import '../../../../../core/theme/index.dart';
 import '../../../../workspace_context/presentation/controllers/store_access_state.dart';
 import '../../../../workspace_context/presentation/providers/workspace_context_providers.dart';
 import '../../domain/entities/order.dart';
+import '../../domain/entities/session_invoice.dart';
+import '../controllers/order_notifiers.dart';
 import '../controllers/order_states.dart';
 import '../providers/order_management_providers.dart';
+import '../widgets/payment_method_dialog.dart';
 
 class OrderDetailPage extends ConsumerWidget {
   final int storeId;
@@ -43,10 +47,43 @@ class OrderDetailPage extends ConsumerWidget {
     );
     final state = ref.watch(orderDetailNotifierProvider(access));
     final notifier = ref.read(orderDetailNotifierProvider(access).notifier);
+    final paymentState = ref.watch(orderPaymentNotifierProvider(access));
+    final paymentNotifier = ref.read(
+      orderPaymentNotifierProvider(access).notifier,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: Text('Đơn #$orderId')),
+      bottomNavigationBar:
+          state.status == OrderLoadStatus.ready && state.order!.canPay
+          ? SafeArea(
+              minimum: const EdgeInsets.all(AppConstants.spacingMd),
+              child: ElevatedButton.icon(
+                key: const Key('pay_order_button'),
+                onPressed: paymentState.isProcessing
+                    ? null
+                    : () => _payOrder(
+                        context,
+                        ref,
+                        access,
+                        paymentNotifier,
+                        paymentState,
+                      ),
+                icon: paymentState.isProcessing
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.payments_outlined),
+                label: Text(
+                  paymentState.isProcessing
+                      ? _paymentStatusLabel(paymentState.status)
+                      : 'Thanh toán đơn',
+                ),
+              ),
+            )
+          : null,
       body: switch (state.status) {
         OrderLoadStatus.initial || OrderLoadStatus.loading => const Center(
           child: CircularProgressIndicator(),
@@ -123,6 +160,58 @@ class _OrderContent extends StatelessWidget {
     );
   }
 }
+
+Future<void> _payOrder(
+  BuildContext context,
+  WidgetRef ref,
+  OrderDetailAccess access,
+  OrderPaymentNotifier notifier,
+  OrderPaymentState currentState,
+) async {
+  final method = currentState.invoice == null
+      ? await showPaymentMethodDialog(context)
+      : PaymentMethod.cash;
+  if (method == null || !context.mounted) return;
+
+  try {
+    await notifier.pay(method);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Thanh toán đơn thành công')));
+    context.pop(true);
+  } catch (_) {
+    if (!context.mounted) return;
+    final state = ref.read(orderPaymentNotifierProvider(access));
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Thanh toán chưa hoàn tất'),
+        content: Text(state.errorMessage ?? 'Vui lòng thử lại.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Đóng'),
+          ),
+          if (state.invoice != null)
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await _payOrder(context, ref, access, notifier, state);
+              },
+              child: const Text('Thử xác nhận lại'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+String _paymentStatusLabel(OrderPaymentStatus status) => switch (status) {
+  OrderPaymentStatus.creatingInvoice => 'Đang tạo hóa đơn...',
+  OrderPaymentStatus.confirmingPayment => 'Đang xác nhận...',
+  _ => 'Đang xử lý...',
+};
 
 class _OrderItemCard extends StatelessWidget {
   final OrderItem item;

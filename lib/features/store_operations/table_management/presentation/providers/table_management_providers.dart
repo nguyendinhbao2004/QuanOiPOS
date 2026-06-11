@@ -5,6 +5,7 @@ import '../../data/datasources/table_management_remote_data_source.dart';
 import '../../domain/repositories/table_management_repository.dart';
 import '../../domain/usecases/create_area_use_case.dart';
 import '../../domain/usecases/create_table_use_case.dart';
+import '../../domain/usecases/close_table_session_use_case.dart';
 import '../../domain/usecases/delete_area_use_case.dart';
 import '../../domain/usecases/load_area_detail_use_case.dart';
 import '../../domain/usecases/load_areas_use_case.dart';
@@ -86,6 +87,12 @@ final openTableSessionUseCaseProvider = Provider<OpenTableSessionUseCase>((
   ref,
 ) {
   return locator<OpenTableSessionUseCase>();
+});
+
+final closeTableSessionUseCaseProvider = Provider<CloseTableSessionUseCase>((
+  ref,
+) {
+  return locator<CloseTableSessionUseCase>();
 });
 
 final updateAreaDisplayOrderUseCaseProvider =

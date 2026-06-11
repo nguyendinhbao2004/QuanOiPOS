@@ -6,6 +6,7 @@ import 'package:quan_oi/core/constants/app_permission_codes.dart';
 import 'package:quan_oi/core/theme/app_theme.dart';
 import 'package:quan_oi/features/store_operations/order_management/domain/entities/create_order_draft.dart';
 import 'package:quan_oi/features/store_operations/order_management/domain/entities/order.dart';
+import 'package:quan_oi/features/store_operations/order_management/domain/entities/session_invoice.dart';
 import 'package:quan_oi/features/store_operations/order_management/domain/repositories/order_management_repository.dart';
 import 'package:quan_oi/features/store_operations/order_management/domain/usecases/load_orders_by_table_session_use_case.dart';
 import 'package:quan_oi/features/store_operations/order_management/presentation/pages/order_list_page.dart';
@@ -22,6 +23,7 @@ void main() {
     await _pumpPage(tester, isSessionOpen: true);
 
     expect(find.byKey(const Key('add_order_button')), findsOneWidget);
+    expect(find.byKey(const Key('checkout_session_button')), findsOneWidget);
     expect(find.text('Đơn #7001'), findsOneWidget);
   });
 
@@ -31,6 +33,7 @@ void main() {
     await _pumpPage(tester, isSessionOpen: false);
 
     expect(find.byKey(const Key('add_order_button')), findsNothing);
+    expect(find.byKey(const Key('checkout_session_button')), findsNothing);
     await tester.tap(find.byKey(const Key('order_card_7001')));
     await tester.pumpAndSettle();
     expect(find.text('Chi tiết 7001'), findsOneWidget);
@@ -104,6 +107,27 @@ class _FakeOrderRepository implements OrderManagementRepository {
 
   @override
   Future<Order> loadOrderDetail(int orderId) => throw UnimplementedError();
+
+  @override
+  Future<SessionInvoice> createSessionInvoice({
+    required int tableSessionId,
+    required PaymentMethod method,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> confirmPayment(int paymentId) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<SessionInvoice> createOrderInvoice({
+    required int orderId,
+    required PaymentMethod method,
+  }) async {
+    throw UnimplementedError();
+  }
 }
 
 class _FakeWorkspaceRepository implements WorkspaceRepository {
@@ -124,6 +148,10 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
       permissions: [
         StorePermission(permissionId: 27, code: AppPermissionCodes.orderView),
         StorePermission(permissionId: 28, code: AppPermissionCodes.orderCreate),
+        StorePermission(
+          permissionId: 13,
+          code: AppPermissionCodes.tableCloseSession,
+        ),
       ],
     );
   }

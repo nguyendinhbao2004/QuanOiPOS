@@ -107,4 +107,10 @@ class Order {
     this.createdAt,
     this.items = const [],
   });
+
+  int get payableAmount => finalAmount ?? totalAmount;
+
+  bool get isFullyPaid => (paidAmount ?? 0) >= payableAmount;
+
+  bool get canPay => status != OrderStatus.cancelled && !isFullyPaid;
 }

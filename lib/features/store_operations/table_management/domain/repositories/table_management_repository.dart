@@ -27,6 +27,8 @@ abstract class TableManagementRepository {
 
   Future<TableSession> openTableSession(int tableId);
 
+  Future<TableSession> closeTableSession(int tableSessionId);
+
   Future<Area> createArea({
     required int storeId,
     required String name,

@@ -3,6 +3,7 @@ import '../../../product_management/domain/entities/product_category.dart';
 import '../../../product_management/domain/entities/product_topping.dart';
 import '../../../product_management/domain/entities/product_variant_draft.dart';
 import '../../domain/entities/order.dart';
+import '../../domain/entities/session_invoice.dart';
 
 enum OrderLoadStatus { initial, loading, ready, forbidden, error }
 
@@ -12,6 +13,7 @@ class OrderSessionAccess {
   final bool isSessionOpen;
   final bool canViewOrder;
   final bool canCreateOrder;
+  final bool canCloseSession;
 
   const OrderSessionAccess({
     required this.storeId,
@@ -19,6 +21,7 @@ class OrderSessionAccess {
     required this.isSessionOpen,
     required this.canViewOrder,
     required this.canCreateOrder,
+    this.canCloseSession = false,
   });
 
   @override
@@ -28,7 +31,8 @@ class OrderSessionAccess {
       tableSessionId == other.tableSessionId &&
       isSessionOpen == other.isSessionOpen &&
       canViewOrder == other.canViewOrder &&
-      canCreateOrder == other.canCreateOrder;
+      canCreateOrder == other.canCreateOrder &&
+      canCloseSession == other.canCloseSession;
 
   @override
   int get hashCode => Object.hash(
@@ -37,7 +41,53 @@ class OrderSessionAccess {
     isSessionOpen,
     canViewOrder,
     canCreateOrder,
+    canCloseSession,
   );
+}
+
+enum SessionCheckoutStatus {
+  idle,
+  creatingInvoice,
+  confirmingPayment,
+  closingSession,
+  completed,
+  error,
+}
+
+class SessionCheckoutState {
+  final SessionCheckoutStatus status;
+  final SessionInvoice? invoice;
+  final bool paymentConfirmed;
+  final String? errorMessage;
+
+  const SessionCheckoutState({
+    required this.status,
+    this.invoice,
+    this.paymentConfirmed = false,
+    this.errorMessage,
+  });
+
+  const SessionCheckoutState.idle() : this(status: SessionCheckoutStatus.idle);
+
+  bool get isProcessing =>
+      status == SessionCheckoutStatus.creatingInvoice ||
+      status == SessionCheckoutStatus.confirmingPayment ||
+      status == SessionCheckoutStatus.closingSession;
+
+  SessionCheckoutState copyWith({
+    SessionCheckoutStatus? status,
+    SessionInvoice? invoice,
+    bool? paymentConfirmed,
+    String? errorMessage,
+    bool clearError = false,
+  }) {
+    return SessionCheckoutState(
+      status: status ?? this.status,
+      invoice: invoice ?? this.invoice,
+      paymentConfirmed: paymentConfirmed ?? this.paymentConfirmed,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+    );
+  }
 }
 
 class OrderListState {
@@ -81,6 +131,45 @@ class OrderDetailAccess {
 
   @override
   int get hashCode => Object.hash(orderId, canViewOrder);
+}
+
+enum OrderPaymentStatus {
+  idle,
+  creatingInvoice,
+  confirmingPayment,
+  completed,
+  error,
+}
+
+class OrderPaymentState {
+  final OrderPaymentStatus status;
+  final SessionInvoice? invoice;
+  final String? errorMessage;
+
+  const OrderPaymentState({
+    required this.status,
+    this.invoice,
+    this.errorMessage,
+  });
+
+  const OrderPaymentState.idle() : this(status: OrderPaymentStatus.idle);
+
+  bool get isProcessing =>
+      status == OrderPaymentStatus.creatingInvoice ||
+      status == OrderPaymentStatus.confirmingPayment;
+
+  OrderPaymentState copyWith({
+    OrderPaymentStatus? status,
+    SessionInvoice? invoice,
+    String? errorMessage,
+    bool clearError = false,
+  }) {
+    return OrderPaymentState(
+      status: status ?? this.status,
+      invoice: invoice ?? this.invoice,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+    );
+  }
 }
 
 class OrderDetailState {

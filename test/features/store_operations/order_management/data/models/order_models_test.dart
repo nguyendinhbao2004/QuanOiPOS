@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/store_operations/order_management/data/models/create_order_request_model.dart';
 import 'package:quan_oi/features/store_operations/order_management/data/models/order_model.dart';
+import 'package:quan_oi/features/store_operations/order_management/data/models/session_invoice_model.dart';
 import 'package:quan_oi/features/store_operations/order_management/domain/entities/create_order_draft.dart';
 import 'package:quan_oi/features/store_operations/order_management/domain/entities/order.dart';
 
@@ -77,5 +78,21 @@ void main() {
         ],
       },
     ]);
+  });
+
+  test('SessionInvoiceModel reads pending payment from invoice response', () {
+    final invoice = SessionInvoiceModel.fromJson({
+      'invoiceId': 1001,
+      'invoiceCode': 'INV-TS-501',
+      'finalAmount': 145000,
+      'payments': [
+        {'id': 1101, 'status': 1},
+      ],
+    }).toEntity();
+
+    expect(invoice.invoiceId, 1001);
+    expect(invoice.paymentId, 1101);
+    expect(invoice.invoiceCode, 'INV-TS-501');
+    expect(invoice.finalAmount, 145000);
   });
 }
