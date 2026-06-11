@@ -1,21 +1,48 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../order_management/domain/entities/create_order_draft.dart';
+import '../../../order_management/domain/entities/order.dart';
+import '../../../order_management/domain/usecases/create_order_use_case.dart';
+import '../../../table_management/domain/entities/table_session.dart';
+import '../../../table_management/domain/usecases/load_open_table_sessions_use_case.dart';
+import '../../../table_management/domain/usecases/open_table_session_use_case.dart';
 import '../../domain/entities/voice_order_item.dart';
 import '../../domain/entities/voice_order_recognition.dart';
 import '../../domain/entities/voice_order_topping.dart';
 import '../../domain/usecases/recognize_voice_order_use_case.dart';
+import '../../../order_management/presentation/providers/order_management_providers.dart';
+import '../../../table_management/presentation/providers/table_management_providers.dart';
 import '../providers/voice_order_providers.dart';
 import '../services/voice_order_audio_recorder.dart';
 import 'voice_order_state.dart';
 
+class VoiceOrderMissingSessionException implements Exception {
+  final int tableId;
+  final String tableName;
+
+  const VoiceOrderMissingSessionException({
+    required this.tableId,
+    required this.tableName,
+  });
+
+  @override
+  String toString() => 'Bàn $tableName chưa có phiên đang mở.';
+}
+
 class VoiceOrderNotifier extends AutoDisposeNotifier<VoiceOrderState> {
   late final RecognizeVoiceOrderUseCase _recognizeVoiceOrder;
   late final VoiceOrderAudioRecorder _audioRecorder;
+  late final LoadOpenTableSessionsUseCase _loadOpenTableSessions;
+  late final OpenTableSessionUseCase _openTableSession;
+  late final CreateOrderUseCase _createOrder;
 
   @override
   VoiceOrderState build() {
     _recognizeVoiceOrder = ref.read(recognizeVoiceOrderUseCaseProvider);
     _audioRecorder = ref.read(voiceOrderAudioRecorderProvider);
+    _loadOpenTableSessions = ref.read(loadOpenTableSessionsUseCaseProvider);
+    _openTableSession = ref.read(openTableSessionUseCaseProvider);
+    _createOrder = ref.read(createOrderUseCaseProvider);
     ref.onDispose(() {
       _audioRecorder.cancel();
     });
@@ -148,6 +175,88 @@ class VoiceOrderNotifier extends AutoDisposeNotifier<VoiceOrderState> {
     state = const VoiceOrderState.idle();
   }
 
+  Future<Order> submit({
+    required int storeId,
+    required bool canCreateOrder,
+  }) async {
+    if (state.isBusy || state.status == VoiceOrderStatus.recording) {
+      throw Exception('Vui lòng chờ thao tác hiện tại hoàn tất.');
+    }
+    if (!canCreateOrder) {
+      throw Exception('Bạn chưa có quyền tạo đơn hàng.');
+    }
+
+    final recognition = _requireSubmittableRecognition();
+    final tableId = recognition.tableId;
+    if (tableId == null) {
+      throw Exception('Vui lòng chọn bàn trước khi xác nhận.');
+    }
+
+    state = state.copyWith(
+      status: VoiceOrderStatus.submitting,
+      errorMessage: null,
+    );
+
+    try {
+      final sessions = await _loadOpenTableSessions(tableId);
+      final session = _firstOpenSession(sessions);
+      if (session == null) {
+        state = state.copyWith(status: VoiceOrderStatus.success);
+        throw VoiceOrderMissingSessionException(
+          tableId: tableId,
+          tableName: _tableName(recognition),
+        );
+      }
+
+      final order = await _createOrder(
+        CreateOrderDraft(
+          storeId: storeId,
+          tableSessionId: session.id,
+          items: _createOrderItems(recognition),
+        ),
+      );
+      await clear();
+      return order;
+    } on VoiceOrderMissingSessionException {
+      rethrow;
+    } catch (error) {
+      state = state.copyWith(
+        status: VoiceOrderStatus.success,
+        errorMessage: _errorMessage(error, 'Không thể tạo đơn hàng.'),
+      );
+      rethrow;
+    }
+  }
+
+  Future<TableSession> openTableSession({
+    required int tableId,
+    required bool canOpenSession,
+  }) async {
+    if (state.isBusy) {
+      throw Exception('Vui lòng chờ thao tác hiện tại hoàn tất.');
+    }
+    if (!canOpenSession) {
+      throw Exception('Bạn chưa có quyền mở phiên bàn.');
+    }
+
+    state = state.copyWith(
+      status: VoiceOrderStatus.submitting,
+      errorMessage: null,
+    );
+
+    try {
+      final session = await _openTableSession(tableId);
+      state = state.copyWith(status: VoiceOrderStatus.success);
+      return session;
+    } catch (error) {
+      state = state.copyWith(
+        status: VoiceOrderStatus.success,
+        errorMessage: _errorMessage(error, 'Không thể mở phiên bàn.'),
+      );
+      rethrow;
+    }
+  }
+
   void updateItem(
     VoiceOrderItem original, {
     Object? productId = _unchanged,
@@ -241,6 +350,77 @@ class VoiceOrderNotifier extends AutoDisposeNotifier<VoiceOrderState> {
   String _errorMessage(Object error, String fallback) {
     final text = error.toString().replaceFirst('Exception: ', '').trim();
     return text.isEmpty ? fallback : text;
+  }
+
+  VoiceOrderRecognition _requireSubmittableRecognition() {
+    final recognition = state.recognition;
+    if (recognition == null) {
+      throw Exception('Chưa có order để xác nhận.');
+    }
+    if (recognition.items.isEmpty) {
+      throw Exception('Order phải có ít nhất một món.');
+    }
+
+    for (final item in recognition.items) {
+      if (item.productId == null) {
+        throw Exception('Món "${item.productName}" chưa có sản phẩm hợp lệ.');
+      }
+      if (item.quantity < 1) {
+        throw Exception('Số lượng món "${item.productName}" phải lớn hơn 0.');
+      }
+      for (final topping in item.toppings) {
+        if (topping.id == null || topping.quantity < 1) {
+          throw Exception(
+            'Topping của món "${item.productName}" không hợp lệ.',
+          );
+        }
+      }
+    }
+
+    return recognition;
+  }
+
+  TableSession? _firstOpenSession(List<TableSession> sessions) {
+    for (final session in sessions) {
+      if (session.status == TableSessionStatus.open) {
+        return session;
+      }
+    }
+    return null;
+  }
+
+  List<CreateOrderItemDraft> _createOrderItems(
+    VoiceOrderRecognition recognition,
+  ) {
+    final items = <CreateOrderItemDraft>[];
+    for (final item in recognition.items) {
+      for (var index = 0; index < item.quantity; index += 1) {
+        items.add(
+          CreateOrderItemDraft(
+            productId: item.productId!,
+            variantId: item.variantId,
+            note: item.note?.trim().isEmpty == true ? null : item.note?.trim(),
+            toppings: [
+              for (final topping in item.toppings)
+                if (topping.id != null && topping.quantity > 0)
+                  CreateOrderToppingDraft(
+                    toppingId: topping.id!,
+                    quantity: topping.quantity,
+                  ),
+            ],
+          ),
+        );
+      }
+    }
+    return items;
+  }
+
+  String _tableName(VoiceOrderRecognition recognition) {
+    final tableName = recognition.tableName?.trim();
+    if (tableName != null && tableName.isNotEmpty) {
+      return tableName;
+    }
+    return recognition.tableId == null ? '' : '${recognition.tableId}';
   }
 }
 

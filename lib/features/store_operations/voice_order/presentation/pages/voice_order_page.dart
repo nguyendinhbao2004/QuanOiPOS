@@ -15,6 +15,7 @@ import '../../../table_management/domain/entities/dining_table.dart';
 import '../../domain/entities/voice_order_item.dart';
 import '../../domain/entities/voice_order_recognition.dart';
 import '../../domain/entities/voice_order_topping.dart';
+import '../controllers/voice_order_notifier.dart';
 import '../controllers/voice_order_state.dart';
 import '../providers/voice_order_providers.dart';
 
@@ -49,7 +50,15 @@ class VoiceOrderPage extends ConsumerWidget {
           ),
           StoreAccessStatus.ready =>
             accessState.can(AppPermissionCodes.dashboardView)
-                ? _VoiceOrderBody(storeId: storeId)
+                ? _VoiceOrderBody(
+                    storeId: storeId,
+                    canCreateOrder: accessState.can(
+                      AppPermissionCodes.orderCreate,
+                    ),
+                    canOpenSession: accessState.can(
+                      AppPermissionCodes.tableOpenSession,
+                    ),
+                  )
                 : const _BlockedView(
                     icon: Icons.visibility_off_outlined,
                     title: 'Bạn chưa có quyền dùng order giọng nói',
@@ -64,8 +73,14 @@ class VoiceOrderPage extends ConsumerWidget {
 
 class _VoiceOrderBody extends ConsumerWidget {
   final int storeId;
+  final bool canCreateOrder;
+  final bool canOpenSession;
 
-  const _VoiceOrderBody({required this.storeId});
+  const _VoiceOrderBody({
+    required this.storeId,
+    required this.canCreateOrder,
+    required this.canOpenSession,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -89,7 +104,7 @@ class _VoiceOrderBody extends ConsumerWidget {
                   AppConstants.spacingMd,
                   AppConstants.spacingSm,
                   AppConstants.spacingMd,
-                  132,
+                  208,
                 ),
                 children: [
                   if (productsAsync.hasError)
@@ -164,17 +179,32 @@ class _VoiceOrderBody extends ConsumerWidget {
           left: 0,
           right: 0,
           bottom: AppConstants.spacingLg,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _VoiceStatusPill(state: state),
-              const SizedBox(height: AppConstants.spacingSm),
-              _HoldMicButton(
-                state: state,
-                onStart: notifier.startRecording,
-                onStop: () => notifier.stopAndRecognize(storeId),
-              ),
-            ],
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _VoiceStatusPill(state: state),
+                const SizedBox(height: AppConstants.spacingSm),
+                _HoldMicButton(
+                  state: state,
+                  onStart: notifier.startRecording,
+                  onStop: () => notifier.stopAndRecognize(storeId),
+                ),
+                const SizedBox(height: AppConstants.spacingMd),
+                _VoiceOrderActionBar(
+                  state: state,
+                  onCancel: notifier.clear,
+                  onConfirm: () => _confirmOrder(
+                    context,
+                    notifier,
+                    storeId: storeId,
+                    canCreateOrder: canCreateOrder,
+                    canOpenSession: canOpenSession,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -195,6 +225,60 @@ class _VoiceOrderBackground extends StatelessWidget {
         ),
       ),
       child: ColoredBox(color: Colors.transparent),
+    );
+  }
+}
+
+class _VoiceOrderActionBar extends StatelessWidget {
+  final VoiceOrderState state;
+  final VoidCallback onCancel;
+  final VoidCallback onConfirm;
+
+  const _VoiceOrderActionBar({
+    required this.state,
+    required this.onCancel,
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final canCancel =
+        !state.isBusy &&
+        (state.recognition != null ||
+            state.audioFilePath != null ||
+            state.errorMessage != null);
+    final canConfirm =
+        state.recognition != null &&
+        state.status != VoiceOrderStatus.recording &&
+        !state.isBusy;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppConstants.spacingMd),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: canCancel ? onCancel : null,
+              icon: const Icon(Icons.close_rounded),
+              label: const Text('Hủy'),
+            ),
+          ),
+          const SizedBox(width: AppConstants.spacingSm),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: canConfirm ? onConfirm : null,
+              icon: state.status == VoiceOrderStatus.submitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_rounded),
+              label: const Text('Xác nhận'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -640,7 +724,7 @@ class _HoldMicButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRecording = state.status == VoiceOrderStatus.recording;
-    final isProcessing = state.status == VoiceOrderStatus.recognizing;
+    final isProcessing = state.isBusy;
     final color = isRecording ? AppColors.error : AppColors.primary;
 
     return Center(
@@ -882,6 +966,81 @@ Color _toneColor(_MessageTone tone) {
     _MessageTone.warning => AppColors.warning,
     _MessageTone.error => AppColors.error,
   };
+}
+
+Future<void> _confirmOrder(
+  BuildContext context,
+  VoiceOrderNotifier notifier, {
+  required int storeId,
+  required bool canCreateOrder,
+  required bool canOpenSession,
+}) async {
+  try {
+    await notifier.submit(storeId: storeId, canCreateOrder: canCreateOrder);
+    if (!context.mounted) {
+      return;
+    }
+    _showSnack(context, 'Tạo đơn hàng thành công!');
+  } on VoiceOrderMissingSessionException catch (error) {
+    if (!context.mounted) {
+      return;
+    }
+    final shouldOpen = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Mở phiên bàn'),
+        content: Text(
+          'Bàn ${error.tableName} chưa có phiên mở. Bạn có muốn mở phiên không?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Không'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Có'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldOpen != true || !context.mounted) {
+      return;
+    }
+
+    try {
+      await notifier.openTableSession(
+        tableId: error.tableId,
+        canOpenSession: canOpenSession,
+      );
+      if (!context.mounted) {
+        return;
+      }
+      _showSnack(
+        context,
+        'Mở phiên bàn thành công. Nhấn Xác nhận lại để tạo đơn.',
+      );
+    } catch (openError) {
+      if (!context.mounted) {
+        return;
+      }
+      _showSnack(context, _cleanError(openError));
+    }
+  } catch (error) {
+    if (!context.mounted) {
+      return;
+    }
+    _showSnack(context, _cleanError(error));
+  }
+}
+
+void _showSnack(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+}
+
+String _cleanError(Object error) {
+  return error.toString().replaceFirst('Exception: ', '').trim();
 }
 
 Future<void> _showEditSheet(
@@ -1336,6 +1495,7 @@ String _statusTitle(VoiceOrderState state) {
   return switch (state.status) {
     VoiceOrderStatus.recording => 'Đang nghe...',
     VoiceOrderStatus.recognizing => 'Đang xử lý...',
+    VoiceOrderStatus.submitting => 'Đang xác nhận...',
     VoiceOrderStatus.error ||
     VoiceOrderStatus.permissionDenied => 'Nhấn giữ mic để thử lại',
     _ => 'Nhấn giữ mic để đọc order',

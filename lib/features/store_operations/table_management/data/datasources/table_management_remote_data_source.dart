@@ -175,6 +175,25 @@ class TableManagementRemoteDataSource {
     return response.data!;
   }
 
+  Future<List<TableSessionModel>> getOpenTableSessionsByTable(
+    int tableId,
+  ) async {
+    final response = await _dioClient.getResponse<List<TableSessionModel>>(
+      '/table-sessions/table/$tableId/open',
+      dataFromJson: TableSessionModel.listFromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể tải phiên bàn đang mở',
+      );
+    }
+
+    return response.data!;
+  }
+
   Future<TableSessionModel> openTableSession(
     OpenTableSessionRequestModel request,
   ) async {

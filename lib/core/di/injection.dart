@@ -48,6 +48,7 @@ import '../../features/store_operations/table_management/domain/usecases/load_ar
 import '../../features/store_operations/table_management/domain/usecases/load_areas_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/load_table_detail_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/load_table_groups_use_case.dart';
+import '../../features/store_operations/table_management/domain/usecases/load_open_table_sessions_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/load_table_sessions_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/open_table_session_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/update_area_display_order_use_case.dart';
@@ -324,6 +325,9 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<LoadTableSessionsUseCase>(
     () => LoadTableSessionsUseCase(locator<TableManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadOpenTableSessionsUseCase>(
+    () => LoadOpenTableSessionsUseCase(locator<TableManagementRepository>()),
   );
   locator.registerLazySingleton<CreateAreaUseCase>(
     () => CreateAreaUseCase(locator<TableManagementRepository>()),

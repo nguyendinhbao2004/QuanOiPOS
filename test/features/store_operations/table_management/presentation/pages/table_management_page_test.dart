@@ -1311,6 +1311,11 @@ class _FakeTableManagementRepository implements TableManagementRepository {
   }
 
   @override
+  Future<List<TableSession>> loadOpenTableSessions(int tableId) async {
+    return const [];
+  }
+
+  @override
   Future<Area> createArea({
     required int storeId,
     required String name,

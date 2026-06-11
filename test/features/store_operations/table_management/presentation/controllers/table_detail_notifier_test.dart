@@ -212,6 +212,11 @@ class _FakeTableDetailRepository implements TableManagementRepository {
   }
 
   @override
+  Future<List<TableSession>> loadOpenTableSessions(int tableId) async {
+    return const [];
+  }
+
+  @override
   Future<void> updateTableStatus({
     required int tableId,
     required TableStatus status,

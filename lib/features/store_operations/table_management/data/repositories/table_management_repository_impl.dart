@@ -6,6 +6,7 @@ import '../../domain/entities/table_status.dart';
 import '../../domain/repositories/table_management_repository.dart';
 import '../datasources/table_management_remote_data_source.dart';
 import '../models/area_request_models.dart';
+import '../models/table_session_model.dart';
 import '../models/table_request_models.dart';
 
 class TableManagementRepositoryImpl implements TableManagementRepository {
@@ -148,6 +149,20 @@ class TableManagementRepositoryImpl implements TableManagementRepository {
   @override
   Future<List<TableSession>> loadTableSessions(int tableId) async {
     final sessions = await _remoteDataSource.getTableSessionsByTable(tableId);
+    return _mapAndSortSessions(sessions);
+  }
+
+  @override
+  Future<List<TableSession>> loadOpenTableSessions(int tableId) async {
+    final sessions = await _remoteDataSource.getOpenTableSessionsByTable(
+      tableId,
+    );
+    return _mapAndSortSessions(
+      sessions,
+    ).where((session) => session.status == TableSessionStatus.open).toList();
+  }
+
+  List<TableSession> _mapAndSortSessions(Iterable<TableSessionModel> sessions) {
     final entities = sessions
         .where((session) => !session.isDeleted)
         .map((session) => session.toEntity())

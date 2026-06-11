@@ -8,6 +8,7 @@ import '../../domain/usecases/create_table_use_case.dart';
 import '../../domain/usecases/delete_area_use_case.dart';
 import '../../domain/usecases/load_area_detail_use_case.dart';
 import '../../domain/usecases/load_areas_use_case.dart';
+import '../../domain/usecases/load_open_table_sessions_use_case.dart';
 import '../../domain/usecases/load_table_detail_use_case.dart';
 import '../../domain/usecases/load_table_groups_use_case.dart';
 import '../../domain/usecases/load_table_sessions_use_case.dart';
@@ -53,6 +54,11 @@ final loadTableSessionsUseCaseProvider = Provider<LoadTableSessionsUseCase>((
 ) {
   return locator<LoadTableSessionsUseCase>();
 });
+
+final loadOpenTableSessionsUseCaseProvider =
+    Provider<LoadOpenTableSessionsUseCase>((ref) {
+      return locator<LoadOpenTableSessionsUseCase>();
+    });
 
 final createAreaUseCaseProvider = Provider<CreateAreaUseCase>((ref) {
   return locator<CreateAreaUseCase>();

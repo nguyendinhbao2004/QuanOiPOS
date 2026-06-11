@@ -23,6 +23,8 @@ abstract class TableManagementRepository {
 
   Future<List<TableSession>> loadTableSessions(int tableId);
 
+  Future<List<TableSession>> loadOpenTableSessions(int tableId);
+
   Future<TableSession> openTableSession(int tableId);
 
   Future<Area> createArea({

@@ -6,6 +6,7 @@ enum VoiceOrderStatus {
   recording,
   readyToSend,
   recognizing,
+  submitting,
   success,
   error,
 }
@@ -29,7 +30,9 @@ class VoiceOrderState {
 
   const VoiceOrderState.idle() : this(status: VoiceOrderStatus.idle);
 
-  bool get isBusy => status == VoiceOrderStatus.recognizing;
+  bool get isBusy =>
+      status == VoiceOrderStatus.recognizing ||
+      status == VoiceOrderStatus.submitting;
 
   VoiceOrderState copyWith({
     VoiceOrderStatus? status,

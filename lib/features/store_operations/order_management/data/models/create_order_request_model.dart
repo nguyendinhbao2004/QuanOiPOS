@@ -9,7 +9,7 @@ class CreateOrderRequestModel {
     return {
       'storeId': draft.storeId,
       'tableSessionId': draft.tableSessionId,
-      'orderType': 'DineIn',
+      'orderType': '1',
       'customerId': null,
       'items': draft.items
           .map(
