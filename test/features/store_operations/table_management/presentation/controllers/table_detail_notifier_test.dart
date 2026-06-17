@@ -79,7 +79,7 @@ void main() {
     expect(repository.updateTableStatusCallCount, 0);
   });
 
-  test('open session updates table to occupied and refetches data', () async {
+  test('open session creates table session and refetches data', () async {
     final repository = _FakeTableDetailRepository();
     final container = _container(repository);
     addTearDown(container.dispose);
@@ -95,8 +95,7 @@ void main() {
     final state = container.read(tableDetailNotifierProvider(access));
 
     expect(repository.openTableSessionCallCount, 1);
-    expect(repository.updateTableStatusCallCount, 1);
-    expect(repository.lastUpdatedStatus, TableStatus.occupied);
+    expect(repository.updateTableStatusCallCount, 0);
     expect(
       repository.loadTableDetailCallCount,
       greaterThan(initialTableLoadCount),

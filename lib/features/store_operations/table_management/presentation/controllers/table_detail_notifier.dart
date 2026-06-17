@@ -100,10 +100,6 @@ class TableDetailNotifier
 
     await _mutate(() async {
       await ref.read(openTableSessionUseCaseProvider)(table.id);
-      await ref.read(updateTableStatusUseCaseProvider)(
-        tableId: table.id,
-        status: TableStatus.occupied,
-      );
       await _refreshData();
       state = state.copyWith(hasChanged: true);
     });
