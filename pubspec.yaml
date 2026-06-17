@@ -216,12 +216,14 @@ flutter_launcher_icons:
     image_path: assets/images/android-chrome-512x512.png
 
 flutter_native_splash:
-  background_image: assets/images/splash_screen.png
+  color: "#FFF7E8"
+  image: assets/images/splash_logo_tagline.png
   android: true
   ios: true
   web: true
   android_12:
     color: "#FFF7E8"
+    image: assets/images/splash_logo_tagline.png
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

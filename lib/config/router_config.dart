@@ -898,12 +898,30 @@ class _BootstrapSplashPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: AppColors.background,
-      body: SizedBox.expand(
-        child: Image(
-          image: AssetImage(AppConstants.splashAsset),
-          fit: BoxFit.cover,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 180,
+              height: 180,
+              child: Image(
+                image: AssetImage(AppConstants.splashAsset),
+                fit: BoxFit.contain,
+              ),
+            ),
+            SizedBox(height: AppConstants.spacingMd),
+            Text(
+              'Bán hàng, gọi món, tính tiền - Quán Ơi lo !',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyBase.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );
