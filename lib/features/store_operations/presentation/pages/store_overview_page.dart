@@ -179,7 +179,12 @@ class _ReadyView extends ConsumerWidget {
               ),
             ],
             const SizedBox(height: AppConstants.spacingLg),
-            const _ProfitAnalysisCard(),
+            _ProfitAnalysisCard(
+              onTap: () => context.goNamed(
+                RouteNames.storeOwnerDashboard,
+                pathParameters: {'storeId': accessContext.store.id.toString()},
+              ),
+            ),
             const SizedBox(height: AppConstants.spacingLg),
             _FeatureGrid(
               storeId: accessContext.store.id,
@@ -237,54 +242,60 @@ class _RefreshErrorBanner extends StatelessWidget {
 }
 
 class _ProfitAnalysisCard extends StatelessWidget {
-  const _ProfitAnalysisCard();
+  final VoidCallback onTap;
+
+  const _ProfitAnalysisCard({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.spacingLg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Tổng quan hôm nay',
-                    style: AppTextStyles.h4.copyWith(
-                      fontWeight: FontWeight.w700,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        child: Padding(
+          padding: const EdgeInsets.all(AppConstants.spacingLg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Tổng quan',
+                      style: AppTextStyles.h4.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.textMuted,
-                ),
-              ],
-            ),
-            const SizedBox(height: AppConstants.spacingXl),
-            Container(
-              width: 64,
-              height: 64,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: AppColors.primaryLight,
-                shape: BoxShape.circle,
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textMuted,
+                  ),
+                ],
               ),
-              child: const Icon(
-                Icons.trending_up_rounded,
-                color: AppColors.primary,
-                size: 32,
+              const SizedBox(height: AppConstants.spacingXl),
+              Container(
+                width: 64,
+                height: 64,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: AppColors.primaryLight,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.trending_up_rounded,
+                  color: AppColors.primary,
+                  size: 32,
+                ),
               ),
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
-            Text(
-              'Bạn chưa tạo hóa đơn để phân tích lãi lỗ',
-              style: AppTextStyles.bodySm,
-              textAlign: TextAlign.center,
-            ),
-          ],
+              const SizedBox(height: AppConstants.spacingMd),
+              Text(
+                'Bạn chưa tạo hóa đơn để phân tích lãi lỗ',
+                style: AppTextStyles.bodySm,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );

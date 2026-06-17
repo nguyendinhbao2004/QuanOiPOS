@@ -74,7 +74,7 @@ void main() {
     await tester.tap(find.byKey(const Key('access_store_2')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Tổng quan hôm nay'), findsOneWidget);
+    expect(find.text('Tổng quan'), findsOneWidget);
     expect(
       find.text('Bạn chưa tạo hóa đơn để phân tích lãi lỗ'),
       findsOneWidget,
@@ -100,7 +100,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Tổng quan hôm nay'), findsOneWidget);
+    expect(find.text('Tổng quan'), findsOneWidget);
     expect(
       find.text('Buffet Poseidon Vincom Plaza Lê Văn Việt'),
       findsOneWidget,
@@ -139,7 +139,7 @@ void main() {
       }
 
       expect(find.text('Cached Buffet'), findsOneWidget);
-      expect(find.text('Tổng quan hôm nay'), findsOneWidget);
+      expect(find.text('Tổng quan'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
       accessCompleter.complete(_remoteAccessContext);
@@ -171,7 +171,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Xin chào, Test User'), findsOneWidget);
-      expect(find.text('Tổng quan hôm nay'), findsNothing);
+      expect(find.text('Tổng quan'), findsNothing);
     },
   );
 
@@ -220,7 +220,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Doanh thu tháng'), findsOneWidget);
-    expect(find.text('Tổng quan hôm nay'), findsNothing);
+    expect(find.text('Tổng quan'), findsNothing);
   });
 
   testWidgets('my stores page enables access only for active stores', (
@@ -466,7 +466,7 @@ void main() {
 
     expect(lastActiveStoreStorage.lastStoreId, 10);
     expect(repository.createStoreCallCount, 1);
-    expect(find.text('Tổng quan hôm nay'), findsOneWidget);
+    expect(find.text('Tổng quan'), findsOneWidget);
     expect(find.text('Quan oi'), findsOneWidget);
   });
 }

@@ -11,6 +11,7 @@ import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
 import 'package:quan_oi/features/store_operations/presentation/pages/store_feature_search_page.dart';
 import 'package:quan_oi/features/store_operations/presentation/pages/store_overview_page.dart';
+import 'package:quan_oi/features/store_operations/owner_dashboard/presentation/pages/owner_dashboard_page.dart';
 import 'package:quan_oi/features/store_operations/voice_order/presentation/pages/voice_order_page.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store.dart';
 import 'package:quan_oi/features/workspace_context/domain/entities/store_access_context.dart';
@@ -43,12 +44,12 @@ void main() {
 
     expect(find.text('FPT Shipper Vip'), findsOneWidget);
     expect(find.byIcon(Icons.arrow_back_rounded), findsNothing);
-    expect(find.text('Tổng quan hôm nay'), findsOneWidget);
+    expect(find.text('Tổng quan'), findsWidgets);
     expect(
       find.text('Bạn chưa tạo hóa đơn để phân tích lãi lỗ'),
       findsOneWidget,
     );
-    expect(find.text('Tổng quan'), findsOneWidget);
+    expect(find.text('Tổng quan'), findsWidgets);
     expect(find.text('Order giọng nói'), findsOneWidget);
     expect(find.text('Bạn chưa có quyền xem quản lý kho'), findsNothing);
     expect(find.text('Quản lý bàn'), findsOneWidget);
@@ -67,7 +68,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Bạn chưa có quyền xem tổng quan'), findsOneWidget);
-    expect(find.text('Tổng quan hôm nay'), findsNothing);
+    expect(find.text('Tổng quan'), findsNothing);
   });
 
   testWidgets('store overview disables missing permission actions', (
@@ -158,6 +159,123 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Product route opened'), findsOneWidget);
+  });
+
+  testWidgets('overview card navigates to owner dashboard route', (
+    tester,
+  ) async {
+    final repository = const _FakeWorkspaceRepository(
+      permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
+    );
+    final router = GoRouter(
+      initialLocation: '/stores/5',
+      routes: [
+        GoRoute(
+          path: '/stores/:storeId',
+          name: RouteNames.storeOverview,
+          builder: (context, state) => const StoreOverviewPage(storeId: 5),
+        ),
+        GoRoute(
+          path: '/stores/:storeId/dashboard',
+          name: RouteNames.storeOwnerDashboard,
+          builder: (context, state) => const Scaffold(
+            body: Center(child: Text('Owner dashboard opened')),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authNotifierProvider.overrideWith(
+            () => _FixedAuthNotifier(
+              const AuthState(
+                status: AuthStatus.authenticated,
+                accountType: AccountType.storeUser,
+                fullName: 'Test User',
+                email: 'user@quanoi.test',
+              ),
+            ),
+          ),
+          loadStoreAccessContextUseCaseProvider.overrideWithValue(
+            LoadStoreAccessContextUseCase(repository),
+          ),
+          loadMyStoresUseCaseProvider.overrideWithValue(
+            LoadMyStoresUseCase(repository),
+          ),
+          ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
+        ],
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.chevron_right_rounded).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Owner dashboard opened'), findsOneWidget);
+  });
+
+  testWidgets('owner dashboard page blocks without DASHBOARD.VIEW', (
+    tester,
+  ) async {
+    final repository = const _FakeWorkspaceRepository(
+      permissions: [StorePermission(permissionId: 2, code: 'STORE.VIEW')],
+    );
+    final router = GoRouter(
+      initialLocation: '/stores/5/dashboard',
+      routes: [
+        GoRoute(
+          path: '/my-stores',
+          name: RouteNames.myStores,
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('My stores opened'))),
+        ),
+        GoRoute(
+          path: '/stores/:storeId',
+          name: RouteNames.storeOverview,
+          builder: (context, state) => const StoreOverviewPage(storeId: 5),
+        ),
+        GoRoute(
+          path: '/stores/:storeId/dashboard',
+          name: RouteNames.storeOwnerDashboard,
+          builder: (context, state) => const OwnerDashboardPage(storeId: 5),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authNotifierProvider.overrideWith(
+            () => _FixedAuthNotifier(
+              const AuthState(
+                status: AuthStatus.authenticated,
+                accountType: AccountType.storeUser,
+                fullName: 'Test User',
+                email: 'user@quanoi.test',
+              ),
+            ),
+          ),
+          loadStoreAccessContextUseCaseProvider.overrideWithValue(
+            LoadStoreAccessContextUseCase(repository),
+          ),
+          loadMyStoresUseCaseProvider.overrideWithValue(
+            LoadMyStoresUseCase(repository),
+          ),
+          ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
+        ],
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bạn chưa có quyền xem tổng quan'), findsOneWidget);
+    expect(find.text('Tổng quan doanh thu'), findsOneWidget);
   });
 
   testWidgets('voice order item navigates to voice order route', (
@@ -1852,7 +1970,7 @@ void main() {
 
     expect(find.text('Danh sách cửa hàng'), findsOneWidget);
     expect(find.text('Buffet Poseidon'), findsOneWidget);
-    expect(find.text('Tổng quan hôm nay'), findsNothing);
+    expect(find.text('Tổng quan'), findsNothing);
   });
 
   testWidgets('store load error offers navigation back to my stores', (

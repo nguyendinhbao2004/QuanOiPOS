@@ -65,6 +65,10 @@ import '../../features/store_operations/order_management/domain/usecases/create_
 import '../../features/store_operations/order_management/domain/usecases/confirm_payment_use_case.dart';
 import '../../features/store_operations/order_management/domain/usecases/load_order_detail_use_case.dart';
 import '../../features/store_operations/order_management/domain/usecases/load_orders_by_table_session_use_case.dart';
+import '../../features/store_operations/owner_dashboard/data/datasources/owner_dashboard_remote_data_source.dart';
+import '../../features/store_operations/owner_dashboard/data/repositories/owner_dashboard_repository_impl.dart';
+import '../../features/store_operations/owner_dashboard/domain/repositories/owner_dashboard_repository.dart';
+import '../../features/store_operations/owner_dashboard/domain/usecases/load_owner_dashboard_insight_use_case.dart';
 import '../../features/store_operations/product_management/data/datasources/product_management_remote_data_source.dart';
 import '../../features/store_operations/product_management/data/repositories/product_management_repository_impl.dart';
 import '../../features/store_operations/product_management/domain/repositories/product_management_repository.dart';
@@ -387,6 +391,18 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<ConfirmPaymentUseCase>(
     () => ConfirmPaymentUseCase(locator<OrderManagementRepository>()),
+  );
+
+  // Owner dashboard
+  locator.registerLazySingleton<OwnerDashboardRemoteDataSource>(
+    () => OwnerDashboardRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<OwnerDashboardRepository>(
+    () =>
+        OwnerDashboardRepositoryImpl(locator<OwnerDashboardRemoteDataSource>()),
+  );
+  locator.registerLazySingleton<LoadOwnerDashboardInsightUseCase>(
+    () => LoadOwnerDashboardInsightUseCase(locator<OwnerDashboardRepository>()),
   );
 
   // Product management

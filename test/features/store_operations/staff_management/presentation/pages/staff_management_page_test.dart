@@ -58,7 +58,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back_rounded));
     await tester.pumpAndSettle();
 
-    expect(find.text('Tổng quan hôm nay'), findsOneWidget);
+    expect(find.text('Tổng quan'), findsOneWidget);
   });
 
   testWidgets('successful invite refreshes staff list on return', (
