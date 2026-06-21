@@ -38,6 +38,10 @@ import '../../features/subscription/domain/usecases/load_active_subscription_use
 import '../../features/subscription/domain/usecases/load_pending_subscription_purchase_use_case.dart';
 import '../../features/subscription/domain/usecases/load_subscription_plans_use_case.dart';
 import '../../features/subscription/domain/usecases/purchase_subscription_use_case.dart';
+import '../../features/system_admin/data/datasources/system_admin_dashboard_remote_data_source.dart';
+import '../../features/system_admin/data/repositories/system_admin_dashboard_repository_impl.dart';
+import '../../features/system_admin/domain/repositories/system_admin_dashboard_repository.dart';
+import '../../features/system_admin/domain/usecases/load_system_admin_dashboard_blocks_use_cases.dart';
 import '../../features/store_operations/table_management/data/datasources/table_management_remote_data_source.dart';
 import '../../features/store_operations/table_management/data/repositories/table_management_repository_impl.dart';
 import '../../features/store_operations/table_management/domain/repositories/table_management_repository.dart';
@@ -264,6 +268,46 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<CancelPendingSubscriptionPurchaseUseCase>(
     () => CancelPendingSubscriptionPurchaseUseCase(
       locator<SubscriptionRepository>(),
+    ),
+  );
+
+  // System admin dashboard
+  locator.registerLazySingleton<SystemAdminDashboardRemoteDataSource>(
+    () => SystemAdminDashboardRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<SystemAdminDashboardRepository>(
+    () => SystemAdminDashboardRepositoryImpl(
+      locator<SystemAdminDashboardRemoteDataSource>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminDashboardOverviewUseCase>(
+    () => LoadSystemAdminDashboardOverviewUseCase(
+      locator<SystemAdminDashboardRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminRevenueSeriesUseCase>(
+    () => LoadSystemAdminRevenueSeriesUseCase(
+      locator<SystemAdminDashboardRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminRevenueByPlanUseCase>(
+    () => LoadSystemAdminRevenueByPlanUseCase(
+      locator<SystemAdminDashboardRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminAccountGrowthUseCase>(
+    () => LoadSystemAdminAccountGrowthUseCase(
+      locator<SystemAdminDashboardRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminDistributionUseCase>(
+    () => LoadSystemAdminDistributionUseCase(
+      locator<SystemAdminDashboardRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminPaymentsUseCase>(
+    () => LoadSystemAdminPaymentsUseCase(
+      locator<SystemAdminDashboardRepository>(),
     ),
   );
 
