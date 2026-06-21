@@ -49,6 +49,7 @@ enum SessionCheckoutStatus {
   idle,
   creatingInvoice,
   confirmingPayment,
+  awaitingQrPayment,
   closingSession,
   completed,
   error,
@@ -137,6 +138,7 @@ enum OrderPaymentStatus {
   idle,
   creatingInvoice,
   confirmingPayment,
+  awaitingQrPayment,
   completed,
   error,
 }

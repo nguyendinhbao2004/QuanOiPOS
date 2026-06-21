@@ -20,4 +20,6 @@ abstract class OrderManagementRepository {
   });
 
   Future<void> confirmPayment(int paymentId);
+
+  Future<List<VietQrBank>> loadVietQrBanks();
 }

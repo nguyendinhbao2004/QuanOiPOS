@@ -9,6 +9,7 @@ import '../../domain/usecases/create_session_invoice_use_case.dart';
 import '../../domain/usecases/confirm_payment_use_case.dart';
 import '../../domain/usecases/load_order_detail_use_case.dart';
 import '../../domain/usecases/load_orders_by_table_session_use_case.dart';
+import '../../domain/usecases/load_viet_qr_banks_use_case.dart';
 import '../controllers/order_notifiers.dart';
 import '../controllers/order_states.dart';
 
@@ -49,6 +50,14 @@ final createOrderInvoiceUseCaseProvider = Provider<CreateOrderInvoiceUseCase>((
 
 final confirmPaymentUseCaseProvider = Provider<ConfirmPaymentUseCase>((ref) {
   return locator<ConfirmPaymentUseCase>();
+});
+
+final loadVietQrBanksUseCaseProvider = Provider<LoadVietQrBanksUseCase>((ref) {
+  return locator<LoadVietQrBanksUseCase>();
+});
+
+final vietQrBanksProvider = FutureProvider.autoDispose((ref) {
+  return ref.read(loadVietQrBanksUseCaseProvider)();
 });
 
 final orderListNotifierProvider = NotifierProvider.autoDispose

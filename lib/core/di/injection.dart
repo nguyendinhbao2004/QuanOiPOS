@@ -57,6 +57,7 @@ import '../../features/store_operations/table_management/domain/usecases/update_
 import '../../features/store_operations/table_management/domain/usecases/update_table_status_use_case.dart';
 import '../../features/store_operations/table_management/domain/usecases/update_table_use_case.dart';
 import '../../features/store_operations/order_management/data/datasources/order_management_remote_data_source.dart';
+import '../../features/store_operations/order_management/data/datasources/viet_qr_remote_data_source.dart';
 import '../../features/store_operations/order_management/data/repositories/order_management_repository_impl.dart';
 import '../../features/store_operations/order_management/domain/repositories/order_management_repository.dart';
 import '../../features/store_operations/order_management/domain/usecases/create_order_use_case.dart';
@@ -65,6 +66,7 @@ import '../../features/store_operations/order_management/domain/usecases/create_
 import '../../features/store_operations/order_management/domain/usecases/confirm_payment_use_case.dart';
 import '../../features/store_operations/order_management/domain/usecases/load_order_detail_use_case.dart';
 import '../../features/store_operations/order_management/domain/usecases/load_orders_by_table_session_use_case.dart';
+import '../../features/store_operations/order_management/domain/usecases/load_viet_qr_banks_use_case.dart';
 import '../../features/store_operations/owner_dashboard/data/datasources/owner_dashboard_remote_data_source.dart';
 import '../../features/store_operations/owner_dashboard/data/repositories/owner_dashboard_repository_impl.dart';
 import '../../features/store_operations/owner_dashboard/domain/repositories/owner_dashboard_repository.dart';
@@ -369,9 +371,15 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<OrderManagementRemoteDataSource>(
     () => OrderManagementRemoteDataSource(locator<DioClient>()),
   );
+  locator.registerLazySingleton<VietQrRemoteDataSource>(
+    () => VietQrRemoteDataSource(
+      Dio(BaseOptions(baseUrl: 'https://api.vietqr.io')),
+    ),
+  );
   locator.registerLazySingleton<OrderManagementRepository>(
     () => OrderManagementRepositoryImpl(
       locator<OrderManagementRemoteDataSource>(),
+      locator<VietQrRemoteDataSource>(),
     ),
   );
   locator.registerLazySingleton<LoadOrdersByTableSessionUseCase>(
@@ -391,6 +399,9 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<ConfirmPaymentUseCase>(
     () => ConfirmPaymentUseCase(locator<OrderManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadVietQrBanksUseCase>(
+    () => LoadVietQrBanksUseCase(locator<OrderManagementRepository>()),
   );
 
   // Owner dashboard

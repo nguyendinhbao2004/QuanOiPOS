@@ -3,12 +3,17 @@ import '../../domain/entities/order.dart';
 import '../../domain/entities/session_invoice.dart';
 import '../../domain/repositories/order_management_repository.dart';
 import '../datasources/order_management_remote_data_source.dart';
+import '../datasources/viet_qr_remote_data_source.dart';
 import '../models/create_order_request_model.dart';
 
 class OrderManagementRepositoryImpl implements OrderManagementRepository {
   final OrderManagementRemoteDataSource _remoteDataSource;
+  final VietQrRemoteDataSource _vietQrRemoteDataSource;
 
-  const OrderManagementRepositoryImpl(this._remoteDataSource);
+  const OrderManagementRepositoryImpl(
+    this._remoteDataSource,
+    this._vietQrRemoteDataSource,
+  );
 
   @override
   Future<List<Order>> loadOrdersByTableSession(int tableSessionId) async {
@@ -58,5 +63,11 @@ class OrderManagementRepositoryImpl implements OrderManagementRepository {
   @override
   Future<void> confirmPayment(int paymentId) {
     return _remoteDataSource.confirmPayment(paymentId);
+  }
+
+  @override
+  Future<List<VietQrBank>> loadVietQrBanks() async {
+    final models = await _vietQrRemoteDataSource.loadBanks();
+    return models.map((model) => model.toEntity()).toList();
   }
 }

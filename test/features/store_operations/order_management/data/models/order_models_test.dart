@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/store_operations/order_management/data/models/create_order_request_model.dart';
 import 'package:quan_oi/features/store_operations/order_management/data/models/order_model.dart';
 import 'package:quan_oi/features/store_operations/order_management/data/models/session_invoice_model.dart';
+import 'package:quan_oi/features/store_operations/order_management/data/models/viet_qr_bank_model.dart';
 import 'package:quan_oi/features/store_operations/order_management/domain/entities/create_order_draft.dart';
 import 'package:quan_oi/features/store_operations/order_management/domain/entities/order.dart';
 
@@ -86,13 +87,88 @@ void main() {
       'invoiceCode': 'INV-TS-501',
       'finalAmount': 145000,
       'payments': [
-        {'id': 1101, 'status': 1},
+        {'id': 1101, 'paymentMethod': 1, 'status': 1},
       ],
     }).toEntity();
 
     expect(invoice.invoiceId, 1001);
     expect(invoice.paymentId, 1101);
+    expect(invoice.paymentMethod.apiValue, 1);
     expect(invoice.invoiceCode, 'INV-TS-501');
     expect(invoice.finalAmount, 145000);
+  });
+
+  test('SessionInvoiceModel reads PayOS data for QR invoice response', () {
+    final invoice = SessionInvoiceModel.fromJson({
+      'invoiceId': 28,
+      'invoiceCode': 'INV-ORD-60-20260621021316718',
+      'finalAmount': 10000,
+      'payments': [
+        {'id': 28, 'paymentMethod': 2, 'status': 1},
+      ],
+      'payOSData': {
+        'bin': '970448',
+        'accountNumber': 'CAS0932958302',
+        'accountName': 'Nguyen Dinh Bao',
+        'amount': 10000,
+        'description': 'CSY4HNUEJC7 PAY 28',
+        'orderCode': 281782007998,
+        'currency': 'VND',
+        'paymentLinkId': 'af81765f288b4d758a14e260c6e8112b',
+        'status': 'PENDING',
+        'checkoutUrl':
+            'https://pay.payos.vn/web/af81765f288b4d758a14e260c6e8112b',
+        'qrCode': '000201010212',
+      },
+    }).toEntity();
+
+    expect(invoice.paymentMethod.apiValue, 2);
+    expect(invoice.payOsData?.bin, '970448');
+    expect(invoice.payOsData?.accountNumber, 'CAS0932958302');
+    expect(invoice.payOsData?.amount, 10000);
+    expect(invoice.payOsData?.description, 'CSY4HNUEJC7 PAY 28');
+  });
+
+  test('SessionInvoiceModel rejects QR invoice without PayOS data', () {
+    expect(
+      () => SessionInvoiceModel.fromJson({
+        'invoiceId': 28,
+        'invoiceCode': 'INV-ORD-60',
+        'finalAmount': 10000,
+        'payments': [
+          {'id': 28, 'paymentMethod': 2, 'status': 1},
+        ],
+      }),
+      throwsFormatException,
+    );
+  });
+
+  test('VietQrBankModel reads VietQR bank response aliases', () {
+    final bank = VietQrBankModel.fromJson({
+      'id': 26,
+      'name': 'Ngân hàng TMCP Phương Đông',
+      'code': 'OCB',
+      'bin': '970448',
+      'shortName': 'OCB',
+      'logo': 'https://cdn.vietqr.io/img/OCB.png',
+      'short_name': 'OCB',
+    }).toEntity();
+
+    expect(bank.bin, '970448');
+    expect(bank.shortName, 'OCB');
+    expect(bank.name, 'Ngân hàng TMCP Phương Đông');
+    expect(bank.logo, 'https://api.vietqr.io/img/OCB.png');
+  });
+
+  test('VietQrBankModel falls back to snake case short name', () {
+    final bank = VietQrBankModel.fromJson({
+      'name': 'Ngân hàng TMCP Phương Đông',
+      'code': 'OCB',
+      'bin': '970448',
+      'short_name': 'OCB',
+      'logo': 'https://cdn.vietqr.io/img/OCB.png',
+    }).toEntity();
+
+    expect(bank.shortName, 'OCB');
   });
 }

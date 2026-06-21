@@ -86,6 +86,14 @@ class SessionCheckoutNotifier
         method: method,
       );
 
+      if (method == PaymentMethod.qr) {
+        state = state.copyWith(
+          status: SessionCheckoutStatus.awaitingQrPayment,
+          invoice: invoice,
+        );
+        return;
+      }
+
       state = state.copyWith(
         status: SessionCheckoutStatus.confirmingPayment,
         invoice: invoice,
@@ -197,6 +205,14 @@ class OrderPaymentNotifier
           orderId: _access.orderId,
           method: method,
         );
+      }
+
+      if (method == PaymentMethod.qr) {
+        state = state.copyWith(
+          status: OrderPaymentStatus.awaitingQrPayment,
+          invoice: invoice,
+        );
+        return;
       }
 
       state = state.copyWith(

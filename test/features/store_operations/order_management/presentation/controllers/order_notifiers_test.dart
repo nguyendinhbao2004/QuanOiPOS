@@ -169,6 +169,47 @@ void main() {
     },
   );
 
+  test(
+    'qr checkout creates invoice without confirming or closing session',
+    () async {
+      final orderRepository = _FakeOrderRepository();
+      final tableRepository = _CheckoutTableRepository();
+      final container = ProviderContainer(
+        overrides: [
+          createSessionInvoiceUseCaseProvider.overrideWithValue(
+            CreateSessionInvoiceUseCase(orderRepository),
+          ),
+          confirmPaymentUseCaseProvider.overrideWithValue(
+            ConfirmPaymentUseCase(orderRepository),
+          ),
+          closeTableSessionUseCaseProvider.overrideWithValue(
+            CloseTableSessionUseCase(tableRepository),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      const access = OrderSessionAccess(
+        storeId: 5,
+        tableSessionId: 501,
+        isSessionOpen: true,
+        canViewOrder: true,
+        canCreateOrder: true,
+        canCloseSession: true,
+      );
+
+      await container
+          .read(sessionCheckoutNotifierProvider(access).notifier)
+          .checkout(PaymentMethod.qr);
+
+      final state = container.read(sessionCheckoutNotifierProvider(access));
+      expect(state.status, SessionCheckoutStatus.awaitingQrPayment);
+      expect(state.invoice?.payOsData?.accountNumber, 'CAS0932958302');
+      expect(orderRepository.invoiceCallCount, 1);
+      expect(orderRepository.confirmedPaymentIds, isEmpty);
+      expect(tableRepository.closedSessionIds, isEmpty);
+    },
+  );
+
   test('checkout retries only close after payment was confirmed', () async {
     final orderRepository = _FakeOrderRepository();
     final tableRepository = _CheckoutTableRepository(failFirstClose: true);
@@ -199,7 +240,7 @@ void main() {
     );
 
     await expectLater(
-      notifier.checkout(PaymentMethod.qr),
+      notifier.checkout(PaymentMethod.cash),
       throwsA(isA<Exception>()),
     );
     expect(
@@ -248,6 +289,32 @@ void main() {
     },
   );
 
+  test('qr order payment creates invoice without confirming payment', () async {
+    final orderRepository = _FakeOrderRepository();
+    final container = ProviderContainer(
+      overrides: [
+        createOrderInvoiceUseCaseProvider.overrideWithValue(
+          CreateOrderInvoiceUseCase(orderRepository),
+        ),
+        confirmPaymentUseCaseProvider.overrideWithValue(
+          ConfirmPaymentUseCase(orderRepository),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    const access = OrderDetailAccess(orderId: 7001, canViewOrder: true);
+
+    await container
+        .read(orderPaymentNotifierProvider(access).notifier)
+        .pay(PaymentMethod.qr);
+
+    final state = container.read(orderPaymentNotifierProvider(access));
+    expect(orderRepository.orderInvoiceIds, [7001]);
+    expect(orderRepository.confirmedPaymentIds, isEmpty);
+    expect(state.status, OrderPaymentStatus.awaitingQrPayment);
+    expect(state.invoice?.payOsData?.description, 'CSY4HNUEJC7 PAY 28');
+  });
+
   test('order payment retry reuses invoice after confirm failure', () async {
     final orderRepository = _FakeOrderRepository(failFirstConfirm: true);
     final container = ProviderContainer(
@@ -267,10 +334,10 @@ void main() {
     );
 
     await expectLater(
-      notifier.pay(PaymentMethod.qr),
+      notifier.pay(PaymentMethod.card),
       throwsA(isA<Exception>()),
     );
-    await notifier.pay(PaymentMethod.qr);
+    await notifier.pay(PaymentMethod.card);
 
     expect(orderRepository.orderInvoiceIds, [7001]);
     expect(orderRepository.confirmCallCount, 2);
@@ -321,11 +388,32 @@ class _FakeOrderRepository implements OrderManagementRepository {
     required PaymentMethod method,
   }) async {
     invoiceCallCount += 1;
-    return const SessionInvoice(
+    return _invoice(method, 'INV-TS-501');
+  }
+
+  SessionInvoice _invoice(PaymentMethod method, String invoiceCode) {
+    return SessionInvoice(
       invoiceId: 1001,
       paymentId: 1101,
-      invoiceCode: 'INV-TS-501',
+      paymentMethod: method,
+      invoiceCode: invoiceCode,
       finalAmount: 60000,
+      payOsData: method == PaymentMethod.qr
+          ? const PayOsPaymentData(
+              bin: '970448',
+              accountNumber: 'CAS0932958302',
+              accountName: 'Nguyen Dinh Bao',
+              amount: 10000,
+              description: 'CSY4HNUEJC7 PAY 28',
+              orderCode: 281782007998,
+              currency: 'VND',
+              paymentLinkId: 'af81765f288b4d758a14e260c6e8112b',
+              status: 'PENDING',
+              checkoutUrl:
+                  'https://pay.payos.vn/web/af81765f288b4d758a14e260c6e8112b',
+              qrCode: '000201010212',
+            )
+          : null,
     );
   }
 
@@ -344,13 +432,11 @@ class _FakeOrderRepository implements OrderManagementRepository {
     required PaymentMethod method,
   }) async {
     orderInvoiceIds.add(orderId);
-    return const SessionInvoice(
-      invoiceId: 1001,
-      paymentId: 1101,
-      invoiceCode: 'INV-ORDER-7001',
-      finalAmount: 60000,
-    );
+    return _invoice(method, 'INV-ORDER-7001');
   }
+
+  @override
+  Future<List<VietQrBank>> loadVietQrBanks() async => const [];
 }
 
 class _CheckoutTableRepository implements TableManagementRepository {
