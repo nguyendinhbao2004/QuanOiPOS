@@ -42,6 +42,10 @@ import '../../features/system_admin/data/datasources/system_admin_dashboard_remo
 import '../../features/system_admin/data/repositories/system_admin_dashboard_repository_impl.dart';
 import '../../features/system_admin/domain/repositories/system_admin_dashboard_repository.dart';
 import '../../features/system_admin/domain/usecases/load_system_admin_dashboard_blocks_use_cases.dart';
+import '../../features/system_admin/account_management/data/datasources/system_admin_account_management_remote_data_source.dart';
+import '../../features/system_admin/account_management/data/repositories/system_admin_account_management_repository_impl.dart';
+import '../../features/system_admin/account_management/domain/repositories/system_admin_account_management_repository.dart';
+import '../../features/system_admin/account_management/domain/usecases/system_admin_account_management_use_cases.dart';
 import '../../features/system_admin/package_management/data/datasources/system_admin_package_management_remote_data_source.dart';
 import '../../features/system_admin/package_management/data/repositories/system_admin_package_management_repository_impl.dart';
 import '../../features/system_admin/package_management/domain/repositories/system_admin_package_management_repository.dart';
@@ -362,6 +366,41 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<DeleteSystemAdminPlanUseCase>(
     () => DeleteSystemAdminPlanUseCase(
       locator<SystemAdminPackageManagementRepository>(),
+    ),
+  );
+
+  // System admin account management
+  locator.registerLazySingleton<SystemAdminAccountManagementRemoteDataSource>(
+    () => SystemAdminAccountManagementRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<SystemAdminAccountManagementRepository>(
+    () => SystemAdminAccountManagementRepositoryImpl(
+      locator<SystemAdminAccountManagementRemoteDataSource>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminAccountSummaryUseCase>(
+    () => LoadSystemAdminAccountSummaryUseCase(
+      locator<SystemAdminAccountManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminAccountsUseCase>(
+    () => LoadSystemAdminAccountsUseCase(
+      locator<SystemAdminAccountManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminAccountUseCase>(
+    () => LoadSystemAdminAccountUseCase(
+      locator<SystemAdminAccountManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<UpdateSystemAdminAccountStatusUseCase>(
+    () => UpdateSystemAdminAccountStatusUseCase(
+      locator<SystemAdminAccountManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadPendingRegistrationsUseCase>(
+    () => LoadPendingRegistrationsUseCase(
+      locator<SystemAdminAccountManagementRepository>(),
     ),
   );
 
