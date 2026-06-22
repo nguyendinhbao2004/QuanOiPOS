@@ -1,6 +1,7 @@
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
 import '../../domain/entities/product_ingredient.dart';
+import '../../domain/entities/product_image_upload.dart';
 import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
@@ -83,6 +84,7 @@ class ProductCreateInput {
   final List<ProductVariantDraft> variants;
   final List<int> toppingIds;
   final List<ProductRecipeDraft> recipes;
+  final ProductImageUpload? imageUpload;
 
   const ProductCreateInput({
     required this.name,
@@ -96,6 +98,7 @@ class ProductCreateInput {
     required this.variants,
     required this.toppingIds,
     this.recipes = const [],
+    this.imageUpload,
   });
 }
 

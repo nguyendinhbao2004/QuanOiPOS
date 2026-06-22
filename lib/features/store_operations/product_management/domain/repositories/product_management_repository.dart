@@ -1,5 +1,6 @@
 import '../entities/product.dart';
 import '../entities/product_category.dart';
+import '../entities/product_image_upload.dart';
 import '../entities/product_ingredient.dart';
 import '../entities/product_recipe_draft.dart';
 import '../entities/product_topping.dart';
@@ -65,7 +66,7 @@ abstract class ProductManagementRepository {
     required int storeId,
     required int categoryId,
     required String name,
-    required String imageUrl,
+    ProductImageUpload? imageUpload,
     required String description,
     required int preparationTime,
     required int price,
@@ -78,9 +79,11 @@ abstract class ProductManagementRepository {
 
   Future<Product> updateProduct({
     required int productId,
+    required int storeId,
     required int categoryId,
     required String name,
-    required String imageUrl,
+    required String existingImageUrl,
+    ProductImageUpload? imageUpload,
     required String description,
     required int preparationTime,
     required int price,

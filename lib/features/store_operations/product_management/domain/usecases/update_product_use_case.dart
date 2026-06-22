@@ -1,4 +1,5 @@
 import '../entities/product.dart';
+import '../entities/product_image_upload.dart';
 import '../entities/product_recipe_draft.dart';
 import '../entities/product_type.dart';
 import '../entities/product_variant_draft.dart';
@@ -11,9 +12,11 @@ class UpdateProductUseCase {
 
   Future<Product> call({
     required int productId,
+    required int storeId,
     required int categoryId,
     required String name,
-    required String imageUrl,
+    required String existingImageUrl,
+    ProductImageUpload? imageUpload,
     required String description,
     required int preparationTime,
     required int price,
@@ -25,9 +28,11 @@ class UpdateProductUseCase {
   }) {
     return _repository.updateProduct(
       productId: productId,
+      storeId: storeId,
       categoryId: categoryId,
       name: name,
-      imageUrl: imageUrl,
+      existingImageUrl: existingImageUrl,
+      imageUpload: imageUpload,
       description: description,
       preparationTime: preparationTime,
       price: price,

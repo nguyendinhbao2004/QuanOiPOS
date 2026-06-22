@@ -1,7 +1,9 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../config/router_config.dart';
@@ -13,6 +15,7 @@ import '../../../../workspace_context/presentation/providers/workspace_context_p
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
 import '../../domain/entities/product_ingredient.dart';
+import '../../domain/entities/product_image_upload.dart';
 import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
@@ -47,6 +50,7 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
   int _nextVariantOptionId = 1;
   final Set<int> _selectedToppingIds = {};
   bool _didPrefillProduct = false;
+  _SelectedProductImage? _selectedImage;
 
   @override
   void dispose() {
@@ -163,7 +167,11 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
             selectedToppingIds: _selectedToppingIds,
             recipeRows: _recipeRows,
             didPrefillProduct: _didPrefillProduct,
+            selectedImage: _selectedImage,
             onEditProductLoaded: _prefillProduct,
+            onPickImage: _pickImage,
+            onCaptureImage: _captureImage,
+            onClearSelectedImage: () => setState(() => _selectedImage = null),
             onCategoryChanged: (value) => setState(() => _categoryId = value),
             onTypeChanged: (value) => setState(() => _type = value),
             onMultipleSizesChanged: (value) {
@@ -246,6 +254,59 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
         ..addAll(product.recipes.map(_RecipeRowState.fromDraft));
     });
   }
+
+  Future<void> _pickImage() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+        withData: true,
+      );
+      final file = result != null && result.files.isNotEmpty
+          ? result.files.first
+          : null;
+      if (file == null) {
+        return;
+      }
+
+      final bytes = file.bytes ?? await XFile(file.path!).readAsBytes();
+      _setSelectedImage(file.name, bytes);
+    } catch (_) {
+      if (mounted) {
+        _showMessage(context, 'Không thể chọn ảnh. Vui lòng thử lại.');
+      }
+    }
+  }
+
+  Future<void> _captureImage() async {
+    try {
+      final file = await ImagePicker().pickImage(source: ImageSource.camera);
+      if (file == null) {
+        return;
+      }
+
+      _setSelectedImage(file.name, await file.readAsBytes());
+    } catch (_) {
+      if (mounted) {
+        _showMessage(context, 'Không thể chụp ảnh. Vui lòng thử lại.');
+      }
+    }
+  }
+
+  void _setSelectedImage(String fileName, Uint8List bytes) {
+    final contentType = _contentTypeFromFileName(fileName);
+    if (contentType == null) {
+      _showMessage(context, 'Chỉ hỗ trợ ảnh JPEG, PNG hoặc WebP.');
+      return;
+    }
+
+    setState(() {
+      _selectedImage = _SelectedProductImage(
+        bytes: bytes,
+        contentType: contentType,
+      );
+    });
+  }
 }
 
 class _AccessReadyContent extends ConsumerWidget {
@@ -266,7 +327,11 @@ class _AccessReadyContent extends ConsumerWidget {
   final Set<int> selectedToppingIds;
   final List<_RecipeRowState> recipeRows;
   final bool didPrefillProduct;
+  final _SelectedProductImage? selectedImage;
   final ValueChanged<Product> onEditProductLoaded;
+  final Future<void> Function() onPickImage;
+  final Future<void> Function() onCaptureImage;
+  final VoidCallback onClearSelectedImage;
   final ValueChanged<int?> onCategoryChanged;
   final ValueChanged<ProductType> onTypeChanged;
   final ValueChanged<bool> onMultipleSizesChanged;
@@ -295,7 +360,11 @@ class _AccessReadyContent extends ConsumerWidget {
     required this.selectedToppingIds,
     required this.recipeRows,
     required this.didPrefillProduct,
+    required this.selectedImage,
     required this.onEditProductLoaded,
+    required this.onPickImage,
+    required this.onCaptureImage,
+    required this.onClearSelectedImage,
     required this.onCategoryChanged,
     required this.onTypeChanged,
     required this.onMultipleSizesChanged,
@@ -387,6 +456,7 @@ class _AccessReadyContent extends ConsumerWidget {
               defaultVariantOptionId: defaultVariantOptionId,
               selectedToppingIds: selectedToppingIds,
               recipeRows: recipeRows,
+              selectedImage: selectedImage,
               access: access,
               notifier: notifier,
               onCategoryChanged: onCategoryChanged,
@@ -398,7 +468,11 @@ class _AccessReadyContent extends ConsumerWidget {
               onToppingChanged: onToppingChanged,
               onToppingSelectionChanged: onToppingSelectionChanged,
               onRecipeRowsChanged: onRecipeRowsChanged,
-              onSubmit: () => _submit(context, state, notifier, isEditing),
+              onPickImage: onPickImage,
+              onCaptureImage: onCaptureImage,
+              onClearSelectedImage: onClearSelectedImage,
+              onSubmit: () =>
+                  _submit(context, state, notifier, isEditing, selectedImage),
               onDelete: isEditing
                   ? () => _confirmDelete(context, state, notifier)
                   : null,
@@ -414,6 +488,7 @@ class _AccessReadyContent extends ConsumerWidget {
     ProductCreateState state,
     ProductCreateNotifier notifier,
     bool isEditing,
+    _SelectedProductImage? selectedImage,
   ) async {
     if (!(formKey.currentState?.validate() ?? false)) {
       return;
@@ -439,6 +514,7 @@ class _AccessReadyContent extends ConsumerWidget {
         variants: _buildVariants(),
         toppingIds: selectedToppingIds.toList(),
         recipes: _buildRecipes(),
+        imageUpload: selectedImage?.toUpload(),
       );
       if (isEditing) {
         await notifier.update(input);
@@ -548,6 +624,7 @@ class _ReadyCreateForm extends StatelessWidget {
   final int? defaultVariantOptionId;
   final Set<int> selectedToppingIds;
   final List<_RecipeRowState> recipeRows;
+  final _SelectedProductImage? selectedImage;
   final ProductCreateAccess access;
   final ProductCreateNotifier notifier;
   final ValueChanged<int?> onCategoryChanged;
@@ -559,6 +636,9 @@ class _ReadyCreateForm extends StatelessWidget {
   final void Function(int toppingId, bool isSelected) onToppingChanged;
   final ValueChanged<Set<int>> onToppingSelectionChanged;
   final ValueChanged<List<_RecipeRowState>> onRecipeRowsChanged;
+  final Future<void> Function() onPickImage;
+  final Future<void> Function() onCaptureImage;
+  final VoidCallback onClearSelectedImage;
   final VoidCallback onSubmit;
   final VoidCallback? onDelete;
 
@@ -577,6 +657,7 @@ class _ReadyCreateForm extends StatelessWidget {
     required this.defaultVariantOptionId,
     required this.selectedToppingIds,
     required this.recipeRows,
+    required this.selectedImage,
     required this.access,
     required this.notifier,
     required this.onCategoryChanged,
@@ -588,6 +669,9 @@ class _ReadyCreateForm extends StatelessWidget {
     required this.onToppingChanged,
     required this.onToppingSelectionChanged,
     required this.onRecipeRowsChanged,
+    required this.onPickImage,
+    required this.onCaptureImage,
+    required this.onClearSelectedImage,
     required this.onSubmit,
     this.onDelete,
   });
@@ -612,7 +696,14 @@ class _ReadyCreateForm extends StatelessWidget {
                 AppConstants.spacingXxl,
               ),
               children: [
-                const _ImagePlaceholderSection(),
+                _ProductImageSection(
+                  selectedImage: selectedImage,
+                  existingImageUrl: state.editingProduct?.imageUrl ?? '',
+                  isSubmitting: isSubmitting,
+                  onPickImage: onPickImage,
+                  onCaptureImage: onCaptureImage,
+                  onClearSelectedImage: onClearSelectedImage,
+                ),
                 const SizedBox(height: AppConstants.spacingLg),
                 _SectionTitle('1. Thông tin món'),
                 const SizedBox(height: AppConstants.spacingMd),
@@ -952,38 +1043,108 @@ class _CreateHeader extends StatelessWidget {
   }
 }
 
-class _ImagePlaceholderSection extends StatelessWidget {
-  const _ImagePlaceholderSection();
+class _ProductImageSection extends StatelessWidget {
+  final _SelectedProductImage? selectedImage;
+  final String existingImageUrl;
+  final bool isSubmitting;
+  final Future<void> Function() onPickImage;
+  final Future<void> Function() onCaptureImage;
+  final VoidCallback onClearSelectedImage;
+
+  const _ProductImageSection({
+    required this.selectedImage,
+    required this.existingImageUrl,
+    required this.isSubmitting,
+    required this.onPickImage,
+    required this.onCaptureImage,
+    required this.onClearSelectedImage,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final hasSelectedImage = selectedImage != null;
+    final hasExistingImage = existingImageUrl.trim().isNotEmpty;
+
     return Container(
-      color: AppColors.surface,
+      height: 116,
+      padding: const EdgeInsets.all(AppConstants.spacingSm),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Row(
-        children: const [
-          _ImageActionPlaceholder(
-            icon: Icons.image_outlined,
-            label: 'Thêm ảnh',
+        children: [
+          if (hasSelectedImage || hasExistingImage)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              child: SizedBox(
+                width: 98,
+                height: 98,
+                child: hasSelectedImage
+                    ? Image.memory(selectedImage!.bytes, fit: BoxFit.cover)
+                    : Image.network(
+                        existingImageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) =>
+                            const _ImagePreviewFallback(),
+                      ),
+              ),
+            )
+          else
+            const _ImagePreviewFallback(),
+          const SizedBox(width: AppConstants.spacingMd),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Tooltip(
+                  message: hasSelectedImage || hasExistingImage
+                      ? 'Thay ảnh sản phẩm'
+                      : 'Thêm ảnh sản phẩm',
+                  child: IconButton.outlined(
+                    key: const Key('product_pick_image_button'),
+                    onPressed: isSubmitting ? null : onPickImage,
+                    icon: const Icon(Icons.image_outlined),
+                  ),
+                ),
+                const SizedBox(width: AppConstants.spacingSm),
+                Tooltip(
+                  message: 'Chụp ảnh sản phẩm',
+                  child: IconButton.outlined(
+                    key: const Key('product_capture_image_button'),
+                    onPressed: isSubmitting ? null : onCaptureImage,
+                    icon: const Icon(Icons.camera_alt_outlined),
+                  ),
+                ),
+                if (hasSelectedImage) ...[
+                  const SizedBox(width: AppConstants.spacingSm),
+                  Tooltip(
+                    message: 'Giữ ảnh cũ',
+                    child: IconButton.outlined(
+                      key: const Key('product_clear_selected_image_button'),
+                      onPressed: isSubmitting ? null : onClearSelectedImage,
+                      icon: const Icon(Icons.undo_rounded),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          SizedBox(width: AppConstants.spacingMd),
-          _ImageActionPlaceholder(icon: Icons.camera_alt, label: 'Chụp ảnh'),
         ],
       ),
     );
   }
 }
 
-class _ImageActionPlaceholder extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _ImageActionPlaceholder({required this.icon, required this.label});
+class _ImagePreviewFallback extends StatelessWidget {
+  const _ImagePreviewFallback();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 116,
-      height: 116,
+      width: 98,
+      height: 98,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -996,13 +1157,34 @@ class _ImageActionPlaceholder extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: AppColors.info),
+          const Icon(Icons.image_outlined, color: AppColors.info),
           const SizedBox(height: AppConstants.spacingSm),
-          Text(label, style: AppTextStyles.labelSm),
+          Text('Chưa có ảnh', style: AppTextStyles.labelSm),
         ],
       ),
     );
   }
+}
+
+class _SelectedProductImage {
+  final Uint8List bytes;
+  final String contentType;
+
+  const _SelectedProductImage({required this.bytes, required this.contentType});
+
+  ProductImageUpload toUpload() {
+    return ProductImageUpload(bytes: bytes, contentType: contentType);
+  }
+}
+
+String? _contentTypeFromFileName(String fileName) {
+  final extension = fileName.split('.').last.toLowerCase();
+  return switch (extension) {
+    'jpg' || 'jpeg' => 'image/jpeg',
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    _ => null,
+  };
 }
 
 class _SectionTitle extends StatelessWidget {

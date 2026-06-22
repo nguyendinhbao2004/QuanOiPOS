@@ -136,7 +136,7 @@ class ProductCreateNotifier
         storeId: _access.storeId,
         categoryId: input.categoryId,
         name: cleanName,
-        imageUrl: '',
+        imageUpload: input.imageUpload,
         description: input.description.trim(),
         preparationTime: input.preparationTime,
         price: price,
@@ -192,9 +192,11 @@ class ProductCreateNotifier
     try {
       final product = await ref.read(updateProductUseCaseProvider)(
         productId: editingProduct.id,
+        storeId: _access.storeId,
         categoryId: input.categoryId,
         name: cleanName,
-        imageUrl: editingProduct.imageUrl,
+        existingImageUrl: editingProduct.imageUrl,
+        imageUpload: input.imageUpload,
         description: input.description.trim(),
         preparationTime: input.preparationTime,
         price: price,

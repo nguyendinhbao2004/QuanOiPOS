@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_category.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_ingredient.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_image_upload.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_recipe_draft.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_topping.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
@@ -884,7 +885,7 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
     required int storeId,
     required int categoryId,
     required String name,
-    required String imageUrl,
+    ProductImageUpload? imageUpload,
     required String description,
     required int preparationTime,
     required int price,
@@ -906,7 +907,7 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
       categoryId: categoryId,
       categoryName: 'Đồ uống',
       name: name,
-      imageUrl: imageUrl,
+      imageUrl: imageUpload == null ? '' : 'https://cdn.example/product.jpg',
       description: description,
       preparationTime: preparationTime,
       price: price,
@@ -919,9 +920,11 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   @override
   Future<Product> updateProduct({
     required int productId,
+    required int storeId,
     required int categoryId,
     required String name,
-    required String imageUrl,
+    required String existingImageUrl,
+    ProductImageUpload? imageUpload,
     required String description,
     required int preparationTime,
     required int price,
@@ -943,7 +946,9 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
       categoryId: categoryId,
       categoryName: 'Đồ uống',
       name: name,
-      imageUrl: imageUrl,
+      imageUrl: imageUpload == null
+          ? existingImageUrl
+          : 'https://cdn.example/product.jpg',
       description: description,
       preparationTime: preparationTime,
       price: price,

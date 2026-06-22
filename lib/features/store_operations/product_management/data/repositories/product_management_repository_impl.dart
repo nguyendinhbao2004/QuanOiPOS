@@ -1,6 +1,7 @@
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
 import '../../domain/entities/product_ingredient.dart';
+import '../../domain/entities/product_image_upload.dart';
 import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
@@ -168,7 +169,7 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     required int storeId,
     required int categoryId,
     required String name,
-    required String imageUrl,
+    ProductImageUpload? imageUpload,
     required String description,
     required int preparationTime,
     required int price,
@@ -178,6 +179,12 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     required List<int> toppingIds,
     required List<ProductRecipeDraft> recipes,
   }) async {
+    final imageUrl = imageUpload == null
+        ? ''
+        : await _remoteDataSource.uploadProductImage(
+            storeId: storeId,
+            image: imageUpload,
+          );
     final product = await _remoteDataSource.createProduct(
       CreateProductRequestModel(
         storeId: storeId,
@@ -200,9 +207,11 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
   @override
   Future<Product> updateProduct({
     required int productId,
+    required int storeId,
     required int categoryId,
     required String name,
-    required String imageUrl,
+    required String existingImageUrl,
+    ProductImageUpload? imageUpload,
     required String description,
     required int preparationTime,
     required int price,
@@ -212,6 +221,12 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     required List<int> toppingIds,
     required List<ProductRecipeDraft> recipes,
   }) async {
+    final imageUrl = imageUpload == null
+        ? existingImageUrl
+        : await _remoteDataSource.uploadProductImage(
+            storeId: storeId,
+            image: imageUpload,
+          );
     final product = await _remoteDataSource.updateProduct(
       productId: productId,
       request: UpdateProductRequestModel(

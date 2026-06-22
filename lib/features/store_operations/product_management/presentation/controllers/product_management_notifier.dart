@@ -123,7 +123,7 @@ class ProductManagementNotifier
       storeId: _access.storeId,
       categoryId: categoryId,
       name: name,
-      imageUrl: imageUrl,
+      imageUpload: null,
       description: description,
       preparationTime: preparationTime,
       price: price,

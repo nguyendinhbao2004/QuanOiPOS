@@ -1,4 +1,5 @@
 import '../entities/product.dart';
+import '../entities/product_image_upload.dart';
 import '../entities/product_recipe_draft.dart';
 import '../entities/product_type.dart';
 import '../entities/product_variant_draft.dart';
@@ -13,7 +14,7 @@ class CreateProductUseCase {
     required int storeId,
     required int categoryId,
     required String name,
-    required String imageUrl,
+    ProductImageUpload? imageUpload,
     required String description,
     required int preparationTime,
     required int price,
@@ -27,7 +28,7 @@ class CreateProductUseCase {
       storeId: storeId,
       categoryId: categoryId,
       name: name,
-      imageUrl: imageUrl,
+      imageUpload: imageUpload,
       description: description,
       preparationTime: preparationTime,
       price: price,

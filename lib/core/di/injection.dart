@@ -555,7 +555,7 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
 
   // Product management
   locator.registerLazySingleton<ProductManagementRemoteDataSource>(
-    () => ProductManagementRemoteDataSource(locator<DioClient>()),
+    () => ProductManagementRemoteDataSource(locator<DioClient>(), Dio()),
   );
   locator.registerLazySingleton<ProductManagementRepository>(
     () => ProductManagementRepositoryImpl(

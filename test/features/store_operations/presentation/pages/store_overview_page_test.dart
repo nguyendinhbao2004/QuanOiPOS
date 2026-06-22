@@ -84,7 +84,8 @@ void main() {
 
     expect(find.text('Bạn chưa có quyền xem quản lý bàn'), findsOneWidget);
     expect(find.text('Bạn chưa có quyền xem quản lý kho'), findsNothing);
-    expect(find.text('Bạn chưa có quyền cập nhật cửa hàng'), findsWidgets);
+    expect(find.text('Cài đặt'), findsNothing);
+    expect(find.text('Khuyến mãi'), findsNothing);
   });
 
   testWidgets('store overview enables inventory without INVENTORY.VIEW', (

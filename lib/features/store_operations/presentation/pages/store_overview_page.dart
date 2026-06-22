@@ -188,7 +188,6 @@ class _ReadyView extends ConsumerWidget {
             const SizedBox(height: AppConstants.spacingLg),
             _FeatureGrid(
               storeId: accessContext.store.id,
-              canUpdateStore: state.can(AppPermissionCodes.storeUpdate),
               canViewProduct: state.can(AppPermissionCodes.productView),
               canViewArea: state.can(AppPermissionCodes.areaView),
               canManageStaff:
@@ -304,14 +303,12 @@ class _ProfitAnalysisCard extends StatelessWidget {
 
 class _FeatureGrid extends StatelessWidget {
   final int storeId;
-  final bool canUpdateStore;
   final bool canViewProduct;
   final bool canViewArea;
   final bool canManageStaff;
 
   const _FeatureGrid({
     required this.storeId,
-    required this.canUpdateStore,
     required this.canViewProduct,
     required this.canViewArea,
     required this.canManageStaff,
@@ -330,28 +327,6 @@ class _FeatureGrid extends StatelessWidget {
           pathParameters: {'storeId': storeId.toString()},
         ),
       ),
-      const _FeatureItemData('Bán hàng', Icons.shopping_cart_outlined),
-      _FeatureItemData(
-        'Order giọng nói',
-        Icons.graphic_eq_rounded,
-        isEnabled: true,
-        onTap: () => context.goNamed(
-          RouteNames.storeVoiceOrder,
-          pathParameters: {'storeId': storeId.toString()},
-        ),
-      ),
-      const _FeatureItemData('Báo cáo', Icons.bar_chart_rounded),
-      const _FeatureItemData('Thu chi', Icons.payments_outlined),
-      const _FeatureItemData('Khuyến mãi', Icons.local_offer_outlined),
-      _FeatureItemData(
-        'Quản lý kho',
-        Icons.apps_rounded,
-        isEnabled: true,
-        onTap: () => context.goNamed(
-          RouteNames.storeInventoryManagement,
-          pathParameters: {'storeId': storeId.toString()},
-        ),
-      ),
       _FeatureItemData(
         'Quản lý bàn',
         Icons.table_restaurant_outlined,
@@ -363,10 +338,24 @@ class _FeatureGrid extends StatelessWidget {
         ),
       ),
       _FeatureItemData(
-        'Cài đặt',
-        Icons.settings_outlined,
-        isEnabled: canUpdateStore,
-        disabledMessage: 'Bạn chưa có quyền cập nhật cửa hàng',
+        'Order giọng nói',
+        Icons.graphic_eq_rounded,
+        isEnabled: true,
+        onTap: () => context.goNamed(
+          RouteNames.storeVoiceOrder,
+          pathParameters: {'storeId': storeId.toString()},
+        ),
+      ),
+      const _FeatureItemData('Báo cáo', Icons.bar_chart_rounded),
+      const _FeatureItemData('Thu chi', Icons.payments_outlined),
+      _FeatureItemData(
+        'Quản lý kho',
+        Icons.apps_rounded,
+        isEnabled: true,
+        onTap: () => context.goNamed(
+          RouteNames.storeInventoryManagement,
+          pathParameters: {'storeId': storeId.toString()},
+        ),
       ),
       _FeatureItemData(
         'Nhân viên',

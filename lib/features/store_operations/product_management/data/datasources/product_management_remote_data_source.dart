@@ -1,14 +1,73 @@
+import 'package:dio/dio.dart';
+
 import '../../../../../core/network/dio/dio_client.dart';
+import '../../domain/entities/product_image_upload.dart';
 import '../models/product_category_model.dart';
 import '../models/product_ingredient_model.dart';
+import '../models/product_image_upload_url_model.dart';
 import '../models/product_management_request_models.dart';
 import '../models/product_model.dart';
 import '../models/product_topping_model.dart';
 
 class ProductManagementRemoteDataSource {
   final DioClient _dioClient;
+  final Dio _imageUploadDio;
 
-  const ProductManagementRemoteDataSource(this._dioClient);
+  ProductManagementRemoteDataSource(this._dioClient, this._imageUploadDio);
+
+  Future<String> uploadProductImage({
+    required int storeId,
+    required ProductImageUpload image,
+  }) async {
+    if (!image.isSupported) {
+      throw Exception('Định dạng ảnh không được hỗ trợ');
+    }
+
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        final uploadTarget = await _requestProductImageUploadUrl(
+          storeId: storeId,
+          contentType: image.contentType,
+        );
+        await _imageUploadDio.put<void>(
+          uploadTarget.uploadUrl,
+          data: image.bytes,
+          options: Options(
+            contentType: image.contentType,
+            responseType: ResponseType.plain,
+          ),
+        );
+        return uploadTarget.imageUrl;
+      } catch (_) {
+        if (attempt == 1) {
+          throw Exception('Không thể tải ảnh lên. Vui lòng thử lại.');
+        }
+      }
+    }
+
+    throw Exception('Không thể tải ảnh lên. Vui lòng thử lại.');
+  }
+
+  Future<ProductImageUploadUrlModel> _requestProductImageUploadUrl({
+    required int storeId,
+    required String contentType,
+  }) async {
+    final response = await _dioClient.postResponse<ProductImageUploadUrlModel>(
+      '/products/image-upload-url',
+      data: {'storeId': storeId, 'contentType': contentType},
+      dataFromJson: ProductImageUploadUrlModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể chuẩn bị tải ảnh sản phẩm',
+      );
+    }
+
+    return response.data!;
+  }
 
   Future<List<ProductCategoryModel>> getCategoriesByStore(int storeId) async {
     final response = await _dioClient.getResponse<List<ProductCategoryModel>>(

@@ -26,9 +26,13 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
-		<key>NSMicrophoneUsageDescription</key>
-		<string>Quán Ơi cần microphone để ghi âm đơn hàng bằng giọng nói.</string>
-		<key>NSSpeechRecognitionUsageDescription</key>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Quán Ơi cần microphone để ghi âm đơn hàng bằng giọng nói.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Quán Ơi cần camera để chụp ảnh sản phẩm.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Quán Ơi cần truy cập thư viện ảnh để chọn ảnh sản phẩm.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
 		<string>Quán Ơi dùng nhận diện giọng nói để hiển thị nội dung bạn đang đọc.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
