@@ -42,6 +42,10 @@ import '../../features/system_admin/data/datasources/system_admin_dashboard_remo
 import '../../features/system_admin/data/repositories/system_admin_dashboard_repository_impl.dart';
 import '../../features/system_admin/domain/repositories/system_admin_dashboard_repository.dart';
 import '../../features/system_admin/domain/usecases/load_system_admin_dashboard_blocks_use_cases.dart';
+import '../../features/system_admin/package_management/data/datasources/system_admin_package_management_remote_data_source.dart';
+import '../../features/system_admin/package_management/data/repositories/system_admin_package_management_repository_impl.dart';
+import '../../features/system_admin/package_management/domain/repositories/system_admin_package_management_repository.dart';
+import '../../features/system_admin/package_management/domain/usecases/system_admin_package_management_use_cases.dart';
 import '../../features/store_operations/table_management/data/datasources/table_management_remote_data_source.dart';
 import '../../features/store_operations/table_management/data/repositories/table_management_repository_impl.dart';
 import '../../features/store_operations/table_management/domain/repositories/table_management_repository.dart';
@@ -308,6 +312,56 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<LoadSystemAdminPaymentsUseCase>(
     () => LoadSystemAdminPaymentsUseCase(
       locator<SystemAdminDashboardRepository>(),
+    ),
+  );
+
+  // System admin package management
+  locator.registerLazySingleton<SystemAdminPackageManagementRemoteDataSource>(
+    () => SystemAdminPackageManagementRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<SystemAdminPackageManagementRepository>(
+    () => SystemAdminPackageManagementRepositoryImpl(
+      locator<SystemAdminPackageManagementRemoteDataSource>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminPlanSummaryUseCase>(
+    () => LoadSystemAdminPlanSummaryUseCase(
+      locator<SystemAdminPackageManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminPlansUseCase>(
+    () => LoadSystemAdminPlansUseCase(
+      locator<SystemAdminPackageManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadSystemAdminPlanUseCase>(
+    () => LoadSystemAdminPlanUseCase(
+      locator<SystemAdminPackageManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<CreateSystemAdminPlanUseCase>(
+    () => CreateSystemAdminPlanUseCase(
+      locator<SystemAdminPackageManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<UpdateSystemAdminPlanUseCase>(
+    () => UpdateSystemAdminPlanUseCase(
+      locator<SystemAdminPackageManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<ActivateSystemAdminPlanUseCase>(
+    () => ActivateSystemAdminPlanUseCase(
+      locator<SystemAdminPackageManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<DeactivateSystemAdminPlanUseCase>(
+    () => DeactivateSystemAdminPlanUseCase(
+      locator<SystemAdminPackageManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<DeleteSystemAdminPlanUseCase>(
+    () => DeleteSystemAdminPlanUseCase(
+      locator<SystemAdminPackageManagementRepository>(),
     ),
   );
 

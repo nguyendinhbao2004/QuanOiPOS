@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/index.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../package_management/presentation/widgets/system_admin_package_management.dart';
 import '../widgets/system_admin_dashboard.dart';
 
 enum _SystemAdminSection { dashboard, packages, accounts }
@@ -356,60 +357,9 @@ class _SystemAdminContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (section) {
       _SystemAdminSection.dashboard => const SystemAdminDashboard(),
-      _SystemAdminSection.packages => const _PackageSection(),
+      _SystemAdminSection.packages => const SystemAdminPackageManagement(),
       _SystemAdminSection.accounts => const _AccountSection(),
     };
-  }
-}
-
-class _PackageSection extends StatelessWidget {
-  const _PackageSection();
-
-  static const List<_MetricData> _metrics = [
-    _MetricData(
-      label: 'Tổng số gói',
-      value: '6',
-      helper: 'Bao gồm trial, basic, pro',
-      icon: Icons.inventory_2_outlined,
-      color: AppColors.primary,
-    ),
-    _MetricData(
-      label: 'Gói đang bán',
-      value: '4',
-      helper: '2 gói đang tạm ẩn',
-      icon: Icons.check_circle_outline,
-      color: AppColors.success,
-    ),
-    _MetricData(
-      label: 'Doanh thu gói',
-      value: '86.2M',
-      helper: 'Trong tháng hiện tại',
-      icon: Icons.trending_up,
-      color: AppColors.info,
-    ),
-  ];
-
-  static const List<_StatusData> _statuses = [
-    _StatusData(label: 'Trial', value: '126 cửa hàng', color: AppColors.info),
-    _StatusData(
-      label: 'Basic',
-      value: '214 cửa hàng',
-      color: AppColors.primary,
-    ),
-    _StatusData(label: 'Pro', value: '98 cửa hàng', color: AppColors.success),
-    _StatusData(label: 'Tạm ẩn', value: '2 gói', color: AppColors.warning),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _MetricGrid(metrics: _metrics),
-        const SizedBox(height: AppConstants.spacingLg),
-        _StatusPanel(title: 'Tình trạng gói dịch vụ', items: _statuses),
-      ],
-    );
   }
 }
 
