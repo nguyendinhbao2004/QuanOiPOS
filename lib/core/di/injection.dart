@@ -79,6 +79,14 @@ import '../../features/store_operations/order_management/domain/usecases/confirm
 import '../../features/store_operations/order_management/domain/usecases/load_order_detail_use_case.dart';
 import '../../features/store_operations/order_management/domain/usecases/load_orders_by_table_session_use_case.dart';
 import '../../features/store_operations/order_management/domain/usecases/load_viet_qr_banks_use_case.dart';
+import '../../features/store_operations/kitchen/data/datasources/kitchen_remote_data_source.dart';
+import '../../features/store_operations/kitchen/data/repositories/kitchen_repository_impl.dart';
+import '../../features/store_operations/kitchen/domain/repositories/kitchen_repository.dart';
+import '../../features/store_operations/kitchen/domain/usecases/bulk_cancel_kitchen_items_use_case.dart';
+import '../../features/store_operations/kitchen/domain/usecases/bulk_update_kitchen_items_use_case.dart';
+import '../../features/store_operations/kitchen/domain/usecases/cancel_kitchen_item_use_case.dart';
+import '../../features/store_operations/kitchen/domain/usecases/load_kitchen_items_use_case.dart';
+import '../../features/store_operations/kitchen/domain/usecases/update_kitchen_item_status_use_case.dart';
 import '../../features/store_operations/owner_dashboard/data/datasources/owner_dashboard_remote_data_source.dart';
 import '../../features/store_operations/owner_dashboard/data/repositories/owner_dashboard_repository_impl.dart';
 import '../../features/store_operations/owner_dashboard/domain/repositories/owner_dashboard_repository.dart';
@@ -549,6 +557,29 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<LoadVietQrBanksUseCase>(
     () => LoadVietQrBanksUseCase(locator<OrderManagementRepository>()),
+  );
+
+  // Kitchen
+  locator.registerLazySingleton<KitchenRemoteDataSource>(
+    () => KitchenRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<KitchenRepository>(
+    () => KitchenRepositoryImpl(locator<KitchenRemoteDataSource>()),
+  );
+  locator.registerLazySingleton<LoadKitchenItemsUseCase>(
+    () => LoadKitchenItemsUseCase(locator<KitchenRepository>()),
+  );
+  locator.registerLazySingleton<UpdateKitchenItemStatusUseCase>(
+    () => UpdateKitchenItemStatusUseCase(locator<KitchenRepository>()),
+  );
+  locator.registerLazySingleton<CancelKitchenItemUseCase>(
+    () => CancelKitchenItemUseCase(locator<KitchenRepository>()),
+  );
+  locator.registerLazySingleton<BulkUpdateKitchenItemsUseCase>(
+    () => BulkUpdateKitchenItemsUseCase(locator<KitchenRepository>()),
+  );
+  locator.registerLazySingleton<BulkCancelKitchenItemsUseCase>(
+    () => BulkCancelKitchenItemsUseCase(locator<KitchenRepository>()),
   );
 
   // Owner dashboard

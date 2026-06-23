@@ -153,6 +153,7 @@ void main() {
     router.go('/store-subscription');
     await tester.pumpAndSettle();
 
+    expect(find.text('Doanh thu tháng'), findsOneWidget);
     expect(find.text('Gói dịch vụ của tôi'), findsNothing);
   });
 }

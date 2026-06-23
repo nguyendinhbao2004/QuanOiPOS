@@ -72,10 +72,7 @@ class MyStoresPage extends ConsumerWidget {
     }
 
     if (!context.mounted) return;
-    context.goNamed(
-      RouteNames.storeOverview,
-      pathParameters: {'storeId': storeId.toString()},
-    );
+    context.goNamed(RouteNames.storeUserLanding);
   }
 
   Future<void> _handleCreateStoreTap(

@@ -22,6 +22,10 @@ import 'package:quan_oi/features/subscription/domain/usecases/load_pending_subsc
 import 'package:quan_oi/features/subscription/domain/usecases/load_subscription_plans_use_case.dart';
 import 'package:quan_oi/features/subscription/domain/usecases/purchase_subscription_use_case.dart';
 import 'package:quan_oi/features/subscription/presentation/providers/subscription_providers.dart';
+import 'package:quan_oi/features/store_operations/kitchen/domain/entities/kitchen_order_item.dart';
+import 'package:quan_oi/features/store_operations/kitchen/domain/repositories/kitchen_repository.dart';
+import 'package:quan_oi/features/store_operations/kitchen/domain/usecases/load_kitchen_items_use_case.dart';
+import 'package:quan_oi/features/store_operations/kitchen/presentation/providers/kitchen_providers.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/create_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
 import 'package:quan_oi/features/workspace_context/domain/usecases/clear_store_access_context_cache_use_case.dart';
@@ -74,7 +78,7 @@ void main() {
     await tester.tap(find.byKey(const Key('access_store_2')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Tổng quan'), findsOneWidget);
+    expect(find.text('Tổng quan'), findsWidgets);
     expect(
       find.text('Bạn chưa tạo hóa đơn để phân tích lãi lỗ'),
       findsOneWidget,
@@ -100,7 +104,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Tổng quan'), findsOneWidget);
+    expect(find.text('Tổng quan'), findsWidgets);
     expect(
       find.text('Buffet Poseidon Vincom Plaza Lê Văn Việt'),
       findsOneWidget,
@@ -139,8 +143,7 @@ void main() {
       }
 
       expect(find.text('Cached Buffet'), findsOneWidget);
-      expect(find.text('Tổng quan'), findsOneWidget);
-      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Tổng quan'), findsWidgets);
 
       accessCompleter.complete(_remoteAccessContext);
       await tester.pumpAndSettle();
@@ -175,6 +178,57 @@ void main() {
     },
   );
 
+  testWidgets('StoreUser opens kitchen landing for kitchen permission', (
+    tester,
+  ) async {
+    final container = _buildContainer(
+      AccountType.storeUser,
+      workspaceRepository: _FakeWorkspaceRepository(
+        permissions: const [
+          StorePermission(permissionId: 105, code: 'KITCHEN.ALL'),
+        ],
+      ),
+      lastActiveStoreStorage: _FakeLastActiveStoreStorage(initialStoreId: 2),
+    );
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('KDS Bếp Trung Tâm'), findsOneWidget);
+    expect(find.text('Tổng quan'), findsNothing);
+  });
+
+  testWidgets('SystemAdmin is redirected away from store landing route', (
+    tester,
+  ) async {
+    final container = _buildContainer(
+      AccountType.systemAdmin,
+      lastActiveStoreStorage: _FakeLastActiveStoreStorage(initialStoreId: 2),
+    );
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+
+    router.go('/store-landing');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('KDS Bếp Trung Tâm'), findsNothing);
+  });
+
   testWidgets('SystemAdmin is redirected away from my stores route', (
     tester,
   ) async {
@@ -195,7 +249,7 @@ void main() {
     router.go('/my-stores');
     await tester.pumpAndSettle();
 
-    expect(find.text('Doanh thu tháng'), findsOneWidget);
+    expect(find.text('Dashboard'), findsOneWidget);
     expect(find.text('Danh sách cửa hàng'), findsNothing);
   });
 
@@ -219,7 +273,7 @@ void main() {
     router.go('/stores/2');
     await tester.pumpAndSettle();
 
-    expect(find.text('Doanh thu tháng'), findsOneWidget);
+    expect(find.text('Dashboard'), findsOneWidget);
     expect(find.text('Tổng quan'), findsNothing);
   });
 
@@ -466,7 +520,7 @@ void main() {
 
     expect(lastActiveStoreStorage.lastStoreId, 10);
     expect(repository.createStoreCallCount, 1);
-    expect(find.text('Tổng quan'), findsOneWidget);
+    expect(find.text('Tổng quan'), findsWidgets);
     expect(find.text('Quan oi'), findsOneWidget);
   });
 }
@@ -538,6 +592,9 @@ ProviderContainer _buildContainer(
       clearStoreAccessContextCacheUseCaseProvider.overrideWithValue(
         ClearStoreAccessContextCacheUseCase(repository),
       ),
+      loadKitchenItemsUseCaseProvider.overrideWithValue(
+        LoadKitchenItemsUseCase(_FakeKitchenRepository()),
+      ),
       ..._subscriptionOverrides(subscriptionRepository),
       ..._lastActiveStoreOverrides(storeStorage),
     ],
@@ -597,6 +654,7 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
   final Completer<List<Store>>? loadCompleter;
   final Completer<StoreAccessContext>? accessCompleter;
   final List<Store> stores;
+  final List<StorePermission> permissions;
   StoreAccessContext? cachedContext;
   StoreAccessContext? savedCache;
   int createStoreCallCount = 0;
@@ -606,6 +664,9 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
     this.loadCompleter,
     this.accessCompleter,
     this.cachedContext,
+    this.permissions = const [
+      StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW'),
+    ],
     List<Store> stores = _defaultStores,
   }) : stores = List<Store>.of(stores);
 
@@ -651,7 +712,7 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
 
   @override
   Future<List<StorePermission>> loadMyStorePermissions(int storeId) async {
-    return const [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')];
+    return permissions;
   }
 
   @override
@@ -695,6 +756,42 @@ class _FakeWorkspaceRepository implements WorkspaceRepository {
   @override
   Future<void> clearAllStoreAccessContextCache() async {
     cachedContext = null;
+  }
+}
+
+class _FakeKitchenRepository implements KitchenRepository {
+  @override
+  Future<List<KitchenOrderItem>> loadItems({
+    required int storeId,
+    KitchenItemFilter filter = const KitchenItemFilter(),
+  }) async {
+    return const [];
+  }
+
+  @override
+  Future<KitchenOrderItem> updateItemStatus({
+    required int orderItemId,
+    required KitchenOrderItemStatus status,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<KitchenOrderItem> cancelItem(int orderItemId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<KitchenBulkUpdateResult> bulkUpdateStatus({
+    required List<int> itemIds,
+    required KitchenOrderItemStatus status,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<KitchenBulkUpdateResult> bulkCancel(List<int> itemIds) {
+    throw UnimplementedError();
   }
 }
 

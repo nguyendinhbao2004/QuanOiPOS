@@ -42,6 +42,7 @@ import '../features/store_operations/product_management/presentation/pages/produ
 import '../features/store_operations/order_management/presentation/pages/order_create_page.dart';
 import '../features/store_operations/order_management/presentation/pages/order_detail_page.dart';
 import '../features/store_operations/order_management/presentation/pages/order_list_page.dart';
+import '../features/store_operations/kitchen/presentation/pages/kitchen_page.dart';
 import '../features/store_operations/owner_dashboard/presentation/pages/owner_dashboard_page.dart';
 import '../features/store_operations/staff_management/presentation/pages/invite_staff_page.dart';
 import '../features/store_operations/staff_management/presentation/pages/staff_detail_page.dart';
@@ -57,6 +58,7 @@ import '../features/subscription/presentation/pages/subscription_payment_return_
 import '../features/workspace_context/presentation/controllers/last_active_store_state.dart';
 import '../features/workspace_context/presentation/pages/create_store_page.dart';
 import '../features/workspace_context/presentation/pages/my_stores_page.dart';
+import '../features/workspace_context/presentation/pages/store_user_landing_resolver_page.dart';
 import '../features/workspace_context/presentation/providers/workspace_context_providers.dart';
 
 /// Route names as constants
@@ -64,6 +66,7 @@ abstract final class RouteNames {
   static const String auth = 'auth';
   static const String systemAdminHome = 'system-admin-home';
   static const String storeHome = 'store-home';
+  static const String storeUserLanding = 'store-user-landing';
   static const String storeOverview = 'store-overview';
   static const String storeOwnerDashboard = 'store-owner-dashboard';
   static const String storeFeatureSearch = 'store-feature-search';
@@ -110,6 +113,7 @@ abstract final class RouteNames {
   static const String storeOrderList = 'store-order-list';
   static const String storeOrderDetail = 'store-order-detail';
   static const String storeOrderCreate = 'store-order-create';
+  static const String storeKitchen = 'store-kitchen';
   static const String storeStaffManagement = 'store-staff-management';
   static const String storeStaffUserDetail = 'store-staff-user-detail';
   static const String storeStaffInvitationDetail =
@@ -180,6 +184,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/store-home',
         name: RouteNames.storeHome,
         builder: (context, state) => const StoreHomePage(),
+      ),
+      GoRoute(
+        path: '/store-landing',
+        name: RouteNames.storeUserLanding,
+        builder: (context, state) => const StoreUserLandingResolverPage(),
       ),
       GoRoute(
         path: '/stores/:storeId/dashboard',
@@ -714,6 +723,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/stores/:storeId/kitchen',
+        name: RouteNames.storeKitchen,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+
+          return KitchenPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
         path: '/stores/:storeId/voice-order',
         name: RouteNames.storeVoiceOrder,
         builder: (context, state) {
@@ -945,6 +969,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Cross-account type route check
       if (authState.accountType == AccountType.systemAdmin) {
         if (state.matchedLocation == '/store-home' ||
+            state.matchedLocation == '/store-landing' ||
             state.matchedLocation == '/store-subscription' ||
             state.matchedLocation == '/subscription-checkout' ||
             state.matchedLocation == '/subscription-payment-return' ||
@@ -997,7 +1022,7 @@ String? _storeUserLanding(
 
   final lastStoreId = lastActiveStoreState.lastStoreId;
   if (lastStoreId != null) {
-    return '/stores/$lastStoreId';
+    return '/store-landing';
   }
 
   return '/store-home';

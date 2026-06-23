@@ -190,6 +190,7 @@ class _ReadyView extends ConsumerWidget {
               storeId: accessContext.store.id,
               canViewProduct: state.can(AppPermissionCodes.productView),
               canViewArea: state.can(AppPermissionCodes.areaView),
+              canManageKitchen: state.can(AppPermissionCodes.kitchenAll),
               canManageStaff:
                   state.can(AppPermissionCodes.staffView) ||
                   state.can(AppPermissionCodes.staffInvite) ||
@@ -305,12 +306,14 @@ class _FeatureGrid extends StatelessWidget {
   final int storeId;
   final bool canViewProduct;
   final bool canViewArea;
+  final bool canManageKitchen;
   final bool canManageStaff;
 
   const _FeatureGrid({
     required this.storeId,
     required this.canViewProduct,
     required this.canViewArea,
+    required this.canManageKitchen,
     required this.canManageStaff,
   });
 

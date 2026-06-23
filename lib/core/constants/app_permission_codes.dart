@@ -21,6 +21,7 @@ abstract final class AppPermissionCodes {
   static const String tableTransfer = 'TABLE.TRANSFER';
   static const String orderView = 'ORDER.VIEW';
   static const String orderCreate = 'ORDER.CREATE';
+  static const String kitchenAll = 'KITCHEN.ALL';
   static const String staffView = 'STAFF.VIEW';
   static const String staffInvite = 'STAFF.INVITE';
   static const String staffUpdate = 'STAFF.UPDATE';
