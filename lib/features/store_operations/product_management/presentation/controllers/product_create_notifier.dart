@@ -566,7 +566,7 @@ class ProductCreateNotifier
         throw Exception('Một nguyên liệu chỉ được chọn một lần');
       }
 
-      if (recipe.quantity < 0 || recipe.capacity < 0) {
+      if (recipe.quantity < 0) {
         throw Exception('Vui lòng nhập định mức nguyên liệu hợp lệ');
       }
 

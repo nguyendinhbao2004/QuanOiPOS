@@ -7,6 +7,7 @@ Tài liệu này là contract để FE triển khai màn hình tạo món, cấu
 - Base URL: URL môi trường + đường dẫn bên dưới.
 - Tất cả endpoint trong tài liệu cần `Authorization: Bearer <accessToken>`.
 - JSON dùng `camelCase`; số lượng, giá và giá vốn gửi dưới dạng JSON number, không gửi chuỗi.
+- Trong flow kho mới, `capacity`/`currentCapacity` là field legacy. FE gửi `0` nếu API còn yêu cầu field này và không dùng để tính tồn kho.
 - Mọi response thành công dùng wrapper:
 
 ```json
@@ -29,12 +30,38 @@ Tài liệu này là contract để FE triển khai màn hình tạo món, cấu
 3. PUT inventory/products/{id}/inventory-settings
 4. Nếu không gửi recipes lúc tạo: PUT inventory/products/{id}/recipe
 5. Nhập/điều chỉnh tồn qua inventory API
-6. Khi mở chi tiết: GET products/{id} + GET recipes/product/{id}
+6. Khi mở/sửa món: GET products/{id}/management-detail
 ```
 
 Không dùng `PUT /api/ingredients/{id}/quantity` cho UI kho mới: đây là endpoint cũ. Dùng `imports`, `adjustments`, `wastage` hoặc `manual-issues` để có sổ biến động tồn kho.
 
+Tồn kho khi bán được trừ khi bếp chuyển món sang trạng thái `Ready` qua API cập nhật trạng thái order item. Nếu kho không đủ, backend trả lỗi `400`, giữ nguyên trạng thái món hiện tại và không tạo movement kho. Payment hoàn tất không còn là trigger trừ kho.
+
 ## 3. Tạo và đọc sản phẩm
+
+### 3.0 Xin URL upload ảnh sản phẩm
+
+`POST /api/products/image-upload-url`
+
+```json
+{
+  "storeId": 1,
+  "contentType": "image/jpeg"
+}
+```
+
+`contentType` chỉ nhận `image/jpeg`, `image/png` hoặc `image/webp`. Backend dùng giá trị này để validate loại ảnh và chọn extension cho object key. Presigned URL được tạo cho `PUT` thẳng lên S3, không gửi `Authorization`. FE nên gửi `Content-Type` tương ứng để S3 lưu metadata ảnh, nhưng header này không còn được ký chặt trong presigned URL để tránh lỗi `403 SignatureDoesNotMatch` khi client thêm/sửa nhẹ header.
+
+Response `data`:
+
+```json
+{
+  "key": "products/1/6b5c3d4e5f6a4b3c9d8e7f0011223344.jpg",
+  "imageUrl": "https://cdn.example.com/products/1/6b5c3d4e5f6a4b3c9d8e7f0011223344.jpg",
+  "uploadUrl": "https://bucket.s3.ap-southeast-1.amazonaws.com/...",
+  "expiresAt": "2026-06-23T08:05:00Z"
+}
+```
 
 ### 3.1 Tạo món và gắn nguyên liệu trong một lần gọi
 
@@ -58,7 +85,12 @@ Không dùng `PUT /api/ingredients/{id}/quantity` cho UI kho mới: đây là en
   "recipes": [
     { "ingredientId": 10, "quantity": 15, "capacity": 0 },
     { "ingredientId": 11, "quantity": 40, "capacity": 0 }
-  ]
+  ],
+  "inventorySettings": {
+    "minimumStock": 6,
+    "isTrackInventory": true,
+    "inventoryDeductionMode": "RecipeOnly"
+  }
 }
 ```
 
@@ -68,7 +100,8 @@ Không dùng `PUT /api/ingredients/{id}/quantity` cho UI kho mới: đây là en
 | `imageUrl`, `description` | Không | Có thể `null`. |
 | `variants` | Không | Nếu `null` hoặc rỗng, backend tạo variant mặc định. |
 | `toppingIds` | Không | Các id phải thuộc store và đang active. |
-| `recipes` | Không | Mỗi `ingredientId` không được trùng, thuộc store, active; `quantity` và `capacity` không âm. `quantity` dùng đúng đơn vị gốc của nguyên liệu. |
+| `recipes` | Không | Mỗi `ingredientId` không được trùng, thuộc store, active; `quantity` không âm và là lượng tiêu hao cho 1 lần bán 1 món. `capacity` là legacy, gửi `0`. `quantity` dùng đúng đơn vị gốc của nguyên liệu. |
+| `inventorySettings` | Không | Khi có mặt, lưu cấu hình tồn cùng lúc tạo product. Không bao gồm tồn đầu; dùng API nhập kho để ghi nhận tồn đầu. |
 
 Response `data` là `ProductResponse` (mục 3.2). Product được tạo, variants/toppings/recipes được lưu cùng flow; response không chứa mảng recipes, nên lấy lại qua `GET /api/recipes/product/{productId}` khi cần render form chỉnh công thức.
 
@@ -95,6 +128,7 @@ Ví dụ `data` một sản phẩm:
   "costPrice": 12000,
   "type": 2,
   "isActive": true,
+  "isSell": true,
   "variants": [{ "id": 31, "name": "Mặc định", "price": 15000, "costPrice": 12000, "isDefault": true }],
   "toppings": [],
   "createdAt": "2026-06-23T08:00:00Z",
@@ -115,7 +149,30 @@ Ví dụ `data` một sản phẩm:
 
 `isLowStock` là `true` khi đang track, `0 < quantity <= minimumStock`. `isOutOfStock` là `true` khi đang track và `quantity <= 0`.
 
-### 3.3 Cấu hình cách trừ tồn của sản phẩm
+`isActive` là vòng đời bản ghi; `isSell` mới là trạng thái có thể bán trên POS. Bật/tắt bán bằng `PATCH /api/products/{id}/is-sell` với payload `{ "isSell": true }`. Response trả `ProductResponse` mới nhất.
+
+Khi order item của sản phẩm chuyển sang `Ready`, backend tự áp dụng `inventoryDeductionMode`:
+
+- `RecipeOnly`: trừ nguyên liệu theo công thức active.
+- `ProductOnly`: trừ 1 đơn vị tồn thành phẩm.
+- `Both`: trừ cả 1 đơn vị tồn thành phẩm và nguyên liệu theo công thức.
+
+Nếu có variant/topping, backend cộng thêm định mức điều chỉnh của variant và công thức topping trước khi kiểm tra tồn.
+
+### 3.3 Detail dành cho form quản trị
+
+`GET /api/products/{id}/management-detail` trả trong một lần gọi cả `product` (toàn bộ `ProductResponse`) và `recipes` (công thức active kèm nguyên liệu). Endpoint yêu cầu đồng thời quyền xem sản phẩm và quyền xem công thức; thiếu một quyền trả `403`.
+
+```json
+{
+  "product": { "id": 20, "isActive": true, "isSell": true, "quantity": 23 },
+  "recipes": [
+    { "id": 51, "productId": 20, "ingredient": { "id": 10, "name": "Trà ô long", "unit": "g", "quantity": 850 }, "quantity": 15, "capacity": 0 }
+  ]
+}
+```
+
+### 3.4 Cấu hình cách trừ tồn của sản phẩm
 
 `PUT /api/inventory/products/{productId}/inventory-settings`
 
@@ -151,7 +208,7 @@ Response `data`:
 | `ProductOnly` | Thành phẩm đóng gói/chai/lon, trừ trực tiếp tồn sản phẩm. |
 | `Both` | Cần trừ cả thành phẩm và nguyên liệu. |
 
-### 3.4 Chọn và chỉnh công thức nguyên liệu
+### 3.5 Chọn và chỉnh công thức nguyên liệu
 
 Sau khi có product id, thay toàn bộ công thức bằng:
 
@@ -204,6 +261,31 @@ Sau khi có product id, thay toàn bộ công thức bằng:
 ```
 
 Nếu cần cập nhật từng recipe cũ, dùng `PUT /api/recipes/{recipeId}` với `{ "quantity": 20, "capacity": 0 }`. Tuy nhiên màn hình quản lý công thức mới nên dùng endpoint replace-all ở trên để tránh lệch dữ liệu.
+
+### 3.6 Cập nhật món và cấu hình tồn cùng lúc
+
+`PUT /api/products/{id}` giữ nguyên các field product hiện có và nhận thêm `inventorySettings` optional:
+
+```json
+{
+  "categoryId": 2,
+  "name": "Coca Cola lon",
+  "imageUrl": null,
+  "description": null,
+  "preparationTime": 0,
+  "price": 15000,
+  "costPrice": 12000,
+  "type": 2,
+  "variants": [],
+  "inventorySettings": {
+    "minimumStock": 8,
+    "isTrackInventory": true,
+    "inventoryDeductionMode": "ProductOnly"
+  }
+}
+```
+
+Nếu bỏ `inventorySettings`, backend giữ nguyên cấu hình tồn kho hiện tại. Nếu có mặt, phần product, variants và inventory settings được cập nhật trong một transaction; response là `ProductResponse` mới nhất.
 
 ## 4. Quản lý nguyên liệu
 

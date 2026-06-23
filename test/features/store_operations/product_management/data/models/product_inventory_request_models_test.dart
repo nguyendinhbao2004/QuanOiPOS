@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/store_operations/product_management/data/models/product_management_request_models.dart';
 import 'package:quan_oi/features/store_operations/product_management/data/models/product_model.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_deduction_mode.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_recipe_draft.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
 
 void main() {
@@ -24,6 +25,30 @@ void main() {
     expect(json.containsKey('minimumStock'), isFalse);
     expect(json.containsKey('isTrackInventory'), isFalse);
     expect(json.containsKey('inventoryDeductionMode'), isFalse);
+  });
+
+  test('create product recipe payload sends legacy capacity as zero', () {
+    const request = CreateProductRequestModel(
+      storeId: 5,
+      categoryId: 1,
+      name: 'Trà đào',
+      imageUrl: '',
+      description: '',
+      preparationTime: 5,
+      price: 35000,
+      costPrice: 0,
+      type: ProductType.drink,
+      toppingIds: [],
+      recipes: [
+        ProductRecipeDraft(ingredientId: 10, quantity: 15, capacity: 999),
+      ],
+    );
+
+    final json = request.toJson();
+
+    expect(json['recipes'], [
+      {'ingredientId': 10, 'quantity': 15.0, 'capacity': 0},
+    ]);
   });
 
   test('inventory settings serialize API enum values', () {

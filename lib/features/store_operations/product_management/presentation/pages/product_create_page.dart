@@ -584,7 +584,7 @@ class _AccessReadyContent extends ConsumerWidget {
           ingredientId: row.ingredient.id,
           ingredient: row.ingredient,
           quantity: double.tryParse(row.quantityController.text.trim()) ?? 0,
-          capacity: double.tryParse(row.capacityController.text.trim()) ?? 0,
+          capacity: 0,
         ),
     ];
   }
@@ -1574,14 +1574,9 @@ class _VariantOptionRowState {
 class _RecipeRowState {
   final ProductIngredient ingredient;
   final TextEditingController quantityController;
-  final TextEditingController capacityController;
 
-  _RecipeRowState({
-    required this.ingredient,
-    String quantity = '0',
-    String capacity = '0',
-  }) : quantityController = TextEditingController(text: quantity),
-       capacityController = TextEditingController(text: capacity);
+  _RecipeRowState({required this.ingredient, String quantity = '0'})
+    : quantityController = TextEditingController(text: quantity);
 
   factory _RecipeRowState.fromDraft(ProductRecipeDraft draft) {
     final ingredient = draft.ingredient;
@@ -1601,7 +1596,6 @@ class _RecipeRowState {
             isDeleted: false,
           ),
       quantity: draft.quantity.toString(),
-      capacity: draft.capacity.toString(),
     );
   }
 
@@ -1609,13 +1603,11 @@ class _RecipeRowState {
     return _RecipeRowState(
       ingredient: ingredient,
       quantity: quantityController.text,
-      capacity: capacityController.text,
     );
   }
 
   void dispose() {
     quantityController.dispose();
-    capacityController.dispose();
   }
 }
 
@@ -2461,7 +2453,6 @@ class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
         final oldRow = _recipeRows[rowIndex];
         final newRow = _RecipeRowState(ingredient: updatedIngredient);
         newRow.quantityController.text = oldRow.quantityController.text;
-        newRow.capacityController.text = oldRow.capacityController.text;
         oldRow.dispose();
         _recipeRows[rowIndex] = newRow;
       }
@@ -2562,21 +2553,11 @@ class _RecipeDraftList extends StatelessWidget {
                 child: TextFormField(
                   key: Key('recipe_${row.ingredient.id}_quantity_field'),
                   controller: row.quantityController,
-                  decoration: const InputDecoration(labelText: 'SL'),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d*\.?\d{0,3}'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppConstants.spacingSm),
-              Expanded(
-                child: TextFormField(
-                  key: Key('recipe_${row.ingredient.id}_capacity_field'),
-                  controller: row.capacityController,
-                  decoration: const InputDecoration(labelText: 'Dung lượng'),
+                  decoration: InputDecoration(
+                    labelText: row.ingredient.unit.isEmpty
+                        ? 'Định mức'
+                        : 'Định mức (${row.ingredient.unit})',
+                  ),
                   keyboardType: TextInputType.number,
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(

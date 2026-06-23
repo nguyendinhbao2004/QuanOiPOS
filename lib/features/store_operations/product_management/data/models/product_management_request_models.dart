@@ -162,7 +162,7 @@ class CreateProductRequestModel {
             (recipe) => {
               'ingredientId': recipe.ingredientId,
               'quantity': recipe.quantity,
-              'capacity': recipe.capacity,
+              'capacity': 0,
             },
           )
           .toList(),
