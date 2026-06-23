@@ -3,6 +3,7 @@ abstract final class AppPermissionCodes {
   static const String storeView = 'STORE.VIEW';
   static const String storeUpdate = 'STORE.UPDATE';
   static const String inventoryView = 'INVENTORY.VIEW';
+  static const String inventoryImport = 'INVENTORY.IMPORT';
   static const String productView = 'PRODUCT.VIEW';
   static const String productCreate = 'PRODUCT.CREATE';
   static const String productUpdate = 'PRODUCT.UPDATE';

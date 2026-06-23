@@ -104,6 +104,10 @@ import '../../features/store_operations/product_management/domain/usecases/updat
 import '../../features/store_operations/product_management/domain/usecases/update_product_sell_status_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
+import '../../features/store_operations/inventory_documents/data/datasources/inventory_document_remote_data_source.dart';
+import '../../features/store_operations/inventory_documents/data/repositories/inventory_document_repository_impl.dart';
+import '../../features/store_operations/inventory_documents/domain/repositories/inventory_document_repository.dart';
+import '../../features/store_operations/inventory_documents/domain/usecases/inventory_document_use_cases.dart';
 import '../../features/store_operations/staff_management/data/datasources/staff_management_remote_data_source.dart';
 import '../../features/store_operations/staff_management/data/repositories/staff_management_repository_impl.dart';
 import '../../features/store_operations/staff_management/domain/repositories/staff_management_repository.dart';
@@ -556,6 +560,43 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   // Product management
   locator.registerLazySingleton<ProductManagementRemoteDataSource>(
     () => ProductManagementRemoteDataSource(locator<DioClient>(), Dio()),
+  );
+
+  // Inventory documents
+  locator.registerLazySingleton<InventoryDocumentRemoteDataSource>(
+    () => InventoryDocumentRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<InventoryDocumentRepository>(
+    () => InventoryDocumentRepositoryImpl(
+      locator<InventoryDocumentRemoteDataSource>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadInventoryImportsUseCase>(
+    () => LoadInventoryImportsUseCase(locator<InventoryDocumentRepository>()),
+  );
+  locator.registerLazySingleton<LoadInventoryDocumentUseCase>(
+    () => LoadInventoryDocumentUseCase(locator<InventoryDocumentRepository>()),
+  );
+  locator.registerLazySingleton<LoadInventoryVendorsUseCase>(
+    () => LoadInventoryVendorsUseCase(locator<InventoryDocumentRepository>()),
+  );
+  locator.registerLazySingleton<CreateInventoryVendorUseCase>(
+    () => CreateInventoryVendorUseCase(locator<InventoryDocumentRepository>()),
+  );
+  locator.registerLazySingleton<LoadInventorySelectableItemsUseCase>(
+    () => LoadInventorySelectableItemsUseCase(
+      locator<InventoryDocumentRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<CreateInventoryImportUseCase>(
+    () => CreateInventoryImportUseCase(locator<InventoryDocumentRepository>()),
+  );
+  locator.registerLazySingleton<UpdateInventoryImportUseCase>(
+    () => UpdateInventoryImportUseCase(locator<InventoryDocumentRepository>()),
+  );
+  locator.registerLazySingleton<CompleteInventoryImportUseCase>(
+    () =>
+        CompleteInventoryImportUseCase(locator<InventoryDocumentRepository>()),
   );
   locator.registerLazySingleton<ProductManagementRepository>(
     () => ProductManagementRepositoryImpl(

@@ -28,9 +28,9 @@ import '../features/store_operations/presentation/pages/store_home_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_check_create_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_check_draft_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_check_page.dart';
-import '../features/store_operations/presentation/pages/store_inventory_import_ingredients_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_import_page.dart';
-import '../features/store_operations/presentation/pages/store_inventory_import_products_page.dart';
+import '../features/store_operations/inventory_documents/presentation/pages/inventory_document_editor_page.dart';
+import '../features/store_operations/inventory_documents/presentation/pages/inventory_import_item_picker_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_ledger_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_management_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_stock_page.dart';
@@ -88,6 +88,12 @@ abstract final class RouteNames {
       'store-inventory-import-ingredients';
   static const String storeInventoryImportProducts =
       'store-inventory-import-products';
+  static const String storeInventoryImportCreate =
+      'store-inventory-import-create';
+  static const String storeInventoryImportDetail =
+      'store-inventory-import-detail';
+  static const String storeInventoryImportItemPicker =
+      'store-inventory-import-item-picker';
   static const String storeInventoryLedger = 'store-inventory-ledger';
   static const String storeInventoryStock = 'store-inventory-stock';
   static const String storeProductManagement = 'store-product-management';
@@ -127,6 +133,23 @@ final routerProvider = Provider<GoRouter>((ref) {
   router = GoRouter(
     debugLogDiagnostics: false,
     routes: [
+      GoRoute(
+        path: '/stores/:storeId/inventory/imports/items',
+        name: RouteNames.storeInventoryImportItemPicker,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          if (storeId == null)
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          return InventoryImportItemPickerPage(
+            storeId: storeId,
+            selectedItems: state.extra is List
+                ? state.extra! as List
+                : const [],
+          );
+        },
+      ),
       GoRoute(
         path: '/',
         name: RouteNames.splash,
@@ -499,7 +522,39 @@ final routerProvider = Provider<GoRouter>((ref) {
             );
           }
 
-          return StoreInventoryImportProductsPage(storeId: storeId);
+          return InventoryDocumentEditorPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/inventory/imports/create',
+        name: RouteNames.storeInventoryImportCreate,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          if (storeId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Cửa hàng không hợp lệ')),
+            );
+          }
+          return InventoryDocumentEditorPage(storeId: storeId);
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/inventory/imports/:documentId',
+        name: RouteNames.storeInventoryImportDetail,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          final documentId = int.tryParse(
+            state.pathParameters['documentId'] ?? '',
+          );
+          if (storeId == null || documentId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Phiếu nhập không hợp lệ')),
+            );
+          }
+          return InventoryDocumentEditorPage(
+            storeId: storeId,
+            documentId: documentId,
+          );
         },
       ),
       GoRoute(
@@ -514,7 +569,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             );
           }
 
-          return StoreInventoryImportIngredientsPage(storeId: storeId);
+          return InventoryDocumentEditorPage(storeId: storeId);
         },
       ),
       GoRoute(
