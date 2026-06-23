@@ -349,8 +349,24 @@ class _FeatureGrid extends StatelessWidget {
           pathParameters: {'storeId': storeId.toString()},
         ),
       ),
-      const _FeatureItemData('Báo cáo', Icons.bar_chart_rounded),
-      const _FeatureItemData('Thu chi', Icons.payments_outlined),
+      _FeatureItemData(
+        'Báo cáo',
+        Icons.bar_chart_rounded,
+        onTap: () => context.goNamed(
+          RouteNames.storeBusinessReport,
+          pathParameters: {'storeId': storeId.toString()},
+        ),
+      ),
+      _FeatureItemData(
+        'Khu bếp',
+        Icons.kitchen_outlined,
+        isEnabled: canManageKitchen,
+        disabledMessage: 'Bạn chưa có quyền dùng KDS',
+        onTap: () => context.goNamed(
+          RouteNames.storeKitchen,
+          pathParameters: {'storeId': storeId.toString()},
+        ),
+      ),
       _FeatureItemData(
         'Quản lý kho',
         Icons.apps_rounded,

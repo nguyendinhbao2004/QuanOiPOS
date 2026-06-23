@@ -91,6 +91,10 @@ import '../../features/store_operations/owner_dashboard/data/datasources/owner_d
 import '../../features/store_operations/owner_dashboard/data/repositories/owner_dashboard_repository_impl.dart';
 import '../../features/store_operations/owner_dashboard/domain/repositories/owner_dashboard_repository.dart';
 import '../../features/store_operations/owner_dashboard/domain/usecases/load_owner_dashboard_insight_use_case.dart';
+import '../../features/store_operations/business_report/data/datasources/business_report_remote_data_source.dart';
+import '../../features/store_operations/business_report/data/repositories/business_report_repository_impl.dart';
+import '../../features/store_operations/business_report/domain/repositories/business_report_repository.dart';
+import '../../features/store_operations/business_report/domain/usecases/create_business_report_use_case.dart';
 import '../../features/store_operations/product_management/data/datasources/product_management_remote_data_source.dart';
 import '../../features/store_operations/product_management/data/repositories/product_management_repository_impl.dart';
 import '../../features/store_operations/product_management/domain/repositories/product_management_repository.dart';
@@ -592,6 +596,18 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<LoadOwnerDashboardInsightUseCase>(
     () => LoadOwnerDashboardInsightUseCase(locator<OwnerDashboardRepository>()),
+  );
+
+  // Business report
+  locator.registerLazySingleton<BusinessReportRemoteDataSource>(
+    () => BusinessReportRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<BusinessReportRepository>(
+    () =>
+        BusinessReportRepositoryImpl(locator<BusinessReportRemoteDataSource>()),
+  );
+  locator.registerLazySingleton<CreateBusinessReportUseCase>(
+    () => CreateBusinessReportUseCase(locator<BusinessReportRepository>()),
   );
 
   // Product management

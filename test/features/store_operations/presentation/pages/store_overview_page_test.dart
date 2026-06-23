@@ -83,6 +83,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Bạn chưa có quyền xem quản lý bàn'), findsOneWidget);
+    expect(find.text('Bạn chưa có quyền dùng KDS'), findsOneWidget);
     expect(find.text('Bạn chưa có quyền xem quản lý kho'), findsNothing);
     expect(find.text('Cài đặt'), findsNothing);
     expect(find.text('Khuyến mãi'), findsNothing);
@@ -336,6 +337,67 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Voice order demo opened'), findsOneWidget);
+  });
+
+  testWidgets('kitchen item navigates to kitchen route with permission', (
+    tester,
+  ) async {
+    final repository = const _FakeWorkspaceRepository(
+      permissions: [
+        StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW'),
+        StorePermission(permissionId: 105, code: 'KITCHEN.ALL'),
+      ],
+    );
+    final router = GoRouter(
+      initialLocation: '/stores/5',
+      routes: [
+        GoRoute(
+          path: '/stores/:storeId',
+          name: RouteNames.storeOverview,
+          builder: (context, state) => const StoreOverviewPage(storeId: 5),
+        ),
+        GoRoute(
+          path: '/stores/:storeId/kitchen',
+          name: RouteNames.storeKitchen,
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('KDS Bếp Trung Tâm'))),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authNotifierProvider.overrideWith(
+            () => _FixedAuthNotifier(
+              const AuthState(
+                status: AuthStatus.authenticated,
+                accountType: AccountType.storeUser,
+                fullName: 'Test User',
+                email: 'user@quanoi.test',
+              ),
+            ),
+          ),
+          loadStoreAccessContextUseCaseProvider.overrideWithValue(
+            LoadStoreAccessContextUseCase(repository),
+          ),
+          loadMyStoresUseCaseProvider.overrideWithValue(
+            LoadMyStoresUseCase(repository),
+          ),
+          ..._lastActiveStoreOverrides(_FakeLastActiveStoreStorage()),
+        ],
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Khu bếp'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Khu bếp'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('KDS Bếp Trung Tâm'), findsOneWidget);
   });
 
   testWidgets('voice order route blocks without DASHBOARD.VIEW', (
@@ -1785,9 +1847,45 @@ void main() {
     expect(find.text('Gợi ý tính năng'), findsOneWidget);
     expect(find.text('Bán hàng'), findsOneWidget);
     expect(find.text('Sản phẩm'), findsOneWidget);
-    expect(find.text('Thu chi'), findsOneWidget);
+    expect(find.text('Khu bếp'), findsOneWidget);
+    expect(find.text('Thu chi'), findsNothing);
     expect(find.text('Báo cáo'), findsOneWidget);
   });
+
+  testWidgets(
+    'feature search filters and opens kitchen route with permission',
+    (tester) async {
+      await _pumpFeatureSearchRouter(
+        tester,
+        const _FakeWorkspaceRepository(
+          permissions: [
+            StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW'),
+            StorePermission(permissionId: 105, code: 'KITCHEN.ALL'),
+          ],
+        ),
+      );
+
+      await tester.tap(
+        find.byKey(const Key('store_workspace_header_search_pill')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('store_feature_search_field')),
+        'kds',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kết quả phù hợp'), findsOneWidget);
+      expect(find.text('Khu bếp'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const Key('store_feature_search_item_kitchen')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kitchen route opened'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'feature search filters and opens product route with permission',
@@ -2059,6 +2157,12 @@ Future<void> _pumpFeatureSearchRouter(
         name: RouteNames.storeProductManagement,
         builder: (context, state) =>
             const Scaffold(body: Center(child: Text('Product route opened'))),
+      ),
+      GoRoute(
+        path: '/stores/:storeId/kitchen',
+        name: RouteNames.storeKitchen,
+        builder: (context, state) =>
+            const Scaffold(body: Center(child: Text('Kitchen route opened'))),
       ),
     ],
   );
