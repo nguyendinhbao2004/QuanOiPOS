@@ -1,4 +1,3 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -273,20 +272,12 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
 
   Future<void> _pickImage() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
-        withData: true,
-      );
-      final file = result != null && result.files.isNotEmpty
-          ? result.files.first
-          : null;
+      final file = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (file == null) {
         return;
       }
 
-      final bytes = file.bytes ?? await XFile(file.path!).readAsBytes();
-      _setSelectedImage(file.name, bytes);
+      _setSelectedImage(file.name, await file.readAsBytes());
     } catch (_) {
       if (mounted) {
         _showMessage(context, 'Không thể chọn ảnh. Vui lòng thử lại.');
@@ -931,6 +922,7 @@ class _ReadyCreateForm extends StatelessWidget {
                 _SectionTitle('5. Cấu hình kho'),
                 const SizedBox(height: AppConstants.spacingSm),
                 _ProductInventorySettingsSection(
+                  product: state.editingProduct,
                   minimumStockController: minimumStockController,
                   isTrackInventory: isTrackInventory,
                   inventoryDeductionMode: inventoryDeductionMode,
@@ -1255,6 +1247,18 @@ String _formatStockInput(double value) {
   return value.toString();
 }
 
+String _formatInventoryQuantity(double? value) {
+  if (value == null) {
+    return '--';
+  }
+
+  if (value == value.roundToDouble()) {
+    return value.toInt().toString();
+  }
+
+  return value.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
+}
+
 class _SectionTitle extends StatelessWidget {
   final String text;
 
@@ -1270,6 +1274,7 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _ProductInventorySettingsSection extends StatelessWidget {
+  final Product? product;
   final TextEditingController minimumStockController;
   final bool isTrackInventory;
   final InventoryDeductionMode inventoryDeductionMode;
@@ -1278,6 +1283,7 @@ class _ProductInventorySettingsSection extends StatelessWidget {
   final ValueChanged<InventoryDeductionMode> onInventoryDeductionModeChanged;
 
   const _ProductInventorySettingsSection({
+    required this.product,
     required this.minimumStockController,
     required this.isTrackInventory,
     required this.inventoryDeductionMode,
@@ -1288,13 +1294,6 @@ class _ProductInventorySettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final needsInitialStock =
-        inventoryDeductionMode == InventoryDeductionMode.productOnly ||
-        inventoryDeductionMode == InventoryDeductionMode.both;
-    final needsRecipe =
-        inventoryDeductionMode == InventoryDeductionMode.recipeOnly ||
-        inventoryDeductionMode == InventoryDeductionMode.both;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1344,23 +1343,184 @@ class _ProductInventorySettingsSection extends StatelessWidget {
           },
         ),
         const SizedBox(height: AppConstants.spacingSm),
-        _InventoryHintBox(
-          icon: needsInitialStock
-              ? Icons.inventory_2_outlined
-              : Icons.receipt_long_outlined,
-          message: needsInitialStock
-              ? 'Sau khi lưu, nhập tồn đầu kỳ trong phiếu nhập kho để tránh cảnh báo thiếu tồn khi thanh toán.'
-              : 'Món sẽ trừ nguyên liệu theo công thức; thành phẩm không cần tồn riêng.',
+        _ProductInventoryStatusBox(
+          product: product,
+          isTrackInventory: isTrackInventory,
+          inventoryDeductionMode: inventoryDeductionMode,
         ),
-        if (needsRecipe) ...[
-          const SizedBox(height: AppConstants.spacingSm),
-          const _InventoryHintBox(
-            icon: Icons.restaurant_menu_outlined,
-            message:
-                'Hãy cấu hình đủ công thức để backend tự trừ nguyên liệu sau khi thanh toán.',
+      ],
+    );
+  }
+}
+
+class _ProductInventoryStatusBox extends StatelessWidget {
+  final Product? product;
+  final bool isTrackInventory;
+  final InventoryDeductionMode inventoryDeductionMode;
+
+  const _ProductInventoryStatusBox({
+    required this.product,
+    required this.isTrackInventory,
+    required this.inventoryDeductionMode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _ProductStockStatus.fromProduct(product);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppConstants.spacingMd),
+      decoration: BoxDecoration(
+        color: status.backgroundColor,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: status.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(status.icon, color: status.color, size: 22),
+              const SizedBox(width: AppConstants.spacingSm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(status.title, style: AppTextStyles.labelSm),
+                    const SizedBox(height: AppConstants.spacingXs),
+                    Text(status.message, style: AppTextStyles.bodySm),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppConstants.spacingMd),
+          Wrap(
+            spacing: AppConstants.spacingSm,
+            runSpacing: AppConstants.spacingSm,
+            children: [
+              _InventoryStatusChip(
+                icon: Icons.inventory_2_outlined,
+                label: 'Còn ${_formatInventoryQuantity(product?.quantity)}',
+                color: status.color,
+              ),
+              _InventoryStatusChip(
+                icon: Icons.flag_outlined,
+                label:
+                    'Ngưỡng ${_formatInventoryQuantity(product?.minimumStock)}',
+                color: AppColors.textSecondary,
+              ),
+              _InventoryStatusChip(
+                icon: isTrackInventory
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.remove_circle_outline,
+                label: isTrackInventory
+                    ? 'Có theo dõi kho'
+                    : 'Không theo dõi kho',
+                color: isTrackInventory
+                    ? AppColors.success
+                    : AppColors.textSecondary,
+              ),
+              _InventoryStatusChip(
+                icon: Icons.sync_alt_rounded,
+                label: inventoryDeductionMode.label,
+                color: AppColors.info,
+              ),
+            ],
           ),
         ],
-      ],
+      ),
+    );
+  }
+}
+
+class _InventoryStatusChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _InventoryStatusChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.spacingSm,
+        vertical: AppConstants.spacingXs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: AppConstants.spacingXs),
+          Text(label, style: AppTextStyles.labelXs.copyWith(color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProductStockStatus {
+  final String title;
+  final String message;
+  final IconData icon;
+  final Color color;
+
+  const _ProductStockStatus({
+    required this.title,
+    required this.message,
+    required this.icon,
+    required this.color,
+  });
+
+  Color get backgroundColor => color.withValues(alpha: 0.08);
+
+  Color get borderColor => color.withValues(alpha: 0.24);
+
+  factory _ProductStockStatus.fromProduct(Product? product) {
+    if (product == null) {
+      return const _ProductStockStatus(
+        title: 'Chưa có dữ liệu tồn kho',
+        message: 'Tồn kho sẽ được hiển thị sau khi sản phẩm được lưu.',
+        icon: Icons.inventory_2_outlined,
+        color: AppColors.textSecondary,
+      );
+    }
+
+    if (product.isOutOfStock) {
+      return const _ProductStockStatus(
+        title: 'Hết hàng',
+        message: 'Dữ liệu hệ thống đang đánh dấu sản phẩm này hết hàng.',
+        icon: Icons.error_outline_rounded,
+        color: AppColors.error,
+      );
+    }
+
+    if (product.isLowStock) {
+      return const _ProductStockStatus(
+        title: 'Sắp hết hàng',
+        message: 'Số lượng hiện tại đã chạm ngưỡng cảnh báo tồn kho.',
+        icon: Icons.warning_amber_rounded,
+        color: AppColors.warning,
+      );
+    }
+
+    return const _ProductStockStatus(
+      title: 'Tồn kho ổn định',
+      message: 'Số lượng hiện tại chưa chạm ngưỡng cảnh báo.',
+      icon: Icons.check_circle_outline_rounded,
+      color: AppColors.success,
     );
   }
 }
