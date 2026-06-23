@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/env/env.dart';
 import '../../../../core/realtime/realtime_event_names.dart';
 import '../../../../core/realtime/realtime_providers.dart';
 import '../../domain/entities/active_subscription.dart';
@@ -13,8 +14,8 @@ import '../providers/subscription_providers.dart';
 import 'subscription_state.dart';
 
 class SubscriptionNotifier extends AutoDisposeNotifier<SubscriptionState> {
-  static const _returnUrl = 'quanoi://subscription/success';
-  static const _cancelUrl = 'quanoi://subscription/cancel';
+  static const _mobileReturnUrl = 'quanoi://subscription/success';
+  static const _mobileCancelUrl = 'quanoi://subscription/cancel';
   static const _pollInterval = Duration(seconds: 3);
   static const _maxPollAttempts = 10;
 
@@ -188,6 +189,20 @@ class SubscriptionNotifier extends AutoDisposeNotifier<SubscriptionState> {
         clearPurchasingPlanId: true,
       );
     }
+  }
+
+  String get _returnUrl =>
+      kIsWeb ? _paymentReturnUrl('success') : _mobileReturnUrl;
+
+  String get _cancelUrl =>
+      kIsWeb ? _paymentReturnUrl('cancel') : _mobileCancelUrl;
+
+  String _paymentReturnUrl(String outcome) {
+    final webAppUrl = Env.webAppUrl;
+    final root = webAppUrl.endsWith('/')
+        ? webAppUrl.substring(0, webAppUrl.length - 1)
+        : webAppUrl;
+    return '$root/subscription-payment-return?outcome=$outcome';
   }
 
   void markCheckoutOpened() {

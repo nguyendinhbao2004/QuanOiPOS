@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../../core/theme/index.dart';
+import '../payment_redirect.dart';
 import '../controllers/subscription_state.dart';
 import '../providers/subscription_providers.dart';
 
@@ -40,6 +42,12 @@ class _SubscriptionCheckoutPageState
       if (navigationUrl != null) {
         Future.microtask(() => _handleNavigationUrl(navigationUrl));
       }
+      return;
+    }
+
+    if (kIsWeb) {
+      _isLoading = false;
+      Future.microtask(() => redirectToExternalPayment(widget.paymentLink));
       return;
     }
 
@@ -89,6 +97,8 @@ class _SubscriptionCheckoutPageState
             webView
           else if (controller != null)
             WebViewWidget(controller: controller),
+          if (kIsWeb && webView == null)
+            const Center(child: CircularProgressIndicator()),
           if (_isLoading)
             const ColoredBox(
               color: AppColors.background,

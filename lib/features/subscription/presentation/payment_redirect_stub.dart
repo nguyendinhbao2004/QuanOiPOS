@@ -1,0 +1,1 @@
+void redirectToExternalPayment(String paymentLink) {}

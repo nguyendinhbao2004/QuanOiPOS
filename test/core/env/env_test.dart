@@ -23,6 +23,13 @@ void main() {
     expect(Env.apiBaseUrl, 'http://localhost:5186/api');
     expect(Env.notificationsHubUrl, 'http://localhost:5186/hubs/notifications');
     expect(Env.voiceApiBaseUrl, 'http://localhost:8000');
+    expect(Env.webAppUrl, 'https://pos.quanoi.online');
+  });
+
+  test('webAppUrl reads the configured public application URL', () {
+    dotenv.testLoad(fileInput: 'WEB_APP_URL=https://staging.quanoi.online/');
+
+    expect(Env.webAppUrl, 'https://staging.quanoi.online/');
   });
 
   test('apiBaseUrl avoids double slash when base url has trailing slash', () {

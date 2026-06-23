@@ -11,6 +11,12 @@ class Env {
   static String get voiceApiBaseUrl =>
       _normalizeBaseUrl(dotenv.env['VOICE_API_BASE_URL'] ?? '');
 
+  /// Public Flutter Web URL used by external payment providers to return to
+  /// the application after checkout.
+  static String get webAppUrl => _normalizeBaseUrl(
+    dotenv.env['WEB_APP_URL'] ?? 'https://pos.quanoi.online',
+  );
+
   static String _normalizeBaseUrl(String rawBaseUrl) {
     if (rawBaseUrl.isEmpty) return rawBaseUrl;
 

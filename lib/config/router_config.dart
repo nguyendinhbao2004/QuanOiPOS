@@ -52,6 +52,7 @@ import '../features/store_operations/table_management/presentation/pages/table_s
 import '../features/store_operations/voice_order/presentation/pages/voice_order_page.dart';
 import '../features/subscription/presentation/pages/store_subscription_page.dart';
 import '../features/subscription/presentation/pages/subscription_checkout_page.dart';
+import '../features/subscription/presentation/pages/subscription_payment_return_page.dart';
 import '../features/workspace_context/presentation/controllers/last_active_store_state.dart';
 import '../features/workspace_context/presentation/pages/create_store_page.dart';
 import '../features/workspace_context/presentation/pages/my_stores_page.dart';
@@ -117,6 +118,7 @@ abstract final class RouteNames {
   static const String createStore = 'create-store';
   static const String storeSubscription = 'store-subscription';
   static const String subscriptionCheckout = 'subscription-checkout';
+  static const String subscriptionPaymentReturn = 'subscription-payment-return';
   static const String appSettings = 'app-settings';
   static const String operationRegulations = 'operation-regulations';
   static const String privacyPolicy = 'privacy-policy';
@@ -838,6 +840,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/subscription-payment-return',
+        name: RouteNames.subscriptionPaymentReturn,
+        builder: (context, state) => SubscriptionPaymentReturnPage(
+          isCancelled: state.uri.queryParameters['outcome'] == 'cancel',
+        ),
+      ),
+      GoRoute(
         path: '/app-settings',
         name: RouteNames.appSettings,
         builder: (context, state) => const AppSettingsPage(),
@@ -879,7 +888,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // While bootstrapping, show splash
       if (authState.isBootstrapping) {
-        return state.matchedLocation == '/' ? null : '/';
+        return state.matchedLocation == '/' ||
+                state.matchedLocation == '/subscription-payment-return'
+            ? null
+            : '/';
       }
 
       // Once bootstrap finishes, root should resolve to a real route
@@ -910,6 +922,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (state.matchedLocation == '/store-home' ||
             state.matchedLocation == '/store-subscription' ||
             state.matchedLocation == '/subscription-checkout' ||
+            state.matchedLocation == '/subscription-payment-return' ||
             state.matchedLocation == '/app-settings' ||
             state.matchedLocation == '/operation-regulations' ||
             state.matchedLocation == '/privacy-policy' ||
