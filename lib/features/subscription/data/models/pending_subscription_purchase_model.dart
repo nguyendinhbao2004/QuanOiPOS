@@ -5,20 +5,36 @@ import '../../domain/entities/pending_subscription_purchase.dart';
 class PendingSubscriptionPurchaseModel {
   final int subscriptionId;
   final int paymentId;
+  final int planId;
   final int orderCode;
+  final String paymentLinkId;
   final String planName;
   final double amount;
   final String paymentLink;
-  final DateTime? expiresAt;
+  final String paymentStatus;
+  final String subscriptionStatus;
+  final DateTime? subscriptionExpiresAt;
+  final DateTime? paymentExpiresAt;
+  final DateTime? createdAt;
+  final bool canResumePayment;
+  final bool canCancel;
 
   const PendingSubscriptionPurchaseModel({
     required this.subscriptionId,
     required this.paymentId,
+    this.planId = 0,
     required this.orderCode,
+    this.paymentLinkId = '',
     required this.planName,
     required this.amount,
     required this.paymentLink,
-    required this.expiresAt,
+    this.paymentStatus = '',
+    this.subscriptionStatus = '',
+    this.subscriptionExpiresAt,
+    this.paymentExpiresAt,
+    this.createdAt,
+    this.canResumePayment = true,
+    this.canCancel = true,
   });
 
   factory PendingSubscriptionPurchaseModel.fromEntity(
@@ -27,11 +43,19 @@ class PendingSubscriptionPurchaseModel {
     return PendingSubscriptionPurchaseModel(
       subscriptionId: entity.subscriptionId,
       paymentId: entity.paymentId,
+      planId: entity.planId,
       orderCode: entity.orderCode,
+      paymentLinkId: entity.paymentLinkId,
       planName: entity.planName,
       amount: entity.amount,
       paymentLink: entity.paymentLink,
-      expiresAt: entity.expiresAt,
+      paymentStatus: entity.paymentStatus,
+      subscriptionStatus: entity.subscriptionStatus,
+      subscriptionExpiresAt: entity.subscriptionExpiresAt,
+      paymentExpiresAt: entity.paymentExpiresAt,
+      createdAt: entity.createdAt,
+      canResumePayment: entity.canResumePayment,
+      canCancel: entity.canCancel,
     );
   }
 
@@ -43,11 +67,21 @@ class PendingSubscriptionPurchaseModel {
     return PendingSubscriptionPurchaseModel(
       subscriptionId: _intValue(json['subscriptionId']),
       paymentId: _intValue(json['paymentId']),
+      planId: _intValue(json['planId']),
       orderCode: _intValue(json['orderCode']),
+      paymentLinkId: _stringValue(json['paymentLinkId']),
       planName: _stringValue(json['planName']),
       amount: _doubleValue(json['amount']),
       paymentLink: _stringValue(json['paymentLink']),
-      expiresAt: _dateValue(json['expiresAt']),
+      paymentStatus: _stringValue(json['paymentStatus']),
+      subscriptionStatus: _stringValue(json['subscriptionStatus']),
+      subscriptionExpiresAt: _dateValue(
+        json['subscriptionExpiresAt'] ?? json['expiresAt'],
+      ),
+      paymentExpiresAt: _dateValue(json['paymentExpiresAt']),
+      createdAt: _dateValue(json['createdAt']),
+      canResumePayment: _boolValue(json['canResumePayment'], fallback: true),
+      canCancel: _boolValue(json['canCancel'], fallback: true),
     );
   }
 
@@ -59,11 +93,19 @@ class PendingSubscriptionPurchaseModel {
     return {
       'subscriptionId': subscriptionId,
       'paymentId': paymentId,
+      'planId': planId,
       'orderCode': orderCode,
+      'paymentLinkId': paymentLinkId,
       'planName': planName,
       'amount': amount,
       'paymentLink': paymentLink,
-      'expiresAt': expiresAt?.toIso8601String(),
+      'paymentStatus': paymentStatus,
+      'subscriptionStatus': subscriptionStatus,
+      'subscriptionExpiresAt': subscriptionExpiresAt?.toIso8601String(),
+      'paymentExpiresAt': paymentExpiresAt?.toIso8601String(),
+      'createdAt': createdAt?.toIso8601String(),
+      'canResumePayment': canResumePayment,
+      'canCancel': canCancel,
     };
   }
 
@@ -73,11 +115,19 @@ class PendingSubscriptionPurchaseModel {
     return PendingSubscriptionPurchase(
       subscriptionId: subscriptionId,
       paymentId: paymentId,
+      planId: planId,
       orderCode: orderCode,
+      paymentLinkId: paymentLinkId,
       planName: planName,
       amount: amount,
       paymentLink: paymentLink,
-      expiresAt: expiresAt,
+      paymentStatus: paymentStatus,
+      subscriptionStatus: subscriptionStatus,
+      subscriptionExpiresAt: subscriptionExpiresAt,
+      paymentExpiresAt: paymentExpiresAt,
+      createdAt: createdAt,
+      canResumePayment: canResumePayment,
+      canCancel: canCancel,
     );
   }
 
@@ -123,5 +173,23 @@ class PendingSubscriptionPurchaseModel {
     }
 
     return null;
+  }
+
+  static bool _boolValue(Object? value, {required bool fallback}) {
+    if (value is bool) {
+      return value;
+    }
+
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'true') {
+        return true;
+      }
+      if (normalized == 'false') {
+        return false;
+      }
+    }
+
+    return fallback;
   }
 }

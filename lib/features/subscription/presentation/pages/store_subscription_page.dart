@@ -92,6 +92,9 @@ class _StoreSubscriptionPageState extends ConsumerState<StoreSubscriptionPage>
               onContinuePayment: () => ref
                   .read(subscriptionNotifierProvider.notifier)
                   .continuePendingPayment(),
+              onCancelPendingPayment: () => ref
+                  .read(subscriptionNotifierProvider.notifier)
+                  .cancelPendingPayment(),
             ),
           },
         ),
@@ -105,12 +108,14 @@ class _SubscriptionContent extends StatelessWidget {
   final Future<void> Function() onRetry;
   final Future<void> Function(ServicePackage plan) onPurchase;
   final VoidCallback onContinuePayment;
+  final Future<void> Function() onCancelPendingPayment;
 
   const _SubscriptionContent({
     required this.state,
     required this.onRetry,
     required this.onPurchase,
     required this.onContinuePayment,
+    required this.onCancelPendingPayment,
   });
 
   @override
@@ -123,6 +128,7 @@ class _SubscriptionContent extends StatelessWidget {
             _PendingPaymentCard(
               pendingPurchase: state.pendingPurchase!,
               onContinuePayment: onContinuePayment,
+              onCancelPendingPayment: onCancelPendingPayment,
             ),
             const SizedBox(height: AppConstants.spacingLg),
           ],
@@ -531,10 +537,12 @@ class _ServicePackageCardState extends State<_ServicePackageCard> {
 class _PendingPaymentCard extends StatelessWidget {
   final PendingSubscriptionPurchase pendingPurchase;
   final VoidCallback onContinuePayment;
+  final Future<void> Function() onCancelPendingPayment;
 
   const _PendingPaymentCard({
     required this.pendingPurchase,
     required this.onContinuePayment,
+    required this.onCancelPendingPayment,
   });
 
   @override
@@ -561,25 +569,48 @@ class _PendingPaymentCard extends StatelessWidget {
               icon: Icons.payments_outlined,
               text: _priceLabel(pendingPurchase.amount),
             ),
-            if (pendingPurchase.expiresAt != null) ...[
+            if (pendingPurchase.paymentExpiresAt != null) ...[
               const SizedBox(height: AppConstants.spacingXs),
               _InlineInfo(
-                icon: Icons.event_outlined,
+                icon: Icons.timer_outlined,
                 text:
-                    'Hiệu lực đến: ${DateFormat('dd/MM/yyyy HH:mm').format(pendingPurchase.expiresAt!.toLocal())}',
+                    'Link thanh toán hết hạn: ${DateFormat('dd/MM/yyyy HH:mm').format(pendingPurchase.paymentExpiresAt!.toLocal())}',
               ),
             ],
             const SizedBox(height: AppConstants.spacingLg),
+            if (!pendingPurchase.canResumePayment)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppConstants.spacingMd),
+                child: Text(
+                  'Link thanh toán không còn khả dụng. Hãy hủy giao dịch rồi mua lại.',
+                  style: AppTextStyles.bodySm.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: pendingPurchase.paymentLink.isEmpty
+                onPressed:
+                    pendingPurchase.paymentLink.isEmpty ||
+                        !pendingPurchase.canResumePayment
                     ? null
                     : onContinuePayment,
                 icon: const Icon(Icons.payment_outlined),
                 label: const Text('Tiếp tục'),
               ),
             ),
+            if (pendingPurchase.canCancel) ...[
+              const SizedBox(height: AppConstants.spacingSm),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onCancelPendingPayment,
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: const Text('Hủy giao dịch'),
+                ),
+              ),
+            ],
           ],
         ),
       ),

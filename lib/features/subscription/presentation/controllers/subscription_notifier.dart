@@ -213,7 +213,9 @@ class SubscriptionNotifier extends AutoDisposeNotifier<SubscriptionState> {
 
   void continuePendingPayment() {
     final pendingPurchase = state.pendingPurchase;
-    if (pendingPurchase == null || pendingPurchase.paymentLink.isEmpty) {
+    if (pendingPurchase == null ||
+        pendingPurchase.paymentLink.isEmpty ||
+        !pendingPurchase.canResumePayment) {
       return;
     }
 
@@ -245,14 +247,12 @@ class SubscriptionNotifier extends AutoDisposeNotifier<SubscriptionState> {
         cancelPendingSubscriptionPurchaseUseCaseProvider,
       );
       await cancelUseCase(subscriptionId: pendingPurchase.subscriptionId);
-      await _refreshActiveAfterFailedPayment('Thanh toán đã hủy');
+      await loadPlans();
     } catch (error) {
       final message = _cleanError(error);
-      await ref.read(clearPendingSubscriptionPurchaseUseCaseProvider)();
       state = state.copyWith(
         status: SubscriptionStatus.paymentFailed,
         errorMessage: message,
-        clearPendingPurchase: true,
         clearCheckoutUrl: true,
       );
     }

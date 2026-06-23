@@ -31,7 +31,8 @@ class PurchaseSubscriptionResult {
       planName: planName,
       amount: amount,
       paymentLink: paymentLink,
-      expiresAt: expiresAt,
+      subscriptionExpiresAt: expiresAt,
+      canResumePayment: paymentLink.isNotEmpty,
     );
   }
 }

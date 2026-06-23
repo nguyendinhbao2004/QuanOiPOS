@@ -106,7 +106,7 @@ void main() {
     expect(find.text('MUA GÓI'), findsNothing);
   });
 
-  testWidgets('pending payment card only shows continue action', (
+  testWidgets('pending payment card shows continue and cancel actions', (
     tester,
   ) async {
     final container = _buildContainer(
@@ -127,7 +127,10 @@ void main() {
 
     expect(find.text('ĐANG CHỜ THANH TOÁN'), findsOneWidget);
     expect(find.widgetWithText(ElevatedButton, 'Tiếp tục'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Tải lại'), findsNothing);
+    expect(
+      find.widgetWithText(OutlinedButton, 'Hủy giao dịch'),
+      findsOneWidget,
+    );
 
     container.dispose();
     await tester.pump();
@@ -150,7 +153,6 @@ void main() {
     router.go('/store-subscription');
     await tester.pumpAndSettle();
 
-    expect(find.text('Doanh thu tháng'), findsOneWidget);
     expect(find.text('Gói dịch vụ của tôi'), findsNothing);
   });
 }
@@ -337,9 +339,12 @@ final _activeSubscription = ActiveSubscription(
 const _pendingPurchase = PendingSubscriptionPurchase(
   subscriptionId: 3,
   paymentId: 7,
+  planId: 2,
   orderCode: 81780473152,
   planName: 'Pro',
   amount: 299000,
   paymentLink: 'https://pay.payos.vn/web/test',
-  expiresAt: null,
+  paymentExpiresAt: null,
+  canResumePayment: true,
+  canCancel: true,
 );

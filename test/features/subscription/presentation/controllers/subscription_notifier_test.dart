@@ -177,10 +177,10 @@ void main() {
 
       final state = container.read(subscriptionNotifierProvider);
       expect(repository.cancelPendingPurchaseCallCount, 1);
-      expect(state.status, SubscriptionStatus.paymentFailed);
+      expect(state.status, SubscriptionStatus.ready);
       expect(state.pendingPurchase, isNull);
       expect(state.checkoutUrl, isNull);
-      expect(state.errorMessage, 'Thanh toán đã hủy');
+      expect(state.errorMessage, isNull);
     },
   );
 
@@ -364,11 +364,14 @@ const _defaultActiveSubscription = ActiveSubscription(
 const _defaultPendingPurchase = PendingSubscriptionPurchase(
   subscriptionId: 3,
   paymentId: 7,
+  planId: 1,
   orderCode: 81780473152,
   planName: 'Basic',
   amount: 99000,
   paymentLink: 'https://pay.payos.vn/web/test',
-  expiresAt: null,
+  paymentExpiresAt: null,
+  canResumePayment: true,
+  canCancel: true,
 );
 
 const _cancelledPaymentPayload = PaymentStatusChangedPayload(

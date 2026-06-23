@@ -92,28 +92,20 @@ void main() {
 
       final entity = result.toEntity();
       expect(entity.toPendingPurchase().paymentId, 7);
+      expect(entity.toPendingPurchase().subscriptionExpiresAt, isNotNull);
     });
   });
 
   group('SubscriptionPendingPurchaseStorage', () {
-    test('loads only pending purchase for current account', () async {
+    test('stores pending purchase per account for legacy cleanup', () async {
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
       final storage = SubscriptionPendingPurchaseStorageImpl(preferences);
-      final snapshotStorage = _FakeSessionSnapshotStorage(_session(8));
-      final repository = SubscriptionRepositoryImpl(
-        SubscriptionRemoteDataSource(DioClient(Dio())),
-        storage,
-        snapshotStorage,
-      );
 
       await storage.save(accountId: 8, purchase: _pendingPurchaseModel);
 
-      expect(await repository.loadPendingPurchase(), isNotNull);
-
-      snapshotStorage.snapshot = _session(9);
-
-      expect(await repository.loadPendingPurchase(), isNull);
+      expect(await storage.load(accountId: 8), isNotNull);
+      expect(await storage.load(accountId: 9), isNull);
     });
 
     test('clears pending purchase only for current account', () async {
@@ -142,29 +134,46 @@ void main() {
       });
       final preferences = await SharedPreferences.getInstance();
       final storage = SubscriptionPendingPurchaseStorageImpl(preferences);
-      final snapshotStorage = _FakeSessionSnapshotStorage(_session(8));
-      final repository = SubscriptionRepositoryImpl(
-        SubscriptionRemoteDataSource(DioClient(Dio())),
-        storage,
-        snapshotStorage,
-      );
 
-      expect(await repository.loadPendingPurchase(), isNull);
+      expect(await storage.load(accountId: 8), isNull);
     });
 
-    test('does not load pending purchase without current account', () async {
-      SharedPreferences.setMockInitialValues({});
+    test('repository loads pending purchase from backend endpoint', () async {
+      String? requestedPath;
+      final dio = Dio();
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            requestedPath = options.path;
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                data: {
+                  'succeeded': true,
+                  'message':
+                      'Lấy giao dịch mua gói đang chờ thanh toán thành công',
+                  'data': _pendingPurchaseData,
+                  'errors': <String>[],
+                },
+              ),
+            );
+          },
+        ),
+      );
       final preferences = await SharedPreferences.getInstance();
-      final storage = SubscriptionPendingPurchaseStorageImpl(preferences);
       final repository = SubscriptionRepositoryImpl(
-        SubscriptionRemoteDataSource(DioClient(Dio())),
-        storage,
+        SubscriptionRemoteDataSource(DioClient(dio)),
+        SubscriptionPendingPurchaseStorageImpl(preferences),
         _FakeSessionSnapshotStorage(null),
       );
 
-      await storage.save(accountId: 8, purchase: _pendingPurchaseModel);
+      final pendingPurchase = await repository.loadPendingPurchase();
 
-      expect(await repository.loadPendingPurchase(), isNull);
+      expect(requestedPath, '/subscriptions/purchase/pending');
+      expect(pendingPurchase, isNotNull);
+      expect(pendingPurchase!.paymentLinkId, 'payos-link-id');
+      expect(pendingPurchase.canResumePayment, isTrue);
+      expect(pendingPurchase.paymentExpiresAt, isNotNull);
     });
   });
 
@@ -257,6 +266,42 @@ void main() {
 
       expect(subscription, isNull);
     });
+
+    test(
+      'loads pending purchase from /subscriptions/purchase/pending',
+      () async {
+        String? requestedPath;
+        final dio = Dio();
+        dio.interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              requestedPath = options.path;
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  data: {
+                    'succeeded': true,
+                    'message':
+                        'Lấy giao dịch mua gói đang chờ thanh toán thành công',
+                    'data': _pendingPurchaseData,
+                    'errors': <String>[],
+                  },
+                ),
+              );
+            },
+          ),
+        );
+
+        final dataSource = SubscriptionRemoteDataSource(DioClient(dio));
+
+        final pendingPurchase = await dataSource.getPendingPurchase();
+
+        expect(requestedPath, '/subscriptions/purchase/pending');
+        expect(pendingPurchase, isNotNull);
+        expect(pendingPurchase!.subscriptionStatus, 'Pending');
+        expect(pendingPurchase.canCancel, isTrue);
+      },
+    );
 
     test('purchases subscription from /subscriptions/purchase', () async {
       String? requestedPath;
@@ -371,11 +416,15 @@ SessionSnapshot _session(int accountId) {
 const _pendingPurchaseModel = PendingSubscriptionPurchaseModel(
   subscriptionId: 8,
   paymentId: 7,
+  planId: 1,
   orderCode: 81780473152,
+  paymentLinkId: 'payos-link-id',
   planName: 'Basic',
   amount: 10000,
   paymentLink: 'https://pay.payos.vn/web/test',
-  expiresAt: null,
+  paymentExpiresAt: null,
+  canResumePayment: true,
+  canCancel: true,
 );
 
 const _subscriptionPlansData = [
@@ -451,4 +500,22 @@ const _purchaseSubscriptionData = {
   'daysValid': 30,
   'maxStores': 1,
   'expiresAt': '2026-07-03T07:52:31.95656Z',
+};
+
+const _pendingPurchaseData = {
+  'subscriptionId': 8,
+  'paymentId': 7,
+  'planId': 1,
+  'planName': 'Basic',
+  'amount': 10000,
+  'orderCode': 81780473152,
+  'paymentLinkId': 'payos-link-id',
+  'paymentLink': 'https://pay.payos.vn/web/test',
+  'paymentStatus': 'Pending',
+  'subscriptionStatus': 'Pending',
+  'subscriptionExpiresAt': '2026-07-03T07:52:31.95656Z',
+  'paymentExpiresAt': '2026-06-23T08:15:00Z',
+  'createdAt': '2026-06-23T08:00:00Z',
+  'canResumePayment': true,
+  'canCancel': true,
 };

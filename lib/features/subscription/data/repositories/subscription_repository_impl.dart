@@ -6,7 +6,6 @@ import '../../domain/entities/service_package.dart';
 import '../../domain/repositories/subscription_repository.dart';
 import '../datasources/subscription_pending_purchase_storage.dart';
 import '../datasources/subscription_remote_data_source.dart';
-import '../models/pending_subscription_purchase_model.dart';
 import '../models/purchase_subscription_request_model.dart';
 
 class SubscriptionRepositoryImpl implements SubscriptionRepository {
@@ -50,27 +49,12 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
         cancelUrl: cancelUrl,
       ),
     );
-    final entity = result.toEntity();
-    final accountId = await _currentAccountId();
-    if (accountId != null) {
-      await _pendingPurchaseStorage.save(
-        accountId: accountId,
-        purchase: PendingSubscriptionPurchaseModel.fromEntity(
-          entity.toPendingPurchase(),
-        ),
-      );
-    }
-    return entity;
+    return result.toEntity();
   }
 
   @override
   Future<PendingSubscriptionPurchase?> loadPendingPurchase() async {
-    final accountId = await _currentAccountId();
-    if (accountId == null) {
-      return null;
-    }
-
-    final purchase = await _pendingPurchaseStorage.load(accountId: accountId);
+    final purchase = await _remoteDataSource.getPendingPurchase();
     return purchase?.toEntity();
   }
 

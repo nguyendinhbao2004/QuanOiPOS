@@ -1,5 +1,6 @@
 import '../../../../core/network/dio/dio_client.dart';
 import '../models/active_subscription_model.dart';
+import '../models/pending_subscription_purchase_model.dart';
 import '../models/purchase_subscription_request_model.dart';
 import '../models/purchase_subscription_result_model.dart';
 import '../models/service_package_model.dart';
@@ -38,6 +39,26 @@ class SubscriptionRemoteDataSource {
         response.message,
         response.errors,
         'Load active subscription failed',
+      );
+    }
+
+    return response.data;
+  }
+
+  Future<PendingSubscriptionPurchaseModel?> getPendingPurchase() async {
+    final response = await _dioClient
+        .getResponse<PendingSubscriptionPurchaseModel?>(
+          '/subscriptions/purchase/pending',
+          dataFromJson: (json) => json == null
+              ? null
+              : PendingSubscriptionPurchaseModel.fromJson(json),
+        );
+
+    if (!response.succeeded) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Load pending subscription purchase failed',
       );
     }
 
