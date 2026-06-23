@@ -1,5 +1,7 @@
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
+import '../../domain/entities/inventory_deduction_mode.dart';
+import '../../domain/entities/inventory_item_settings.dart';
 import '../../domain/entities/product_ingredient.dart';
 import '../../domain/entities/product_image_upload.dart';
 import '../../domain/entities/product_recipe_draft.dart';
@@ -40,6 +42,16 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
         .map((ingredient) => ingredient.toEntity())
         .where((ingredient) => ingredient.isActive && !ingredient.isDeleted)
         .toList();
+  }
+
+  @override
+  Future<List<IngredientInventorySettings>> loadIngredientInventorySettings(
+    int storeId,
+  ) async {
+    final items = await _remoteDataSource.getIngredientInventorySettings(
+      storeId,
+    );
+    return items.map((item) => item.toEntity()).toList();
   }
 
   @override
@@ -85,6 +97,21 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
   @override
   Future<void> deleteIngredient(int ingredientId) {
     return _remoteDataSource.deleteIngredient(ingredientId);
+  }
+
+  @override
+  Future<void> updateIngredientInventorySettings({
+    required int ingredientId,
+    required double minimumStock,
+    required bool isTrackInventory,
+  }) {
+    return _remoteDataSource.updateIngredientInventorySettings(
+      ingredientId: ingredientId,
+      request: UpdateIngredientInventorySettingsRequestModel(
+        minimumStock: minimumStock,
+        isTrackInventory: isTrackInventory,
+      ),
+    );
   }
 
   @override
@@ -159,6 +186,14 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
   }
 
   @override
+  Future<List<ProductInventorySettings>> loadProductInventorySettings(
+    int storeId,
+  ) async {
+    final items = await _remoteDataSource.getProductInventorySettings(storeId);
+    return items.map((item) => item.toEntity()).toList();
+  }
+
+  @override
   Future<Product> loadProductDetail(int productId) async {
     final product = await _remoteDataSource.getProductById(productId);
     return product.toEntity();
@@ -205,6 +240,34 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
   }
 
   @override
+  Future<void> updateProductInventorySettings({
+    required int productId,
+    required double minimumStock,
+    required bool isTrackInventory,
+    required InventoryDeductionMode inventoryDeductionMode,
+  }) {
+    return _remoteDataSource.updateProductInventorySettings(
+      productId: productId,
+      request: UpdateProductInventorySettingsRequestModel(
+        minimumStock: minimumStock,
+        isTrackInventory: isTrackInventory,
+        inventoryDeductionMode: inventoryDeductionMode,
+      ),
+    );
+  }
+
+  @override
+  Future<void> replaceProductRecipe({
+    required int productId,
+    required List<ProductRecipeDraft> recipes,
+  }) {
+    return _remoteDataSource.replaceProductRecipe(
+      productId: productId,
+      request: ReplaceProductRecipeRequestModel(recipes),
+    );
+  }
+
+  @override
   Future<Product> updateProduct({
     required int productId,
     required int storeId,
@@ -219,7 +282,6 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
-    required List<ProductRecipeDraft> recipes,
   }) async {
     final imageUrl = imageUpload == null
         ? existingImageUrl
@@ -240,7 +302,6 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
         type: type,
         variants: variants,
         toppingIds: toppingIds,
-        recipes: recipes,
       ),
     );
     return product.toEntity();

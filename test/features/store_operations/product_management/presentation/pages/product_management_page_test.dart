@@ -7,6 +7,8 @@ import 'package:quan_oi/core/constants/app_permission_codes.dart';
 import 'package:quan_oi/core/theme/index.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_category.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_deduction_mode.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_item_settings.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_ingredient.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_image_upload.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_recipe_draft.dart';
@@ -25,6 +27,8 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_ingredient_inventory_settings_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_inventory_settings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
@@ -246,10 +250,20 @@ void main() {
         find.byKey(const Key('product_create_variant_1_price_field')),
         '5000',
       );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('product_create_add_variant_button')),
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(
         find.byKey(const Key('product_create_add_variant_button')),
       );
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('product_create_variant_2_name_field')),
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.enterText(
         find.byKey(const Key('product_create_variant_2_name_field')),
         'Rau cải',
@@ -858,6 +872,11 @@ Future<void> _pumpPage(
   required List<StorePermission> permissions,
   required _FakeProductManagementRepository productRepository,
 }) async {
+  tester.view.physicalSize = const Size(1440, 1800);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
   final workspaceRepository = _FakeWorkspaceRepository(permissions);
 
   await tester.pumpWidget(
@@ -955,8 +974,18 @@ Future<void> _buildTwoSizeRows(WidgetTester tester) async {
     find.byKey(const Key('product_create_variant_1_price_field')),
     '30000',
   );
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('product_create_add_variant_button')),
+    160,
+    scrollable: find.byType(Scrollable).first,
+  );
   await tester.tap(find.byKey(const Key('product_create_add_variant_button')));
   await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('product_create_variant_2_name_field')),
+    160,
+    scrollable: find.byType(Scrollable).first,
+  );
   await tester.enterText(
     find.byKey(const Key('product_create_variant_2_name_field')),
     'Size L',
@@ -976,6 +1005,11 @@ Future<void> _pumpRoutedPage(
   required List<StorePermission> permissions,
   required _FakeProductManagementRepository productRepository,
 }) async {
+  tester.view.physicalSize = const Size(1440, 1800);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
   final workspaceRepository = _FakeWorkspaceRepository(permissions);
   final router = GoRouter(
     initialLocation: '/stores/5/products',
@@ -1038,6 +1072,12 @@ List<Override> _productOverrides(
     ),
     loadProductIngredientsUseCaseProvider.overrideWithValue(
       LoadProductIngredientsUseCase(productRepository),
+    ),
+    loadIngredientInventorySettingsUseCaseProvider.overrideWithValue(
+      LoadIngredientInventorySettingsUseCase(productRepository),
+    ),
+    loadProductInventorySettingsUseCaseProvider.overrideWithValue(
+      LoadProductInventorySettingsUseCase(productRepository),
     ),
     createProductIngredientUseCaseProvider.overrideWithValue(
       CreateProductIngredientUseCase(productRepository),
@@ -1245,6 +1285,26 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   ];
 
   @override
+  Future<List<IngredientInventorySettings>> loadIngredientInventorySettings(
+    int storeId,
+  ) async {
+    return ingredients
+        .map(
+          (ingredient) => IngredientInventorySettings(
+            ingredientId: ingredient.id,
+            minimumStock: ingredient.minimumStock,
+            isTrackInventory: ingredient.isTrackInventory,
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<List<ProductInventorySettings>> loadProductInventorySettings(
+    int storeId,
+  ) async => const [];
+
+  @override
   Future<ProductIngredient> createIngredient({
     required int storeId,
     required String name,
@@ -1440,7 +1500,6 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
-    required List<ProductRecipeDraft> recipes,
   }) async {
     updateProductCallCount += 1;
     lastUpdatedProductName = name;
@@ -1485,4 +1544,25 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     deleteProductCallCount += 1;
     products.removeWhere((product) => product.id == productId);
   }
+
+  @override
+  Future<void> updateIngredientInventorySettings({
+    required int ingredientId,
+    required double minimumStock,
+    required bool isTrackInventory,
+  }) async {}
+
+  @override
+  Future<void> updateProductInventorySettings({
+    required int productId,
+    required double minimumStock,
+    required bool isTrackInventory,
+    required InventoryDeductionMode inventoryDeductionMode,
+  }) async {}
+
+  @override
+  Future<void> replaceProductRecipe({
+    required int productId,
+    required List<ProductRecipeDraft> recipes,
+  }) async {}
 }

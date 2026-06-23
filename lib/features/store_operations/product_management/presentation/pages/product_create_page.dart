@@ -12,6 +12,7 @@ import '../../../../../core/constants/app_permission_codes.dart';
 import '../../../../../core/theme/index.dart';
 import '../../../../workspace_context/presentation/controllers/store_access_state.dart';
 import '../../../../workspace_context/presentation/providers/workspace_context_providers.dart';
+import '../../domain/entities/inventory_deduction_mode.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
 import '../../domain/entities/product_ingredient.dart';
@@ -41,11 +42,15 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
   final _preparationTimeController = TextEditingController(text: '0');
   final _basePriceController = TextEditingController();
   final _costPriceController = TextEditingController();
+  final _minimumStockController = TextEditingController(text: '0');
   final List<_VariantOptionRowState> _variantOptions = [];
   final List<_RecipeRowState> _recipeRows = [];
   int? _categoryId;
   ProductType _type = ProductType.drink;
   bool _hasMultipleSizes = false;
+  bool _isTrackInventory = false;
+  InventoryDeductionMode _inventoryDeductionMode =
+      InventoryDeductionMode.recipeOnly;
   int? _defaultVariantOptionId;
   int _nextVariantOptionId = 1;
   final Set<int> _selectedToppingIds = {};
@@ -59,6 +64,7 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
     _preparationTimeController.dispose();
     _basePriceController.dispose();
     _costPriceController.dispose();
+    _minimumStockController.dispose();
     for (final option in _variantOptions) {
       option.dispose();
     }
@@ -159,9 +165,12 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
             preparationTimeController: _preparationTimeController,
             basePriceController: _basePriceController,
             costPriceController: _costPriceController,
+            minimumStockController: _minimumStockController,
             categoryId: _categoryId,
             type: _type,
             hasMultipleSizes: _hasMultipleSizes,
+            isTrackInventory: _isTrackInventory,
+            inventoryDeductionMode: _inventoryDeductionMode,
             variantOptions: _variantOptions,
             defaultVariantOptionId: _defaultVariantOptionId,
             selectedToppingIds: _selectedToppingIds,
@@ -174,6 +183,10 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
             onClearSelectedImage: () => setState(() => _selectedImage = null),
             onCategoryChanged: (value) => setState(() => _categoryId = value),
             onTypeChanged: (value) => setState(() => _type = value),
+            onTrackInventoryChanged: (value) =>
+                setState(() => _isTrackInventory = value),
+            onInventoryDeductionModeChanged: (value) =>
+                setState(() => _inventoryDeductionMode = value),
             onMultipleSizesChanged: (value) {
               setState(() {
                 _hasMultipleSizes = value;
@@ -214,8 +227,11 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
       _costPriceController.text = product.costPrice > 0
           ? product.costPrice.toString()
           : '0';
+      _minimumStockController.text = _formatStockInput(product.minimumStock);
       _categoryId = product.categoryId;
       _type = product.type;
+      _isTrackInventory = product.isTrackInventory;
+      _inventoryDeductionMode = product.inventoryDeductionMode;
       _selectedToppingIds
         ..clear()
         ..addAll(product.toppings.map((topping) => topping.id));
@@ -319,9 +335,12 @@ class _AccessReadyContent extends ConsumerWidget {
   final TextEditingController preparationTimeController;
   final TextEditingController basePriceController;
   final TextEditingController costPriceController;
+  final TextEditingController minimumStockController;
   final int? categoryId;
   final ProductType type;
   final bool hasMultipleSizes;
+  final bool isTrackInventory;
+  final InventoryDeductionMode inventoryDeductionMode;
   final List<_VariantOptionRowState> variantOptions;
   final int? defaultVariantOptionId;
   final Set<int> selectedToppingIds;
@@ -334,6 +353,8 @@ class _AccessReadyContent extends ConsumerWidget {
   final VoidCallback onClearSelectedImage;
   final ValueChanged<int?> onCategoryChanged;
   final ValueChanged<ProductType> onTypeChanged;
+  final ValueChanged<bool> onTrackInventoryChanged;
+  final ValueChanged<InventoryDeductionMode> onInventoryDeductionModeChanged;
   final ValueChanged<bool> onMultipleSizesChanged;
   final VoidCallback onAddVariantOption;
   final ValueChanged<int> onRemoveVariantOption;
@@ -352,9 +373,12 @@ class _AccessReadyContent extends ConsumerWidget {
     required this.preparationTimeController,
     required this.basePriceController,
     required this.costPriceController,
+    required this.minimumStockController,
     required this.categoryId,
     required this.type,
     required this.hasMultipleSizes,
+    required this.isTrackInventory,
+    required this.inventoryDeductionMode,
     required this.variantOptions,
     required this.defaultVariantOptionId,
     required this.selectedToppingIds,
@@ -367,6 +391,8 @@ class _AccessReadyContent extends ConsumerWidget {
     required this.onClearSelectedImage,
     required this.onCategoryChanged,
     required this.onTypeChanged,
+    required this.onTrackInventoryChanged,
+    required this.onInventoryDeductionModeChanged,
     required this.onMultipleSizesChanged,
     required this.onAddVariantOption,
     required this.onRemoveVariantOption,
@@ -449,9 +475,12 @@ class _AccessReadyContent extends ConsumerWidget {
               preparationTimeController: preparationTimeController,
               basePriceController: basePriceController,
               costPriceController: costPriceController,
+              minimumStockController: minimumStockController,
               categoryId: categoryId,
               type: type,
               hasMultipleSizes: hasMultipleSizes,
+              isTrackInventory: isTrackInventory,
+              inventoryDeductionMode: inventoryDeductionMode,
               variantOptions: variantOptions,
               defaultVariantOptionId: defaultVariantOptionId,
               selectedToppingIds: selectedToppingIds,
@@ -461,6 +490,8 @@ class _AccessReadyContent extends ConsumerWidget {
               notifier: notifier,
               onCategoryChanged: onCategoryChanged,
               onTypeChanged: onTypeChanged,
+              onTrackInventoryChanged: onTrackInventoryChanged,
+              onInventoryDeductionModeChanged: onInventoryDeductionModeChanged,
               onMultipleSizesChanged: onMultipleSizesChanged,
               onAddVariantOption: onAddVariantOption,
               onRemoveVariantOption: onRemoveVariantOption,
@@ -514,6 +545,9 @@ class _AccessReadyContent extends ConsumerWidget {
         variants: _buildVariants(),
         toppingIds: selectedToppingIds.toList(),
         recipes: _buildRecipes(),
+        minimumStock: double.tryParse(minimumStockController.text.trim()) ?? 0,
+        isTrackInventory: isTrackInventory,
+        inventoryDeductionMode: inventoryDeductionMode,
         imageUpload: selectedImage?.toUpload(),
       );
       if (isEditing) {
@@ -617,9 +651,12 @@ class _ReadyCreateForm extends StatelessWidget {
   final TextEditingController preparationTimeController;
   final TextEditingController basePriceController;
   final TextEditingController costPriceController;
+  final TextEditingController minimumStockController;
   final int? categoryId;
   final ProductType type;
   final bool hasMultipleSizes;
+  final bool isTrackInventory;
+  final InventoryDeductionMode inventoryDeductionMode;
   final List<_VariantOptionRowState> variantOptions;
   final int? defaultVariantOptionId;
   final Set<int> selectedToppingIds;
@@ -629,6 +666,8 @@ class _ReadyCreateForm extends StatelessWidget {
   final ProductCreateNotifier notifier;
   final ValueChanged<int?> onCategoryChanged;
   final ValueChanged<ProductType> onTypeChanged;
+  final ValueChanged<bool> onTrackInventoryChanged;
+  final ValueChanged<InventoryDeductionMode> onInventoryDeductionModeChanged;
   final ValueChanged<bool> onMultipleSizesChanged;
   final VoidCallback onAddVariantOption;
   final ValueChanged<int> onRemoveVariantOption;
@@ -650,9 +689,12 @@ class _ReadyCreateForm extends StatelessWidget {
     required this.preparationTimeController,
     required this.basePriceController,
     required this.costPriceController,
+    required this.minimumStockController,
     required this.categoryId,
     required this.type,
     required this.hasMultipleSizes,
+    required this.isTrackInventory,
+    required this.inventoryDeductionMode,
     required this.variantOptions,
     required this.defaultVariantOptionId,
     required this.selectedToppingIds,
@@ -662,6 +704,8 @@ class _ReadyCreateForm extends StatelessWidget {
     required this.notifier,
     required this.onCategoryChanged,
     required this.onTypeChanged,
+    required this.onTrackInventoryChanged,
+    required this.onInventoryDeductionModeChanged,
     required this.onMultipleSizesChanged,
     required this.onAddVariantOption,
     required this.onRemoveVariantOption,
@@ -878,6 +922,18 @@ class _ReadyCreateForm extends StatelessWidget {
                   hint: 'Chọn nguyên liệu sử dụng',
                   icon: Icons.inventory_2_outlined,
                   onTap: isSubmitting ? null : () => _showRecipePicker(context),
+                ),
+                const SizedBox(height: AppConstants.spacingXl),
+                _SectionTitle('5. Cấu hình kho'),
+                const SizedBox(height: AppConstants.spacingSm),
+                _ProductInventorySettingsSection(
+                  minimumStockController: minimumStockController,
+                  isTrackInventory: isTrackInventory,
+                  inventoryDeductionMode: inventoryDeductionMode,
+                  isSubmitting: isSubmitting,
+                  onTrackInventoryChanged: onTrackInventoryChanged,
+                  onInventoryDeductionModeChanged:
+                      onInventoryDeductionModeChanged,
                 ),
               ],
             ),
@@ -1187,6 +1243,14 @@ String? _contentTypeFromFileName(String fileName) {
   };
 }
 
+String _formatStockInput(double value) {
+  if (value == value.roundToDouble()) {
+    return value.toInt().toString();
+  }
+
+  return value.toString();
+}
+
 class _SectionTitle extends StatelessWidget {
   final String text;
 
@@ -1197,6 +1261,130 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       text,
       style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w800),
+    );
+  }
+}
+
+class _ProductInventorySettingsSection extends StatelessWidget {
+  final TextEditingController minimumStockController;
+  final bool isTrackInventory;
+  final InventoryDeductionMode inventoryDeductionMode;
+  final bool isSubmitting;
+  final ValueChanged<bool> onTrackInventoryChanged;
+  final ValueChanged<InventoryDeductionMode> onInventoryDeductionModeChanged;
+
+  const _ProductInventorySettingsSection({
+    required this.minimumStockController,
+    required this.isTrackInventory,
+    required this.inventoryDeductionMode,
+    required this.isSubmitting,
+    required this.onTrackInventoryChanged,
+    required this.onInventoryDeductionModeChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final needsInitialStock =
+        inventoryDeductionMode == InventoryDeductionMode.productOnly ||
+        inventoryDeductionMode == InventoryDeductionMode.both;
+    final needsRecipe =
+        inventoryDeductionMode == InventoryDeductionMode.recipeOnly ||
+        inventoryDeductionMode == InventoryDeductionMode.both;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<InventoryDeductionMode>(
+          key: const Key('product_inventory_deduction_mode_field'),
+          initialValue: inventoryDeductionMode,
+          decoration: const InputDecoration(labelText: 'Cách trừ kho khi bán'),
+          items: [
+            for (final mode in InventoryDeductionMode.values)
+              DropdownMenuItem(value: mode, child: Text(mode.label)),
+          ],
+          onChanged: isSubmitting
+              ? null
+              : (value) {
+                  if (value != null) {
+                    onInventoryDeductionModeChanged(value);
+                  }
+                },
+        ),
+        const SizedBox(height: AppConstants.spacingSm),
+        SwitchListTile(
+          key: const Key('product_track_inventory_switch'),
+          value: isTrackInventory,
+          onChanged: isSubmitting ? null : onTrackInventoryChanged,
+          title: const Text('Theo dõi tồn thành phẩm'),
+          subtitle: const Text('Bật khi sản phẩm có tồn kho riêng.'),
+          contentPadding: EdgeInsets.zero,
+        ),
+        const SizedBox(height: AppConstants.spacingSm),
+        TextFormField(
+          key: const Key('product_minimum_stock_field'),
+          controller: minimumStockController,
+          enabled: !isSubmitting,
+          decoration: const InputDecoration(
+            labelText: 'Ngưỡng cảnh báo tồn',
+            suffixText: 'đv',
+          ),
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          validator: (value) {
+            final stock = double.tryParse(value ?? '');
+            if (stock == null || stock < 0) {
+              return 'Nhập ngưỡng tồn hợp lệ';
+            }
+
+            return null;
+          },
+        ),
+        const SizedBox(height: AppConstants.spacingSm),
+        _InventoryHintBox(
+          icon: needsInitialStock
+              ? Icons.inventory_2_outlined
+              : Icons.receipt_long_outlined,
+          message: needsInitialStock
+              ? 'Sau khi lưu, nhập tồn đầu kỳ trong phiếu nhập kho để tránh cảnh báo thiếu tồn khi thanh toán.'
+              : 'Món sẽ trừ nguyên liệu theo công thức; thành phẩm không cần tồn riêng.',
+        ),
+        if (needsRecipe) ...[
+          const SizedBox(height: AppConstants.spacingSm),
+          const _InventoryHintBox(
+            icon: Icons.restaurant_menu_outlined,
+            message:
+                'Hãy cấu hình đủ công thức để backend tự trừ nguyên liệu sau khi thanh toán.',
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _InventoryHintBox extends StatelessWidget {
+  final IconData icon;
+  final String message;
+
+  const _InventoryHintBox({required this.icon, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppConstants.spacingSm),
+      decoration: BoxDecoration(
+        color: AppColors.info.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.24)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.info, size: 20),
+          const SizedBox(width: AppConstants.spacingSm),
+          Expanded(child: Text(message, style: AppTextStyles.bodySm)),
+        ],
+      ),
     );
   }
 }
@@ -1842,6 +2030,8 @@ class _RecipePickerBottomSheet extends StatefulWidget {
     required int itemType,
     required String unit,
     required int capacity,
+    required double minimumStock,
+    required bool isTrackInventory,
   })
   onCreateIngredient;
   final Future<ProductIngredient> Function({
@@ -1850,6 +2040,8 @@ class _RecipePickerBottomSheet extends StatefulWidget {
     required int itemType,
     required String unit,
     required int capacity,
+    required double minimumStock,
+    required bool isTrackInventory,
   })
   onUpdateIngredient;
   final Future<void> Function(int ingredientId) onDeleteIngredient;
@@ -2072,6 +2264,8 @@ class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
                 required itemType,
                 required unit,
                 required capacity,
+                required minimumStock,
+                required isTrackInventory,
               }) {
                 return widget.onUpdateIngredient(
                   ingredientId: ingredient.id,
@@ -2079,6 +2273,8 @@ class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
                   itemType: itemType,
                   unit: unit,
                   capacity: capacity,
+                  minimumStock: minimumStock,
+                  isTrackInventory: isTrackInventory,
                 );
               },
         );
@@ -2252,7 +2448,6 @@ class _PickerSheetFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      top: false,
       child: Container(
         decoration: const BoxDecoration(
           color: AppColors.surface,
@@ -2741,6 +2936,8 @@ class _IngredientFormBottomSheet extends StatefulWidget {
     required int itemType,
     required String unit,
     required int capacity,
+    required double minimumStock,
+    required bool isTrackInventory,
   })
   onSubmit;
 
@@ -2757,7 +2954,9 @@ class _IngredientFormBottomSheetState
   late final TextEditingController _nameController;
   late final TextEditingController _unitController;
   late final TextEditingController _capacityController;
+  late final TextEditingController _minimumStockController;
   late int _itemType;
+  late bool _isTrackInventory;
   bool _isSubmitting = false;
 
   @override
@@ -2774,7 +2973,13 @@ class _IngredientFormBottomSheetState
           ? ''
           : widget.ingredient!.capacity.toString(),
     );
+    _minimumStockController = TextEditingController(
+      text: widget.ingredient == null
+          ? '0'
+          : _formatStockInput(widget.ingredient!.minimumStock),
+    );
     _itemType = widget.ingredient?.itemType == 2 ? 2 : 1;
+    _isTrackInventory = widget.ingredient?.isTrackInventory ?? false;
   }
 
   @override
@@ -2782,6 +2987,7 @@ class _IngredientFormBottomSheetState
     _nameController.dispose();
     _unitController.dispose();
     _capacityController.dispose();
+    _minimumStockController.dispose();
     super.dispose();
   }
 
@@ -2853,6 +3059,7 @@ class _IngredientFormBottomSheetState
                     controller: _unitController,
                     decoration: const InputDecoration(labelText: 'Đơn vị'),
                     textInputAction: TextInputAction.next,
+                    onChanged: (_) => setState(() {}),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Nhập đơn vị';
@@ -2862,6 +3069,43 @@ class _IngredientFormBottomSheetState
                   ),
                 ),
               ],
+            ),
+            if (_hasUnitChanged) ...[
+              const SizedBox(height: AppConstants.spacingSm),
+              const _InventoryHintBox(
+                icon: Icons.warning_amber_rounded,
+                message:
+                    'Đổi đơn vị không tự quy đổi tồn kho hoặc công thức cũ. Hãy kiểm kê và cập nhật lại công thức nếu cần.',
+              ),
+            ],
+            const SizedBox(height: AppConstants.spacingMd),
+            SwitchListTile(
+              key: const Key('ingredient_track_inventory_switch'),
+              value: _isTrackInventory,
+              onChanged: _isSubmitting
+                  ? null
+                  : (value) => setState(() => _isTrackInventory = value),
+              title: const Text('Theo dõi tồn nguyên liệu'),
+              subtitle: const Text('Bật để cảnh báo tồn thấp/hết hàng.'),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: AppConstants.spacingMd),
+            TextFormField(
+              key: const Key('ingredient_minimum_stock_field'),
+              controller: _minimumStockController,
+              decoration: const InputDecoration(
+                labelText: 'Ngưỡng cảnh báo tồn',
+                suffixText: 'đv',
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              validator: (value) {
+                final stock = double.tryParse(value ?? '');
+                if (stock == null || stock < 0) {
+                  return 'Nhập ngưỡng tồn hợp lệ';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: AppConstants.spacingLg),
             SizedBox(
@@ -2896,6 +3140,8 @@ class _IngredientFormBottomSheetState
         itemType: _itemType,
         unit: _unitController.text,
         capacity: int.tryParse(_capacityController.text.trim()) ?? 0,
+        minimumStock: double.tryParse(_minimumStockController.text.trim()) ?? 0,
+        isTrackInventory: _isTrackInventory,
       );
       if (mounted) {
         Navigator.of(context).pop(ingredient);
@@ -2906,6 +3152,15 @@ class _IngredientFormBottomSheetState
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  bool get _hasUnitChanged {
+    final ingredient = widget.ingredient;
+    if (ingredient == null) {
+      return false;
+    }
+
+    return _unitController.text.trim() != ingredient.unit.trim();
   }
 }
 

@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_category.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_deduction_mode.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_item_settings.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_ingredient.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_image_upload.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_recipe_draft.dart';
@@ -18,7 +20,12 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_ingredient_inventory_settings_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_inventory_settings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/replace_product_recipe_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_ingredient_inventory_settings_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_inventory_settings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_ingredient_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
@@ -121,6 +128,12 @@ void main() {
       expect(repository.lastVariants, isNull);
       expect(repository.lastToppingIds, [1, 2]);
       expect(repository.lastPrice, 30000);
+      expect(repository.updateProductInventorySettingsCallCount, 1);
+      expect(repository.lastMinimumStock, 0);
+      expect(
+        repository.lastInventoryDeductionMode,
+        InventoryDeductionMode.recipeOnly,
+      );
     },
   );
 
@@ -319,6 +332,8 @@ void main() {
       'Size L',
     );
     expect(repository.lastToppingIds, [1]);
+    expect(repository.replaceProductRecipeCallCount, 1);
+    expect(repository.updateProductInventorySettingsCallCount, 1);
   });
 
   test('update can clear variants when all size rows are removed', () async {
@@ -510,6 +525,8 @@ void main() {
       itemType: 1,
       unit: 'chai',
       capacity: 1000,
+      minimumStock: 3,
+      isTrackInventory: true,
     );
     await notifier.updateIngredient(
       ingredientId: created.id,
@@ -517,6 +534,8 @@ void main() {
       itemType: 1,
       unit: 'chai',
       capacity: 900,
+      minimumStock: 2,
+      isTrackInventory: false,
     );
     await notifier.deleteIngredient(created.id);
 
@@ -524,6 +543,7 @@ void main() {
 
     expect(repository.createIngredientCallCount, 1);
     expect(repository.updateIngredientCallCount, 1);
+    expect(repository.updateIngredientInventorySettingsCallCount, 2);
     expect(repository.deleteIngredientCallCount, 1);
     expect(
       state.ingredients.any((ingredient) => ingredient.id == created.id),
@@ -553,6 +573,8 @@ void main() {
           itemType: 1,
           unit: 'chai',
           capacity: 1000,
+          minimumStock: 0,
+          isTrackInventory: false,
         ),
         throwsA(isA<Exception>()),
       );
@@ -563,6 +585,8 @@ void main() {
           itemType: 1,
           unit: 'chai',
           capacity: 1000,
+          minimumStock: 0,
+          isTrackInventory: false,
         ),
         throwsA(isA<Exception>()),
       );
@@ -589,6 +613,12 @@ ProviderContainer _container(_FakeProductCreateRepository repository) {
       loadProductIngredientsUseCaseProvider.overrideWithValue(
         LoadProductIngredientsUseCase(repository),
       ),
+      loadIngredientInventorySettingsUseCaseProvider.overrideWithValue(
+        LoadIngredientInventorySettingsUseCase(repository),
+      ),
+      loadProductInventorySettingsUseCaseProvider.overrideWithValue(
+        LoadProductInventorySettingsUseCase(repository),
+      ),
       createProductCategoryUseCaseProvider.overrideWithValue(
         CreateProductCategoryUseCase(repository),
       ),
@@ -600,6 +630,9 @@ ProviderContainer _container(_FakeProductCreateRepository repository) {
       ),
       deleteProductIngredientUseCaseProvider.overrideWithValue(
         DeleteProductIngredientUseCase(repository),
+      ),
+      updateIngredientInventorySettingsUseCaseProvider.overrideWithValue(
+        UpdateIngredientInventorySettingsUseCase(repository),
       ),
       createProductToppingUseCaseProvider.overrideWithValue(
         CreateProductToppingUseCase(repository),
@@ -618,6 +651,12 @@ ProviderContainer _container(_FakeProductCreateRepository repository) {
       ),
       updateProductUseCaseProvider.overrideWithValue(
         UpdateProductUseCase(repository),
+      ),
+      updateProductInventorySettingsUseCaseProvider.overrideWithValue(
+        UpdateProductInventorySettingsUseCase(repository),
+      ),
+      replaceProductRecipeUseCaseProvider.overrideWithValue(
+        ReplaceProductRecipeUseCase(repository),
       ),
     ],
   );
@@ -677,11 +716,17 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   int deleteToppingCallCount = 0;
   int createIngredientCallCount = 0;
   int updateIngredientCallCount = 0;
+  int updateIngredientInventorySettingsCallCount = 0;
   int deleteIngredientCallCount = 0;
   int createProductCallCount = 0;
   int updateProductCallCount = 0;
+  int updateProductInventorySettingsCallCount = 0;
+  int replaceProductRecipeCallCount = 0;
   int? lastPrice;
   int? lastCostPrice;
+  double? lastMinimumStock;
+  bool? lastIsTrackInventory;
+  InventoryDeductionMode? lastInventoryDeductionMode;
   List<ProductVariantDraft>? lastVariants;
   List<int>? lastToppingIds;
   List<ProductRecipeDraft>? lastRecipes;
@@ -741,6 +786,26 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   }
 
   @override
+  Future<List<IngredientInventorySettings>> loadIngredientInventorySettings(
+    int storeId,
+  ) async {
+    return ingredients
+        .map(
+          (ingredient) => IngredientInventorySettings(
+            ingredientId: ingredient.id,
+            minimumStock: ingredient.minimumStock,
+            isTrackInventory: ingredient.isTrackInventory,
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<List<ProductInventorySettings>> loadProductInventorySettings(
+    int storeId,
+  ) async => const [];
+
+  @override
   Future<ProductIngredient> createIngredient({
     required int storeId,
     required String name,
@@ -797,6 +862,24 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   Future<void> deleteIngredient(int ingredientId) async {
     deleteIngredientCallCount += 1;
     ingredients.removeWhere((ingredient) => ingredient.id == ingredientId);
+  }
+
+  @override
+  Future<void> updateIngredientInventorySettings({
+    required int ingredientId,
+    required double minimumStock,
+    required bool isTrackInventory,
+  }) async {
+    updateIngredientInventorySettingsCallCount += 1;
+    lastMinimumStock = minimumStock;
+    lastIsTrackInventory = isTrackInventory;
+    final index = ingredients.indexWhere((item) => item.id == ingredientId);
+    if (index != -1) {
+      ingredients[index] = ingredients[index].copyWith(
+        minimumStock: minimumStock,
+        isTrackInventory: isTrackInventory,
+      );
+    }
   }
 
   @override
@@ -932,14 +1015,12 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
-    required List<ProductRecipeDraft> recipes,
   }) async {
     updateProductCallCount += 1;
     lastPrice = price;
     lastCostPrice = costPrice;
     lastVariants = variants;
     lastToppingIds = toppingIds;
-    lastRecipes = recipes;
     return Product(
       id: productId,
       storeId: 5,
@@ -965,6 +1046,28 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   @override
   Future<void> deleteCategory(int categoryId) {
     throw UnimplementedError();
+  }
+
+  @override
+  Future<void> updateProductInventorySettings({
+    required int productId,
+    required double minimumStock,
+    required bool isTrackInventory,
+    required InventoryDeductionMode inventoryDeductionMode,
+  }) async {
+    updateProductInventorySettingsCallCount += 1;
+    lastMinimumStock = minimumStock;
+    lastIsTrackInventory = isTrackInventory;
+    lastInventoryDeductionMode = inventoryDeductionMode;
+  }
+
+  @override
+  Future<void> replaceProductRecipe({
+    required int productId,
+    required List<ProductRecipeDraft> recipes,
+  }) async {
+    replaceProductRecipeCallCount += 1;
+    lastRecipes = recipes;
   }
 
   @override

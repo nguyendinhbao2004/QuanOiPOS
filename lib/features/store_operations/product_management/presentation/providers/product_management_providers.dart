@@ -14,9 +14,14 @@ import '../../domain/usecases/delete_product_use_case.dart';
 import '../../domain/usecases/load_product_categories_use_case.dart';
 import '../../domain/usecases/load_product_detail_use_case.dart';
 import '../../domain/usecases/load_product_ingredients_use_case.dart';
+import '../../domain/usecases/load_ingredient_inventory_settings_use_case.dart';
+import '../../domain/usecases/load_product_inventory_settings_use_case.dart';
 import '../../domain/usecases/load_product_toppings_use_case.dart';
 import '../../domain/usecases/load_products_use_case.dart';
+import '../../domain/usecases/replace_product_recipe_use_case.dart';
+import '../../domain/usecases/update_ingredient_inventory_settings_use_case.dart';
 import '../../domain/usecases/update_product_category_use_case.dart';
+import '../../domain/usecases/update_product_inventory_settings_use_case.dart';
 import '../../domain/usecases/update_product_ingredient_use_case.dart';
 import '../../domain/usecases/update_product_sell_status_use_case.dart';
 import '../../domain/usecases/update_product_topping_use_case.dart';
@@ -52,6 +57,16 @@ final loadProductIngredientsUseCaseProvider =
       return locator<LoadProductIngredientsUseCase>();
     });
 
+final loadIngredientInventorySettingsUseCaseProvider =
+    Provider<LoadIngredientInventorySettingsUseCase>((ref) {
+      return locator<LoadIngredientInventorySettingsUseCase>();
+    });
+
+final loadProductInventorySettingsUseCaseProvider =
+    Provider<LoadProductInventorySettingsUseCase>((ref) {
+      return locator<LoadProductInventorySettingsUseCase>();
+    });
+
 final createProductIngredientUseCaseProvider =
     Provider<CreateProductIngredientUseCase>((ref) {
       return locator<CreateProductIngredientUseCase>();
@@ -65,6 +80,11 @@ final updateProductIngredientUseCaseProvider =
 final deleteProductIngredientUseCaseProvider =
     Provider<DeleteProductIngredientUseCase>((ref) {
       return locator<DeleteProductIngredientUseCase>();
+    });
+
+final updateIngredientInventorySettingsUseCaseProvider =
+    Provider<UpdateIngredientInventorySettingsUseCase>((ref) {
+      return locator<UpdateIngredientInventorySettingsUseCase>();
     });
 
 final createProductToppingUseCaseProvider =
@@ -114,6 +134,16 @@ final loadProductDetailUseCaseProvider = Provider<LoadProductDetailUseCase>((
 final updateProductUseCaseProvider = Provider<UpdateProductUseCase>((ref) {
   return locator<UpdateProductUseCase>();
 });
+
+final updateProductInventorySettingsUseCaseProvider =
+    Provider<UpdateProductInventorySettingsUseCase>((ref) {
+      return locator<UpdateProductInventorySettingsUseCase>();
+    });
+
+final replaceProductRecipeUseCaseProvider =
+    Provider<ReplaceProductRecipeUseCase>((ref) {
+      return locator<ReplaceProductRecipeUseCase>();
+    });
 
 final updateProductSellStatusUseCaseProvider =
     Provider<UpdateProductSellStatusUseCase>((ref) {

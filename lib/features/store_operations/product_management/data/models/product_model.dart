@@ -4,6 +4,7 @@ import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
 import '../../domain/entities/product_variant_draft.dart';
+import '../../domain/entities/inventory_deduction_mode.dart';
 
 class ProductModel {
   final int id;
@@ -16,6 +17,12 @@ class ProductModel {
   final int preparationTime;
   final int price;
   final int costPrice;
+  final double quantity;
+  final double minimumStock;
+  final double averageUnitCost;
+  final double lastImportUnitCost;
+  final bool isTrackInventory;
+  final InventoryDeductionMode inventoryDeductionMode;
   final ProductType type;
   final List<ProductVariantDraft> variants;
   final List<ProductTopping> toppings;
@@ -36,6 +43,12 @@ class ProductModel {
     required this.preparationTime,
     required this.price,
     required this.costPrice,
+    required this.quantity,
+    required this.minimumStock,
+    required this.averageUnitCost,
+    required this.lastImportUnitCost,
+    required this.isTrackInventory,
+    required this.inventoryDeductionMode,
     required this.type,
     this.variants = const [],
     this.toppings = const [],
@@ -72,6 +85,14 @@ class ProductModel {
       preparationTime: _intValue(json['preparationTime']),
       price: _intValue(json['price']),
       costPrice: _intValue(json['costPrice']),
+      quantity: _doubleValue(json['quantity']),
+      minimumStock: _doubleValue(json['minimumStock']),
+      averageUnitCost: _doubleValue(json['averageUnitCost']),
+      lastImportUnitCost: _doubleValue(json['lastImportUnitCost']),
+      isTrackInventory: _boolValue(json['isTrackInventory']),
+      inventoryDeductionMode: InventoryDeductionMode.fromApi(
+        json['inventoryDeductionMode'],
+      ),
       type: ProductType.fromValue(json['type']),
       variants: _variantDrafts(json['variants']),
       toppings: _toppings(json['toppings'], storeId),
@@ -114,6 +135,12 @@ class ProductModel {
       preparationTime: preparationTime,
       price: price,
       costPrice: costPrice,
+      quantity: quantity,
+      minimumStock: minimumStock,
+      averageUnitCost: averageUnitCost,
+      lastImportUnitCost: lastImportUnitCost,
+      isTrackInventory: isTrackInventory,
+      inventoryDeductionMode: inventoryDeductionMode,
       type: type,
       variants: variants,
       toppings: toppings,
@@ -132,6 +159,18 @@ class ProductModel {
 
     if (value is String) {
       return int.tryParse(value) ?? 0;
+    }
+
+    return 0;
+  }
+
+  static double _doubleValue(Object? value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    if (value is String) {
+      return double.tryParse(value) ?? 0;
     }
 
     return 0;
@@ -229,6 +268,12 @@ class ProductModel {
               itemType: _intValue(ingredientJson['itemType']),
               unit: _stringValue(ingredientJson['unit']),
               quantity: _intValue(ingredientJson['quantity']),
+              minimumStock: _doubleValue(ingredientJson['minimumStock']),
+              averageUnitCost: _doubleValue(ingredientJson['averageUnitCost']),
+              lastImportUnitCost: _doubleValue(
+                ingredientJson['lastImportUnitCost'],
+              ),
+              isTrackInventory: _boolValue(ingredientJson['isTrackInventory']),
               capacity: _intValue(ingredientJson['capacity']),
               currentCapacity: _intValue(ingredientJson['currentCapacity']),
               isActive: _boolValue(ingredientJson['isActive'], fallback: true),

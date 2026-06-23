@@ -1,6 +1,5 @@
 import '../entities/product.dart';
 import '../entities/product_image_upload.dart';
-import '../entities/product_recipe_draft.dart';
 import '../entities/product_type.dart';
 import '../entities/product_variant_draft.dart';
 import '../repositories/product_management_repository.dart';
@@ -24,7 +23,6 @@ class UpdateProductUseCase {
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
-    required List<ProductRecipeDraft> recipes,
   }) {
     return _repository.updateProduct(
       productId: productId,
@@ -40,7 +38,6 @@ class UpdateProductUseCase {
       type: type,
       variants: variants,
       toppingIds: toppingIds,
-      recipes: recipes,
     );
   }
 }

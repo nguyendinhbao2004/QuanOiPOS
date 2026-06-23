@@ -7,6 +7,10 @@ class ProductIngredientModel {
   final int itemType;
   final String unit;
   final int quantity;
+  final double minimumStock;
+  final double averageUnitCost;
+  final double lastImportUnitCost;
+  final bool isTrackInventory;
   final int capacity;
   final int currentCapacity;
   final bool isActive;
@@ -19,6 +23,10 @@ class ProductIngredientModel {
     required this.itemType,
     required this.unit,
     required this.quantity,
+    required this.minimumStock,
+    required this.averageUnitCost,
+    required this.lastImportUnitCost,
+    required this.isTrackInventory,
     required this.capacity,
     required this.currentCapacity,
     required this.isActive,
@@ -37,6 +45,10 @@ class ProductIngredientModel {
       itemType: _intValue(json['itemType']),
       unit: _stringValue(json['unit']),
       quantity: _intValue(json['quantity']),
+      minimumStock: _doubleValue(json['minimumStock']),
+      averageUnitCost: _doubleValue(json['averageUnitCost']),
+      lastImportUnitCost: _doubleValue(json['lastImportUnitCost']),
+      isTrackInventory: _boolValue(json['isTrackInventory']),
       capacity: _intValue(json['capacity']),
       currentCapacity: _intValue(json['currentCapacity']),
       isActive: _boolValue(json['isActive'], fallback: true),
@@ -71,6 +83,10 @@ class ProductIngredientModel {
       itemType: itemType,
       unit: unit,
       quantity: quantity,
+      minimumStock: minimumStock,
+      averageUnitCost: averageUnitCost,
+      lastImportUnitCost: lastImportUnitCost,
+      isTrackInventory: isTrackInventory,
       capacity: capacity,
       currentCapacity: currentCapacity,
       isActive: isActive,
@@ -85,6 +101,18 @@ class ProductIngredientModel {
 
     if (value is String) {
       return int.tryParse(value) ?? 0;
+    }
+
+    return 0;
+  }
+
+  static double _doubleValue(Object? value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    if (value is String) {
+      return double.tryParse(value) ?? 0;
     }
 
     return 0;

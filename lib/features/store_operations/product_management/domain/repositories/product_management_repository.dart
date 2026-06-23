@@ -2,6 +2,8 @@ import '../entities/product.dart';
 import '../entities/product_category.dart';
 import '../entities/product_image_upload.dart';
 import '../entities/product_ingredient.dart';
+import '../entities/inventory_deduction_mode.dart';
+import '../entities/inventory_item_settings.dart';
 import '../entities/product_recipe_draft.dart';
 import '../entities/product_topping.dart';
 import '../entities/product_type.dart';
@@ -13,6 +15,10 @@ abstract class ProductManagementRepository {
   Future<List<ProductTopping>> loadToppings(int storeId);
 
   Future<List<ProductIngredient>> loadIngredients(int storeId);
+
+  Future<List<IngredientInventorySettings>> loadIngredientInventorySettings(
+    int storeId,
+  );
 
   Future<ProductIngredient> createIngredient({
     required int storeId,
@@ -31,6 +37,12 @@ abstract class ProductManagementRepository {
   });
 
   Future<void> deleteIngredient(int ingredientId);
+
+  Future<void> updateIngredientInventorySettings({
+    required int ingredientId,
+    required double minimumStock,
+    required bool isTrackInventory,
+  });
 
   Future<ProductTopping> createTopping({
     required int storeId,
@@ -60,6 +72,10 @@ abstract class ProductManagementRepository {
 
   Future<List<Product>> loadProducts(int storeId);
 
+  Future<List<ProductInventorySettings>> loadProductInventorySettings(
+    int storeId,
+  );
+
   Future<Product> loadProductDetail(int productId);
 
   Future<Product> createProduct({
@@ -77,6 +93,18 @@ abstract class ProductManagementRepository {
     required List<ProductRecipeDraft> recipes,
   });
 
+  Future<void> updateProductInventorySettings({
+    required int productId,
+    required double minimumStock,
+    required bool isTrackInventory,
+    required InventoryDeductionMode inventoryDeductionMode,
+  });
+
+  Future<void> replaceProductRecipe({
+    required int productId,
+    required List<ProductRecipeDraft> recipes,
+  });
+
   Future<Product> updateProduct({
     required int productId,
     required int storeId,
@@ -91,7 +119,6 @@ abstract class ProductManagementRepository {
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
-    required List<ProductRecipeDraft> recipes,
   });
 
   Future<void> updateProductSellStatus({

@@ -97,9 +97,14 @@ import '../../features/store_operations/product_management/domain/usecases/delet
 import '../../features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/load_ingredient_inventory_settings_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/load_product_inventory_settings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/replace_product_recipe_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/update_ingredient_inventory_settings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/update_product_inventory_settings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_ingredient_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_sell_status_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
@@ -612,6 +617,16 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<LoadProductIngredientsUseCase>(
     () => LoadProductIngredientsUseCase(locator<ProductManagementRepository>()),
   );
+  locator.registerLazySingleton<LoadIngredientInventorySettingsUseCase>(
+    () => LoadIngredientInventorySettingsUseCase(
+      locator<ProductManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadProductInventorySettingsUseCase>(
+    () => LoadProductInventorySettingsUseCase(
+      locator<ProductManagementRepository>(),
+    ),
+  );
   locator.registerLazySingleton<CreateProductIngredientUseCase>(
     () =>
         CreateProductIngredientUseCase(locator<ProductManagementRepository>()),
@@ -623,6 +638,11 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<DeleteProductIngredientUseCase>(
     () =>
         DeleteProductIngredientUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<UpdateIngredientInventorySettingsUseCase>(
+    () => UpdateIngredientInventorySettingsUseCase(
+      locator<ProductManagementRepository>(),
+    ),
   );
   locator.registerLazySingleton<CreateProductToppingUseCase>(
     () => CreateProductToppingUseCase(locator<ProductManagementRepository>()),
@@ -653,6 +673,14 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<UpdateProductUseCase>(
     () => UpdateProductUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<UpdateProductInventorySettingsUseCase>(
+    () => UpdateProductInventorySettingsUseCase(
+      locator<ProductManagementRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<ReplaceProductRecipeUseCase>(
+    () => ReplaceProductRecipeUseCase(locator<ProductManagementRepository>()),
   );
   locator.registerLazySingleton<UpdateProductSellStatusUseCase>(
     () =>

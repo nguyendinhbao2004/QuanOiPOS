@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/product_category.dart';
+import '../../domain/entities/product.dart';
 import '../../domain/entities/product_ingredient.dart';
+import '../../domain/entities/inventory_item_settings.dart';
 import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_variant_draft.dart';
@@ -80,16 +82,32 @@ class ProductCreateNotifier
       final toppings = seedData?.toppings.isNotEmpty == true
           ? seedData!.toppings
           : await ref.read(loadProductToppingsUseCaseProvider)(_access.storeId);
-      final ingredients = seedData?.ingredients.isNotEmpty == true
+      final ingredientCatalog = seedData?.ingredients.isNotEmpty == true
           ? seedData!.ingredients
           : await ref.read(loadProductIngredientsUseCaseProvider)(
               _access.storeId,
             );
       final editingProductId =
           seedData?.editingProductId ?? seedData?.editingProduct?.id;
-      final editingProduct = editingProductId == null
+      var editingProduct = editingProductId == null
           ? null
           : await ref.read(loadProductDetailUseCaseProvider)(editingProductId);
+      final ingredientSettings = await ref.read(
+        loadIngredientInventorySettingsUseCaseProvider,
+      )(_access.storeId);
+      final ingredients = _mergeIngredientInventorySettings(
+        ingredientCatalog,
+        ingredientSettings,
+      );
+      if (editingProduct != null) {
+        final productSettings = await ref.read(
+          loadProductInventorySettingsUseCaseProvider,
+        )(_access.storeId);
+        editingProduct = _mergeProductInventorySettings(
+          editingProduct,
+          productSettings,
+        );
+      }
 
       state = state.copyWith(
         status: ProductCreateStatus.ready,
@@ -125,6 +143,7 @@ class ProductCreateNotifier
     final price = _resolvePrice(input.basePrice, variants);
     final costPrice = _resolveCostPrice(input.costPrice, variants);
     final recipes = _validatedRecipes(input.recipes);
+    final minimumStock = _validatedMinimumStock(input.minimumStock);
 
     state = state.copyWith(
       status: ProductCreateStatus.submitting,
@@ -132,7 +151,7 @@ class ProductCreateNotifier
     );
 
     try {
-      await ref.read(createProductUseCaseProvider)(
+      final product = await ref.read(createProductUseCaseProvider)(
         storeId: _access.storeId,
         categoryId: input.categoryId,
         name: cleanName,
@@ -145,6 +164,12 @@ class ProductCreateNotifier
         variants: variants,
         toppingIds: input.toppingIds,
         recipes: recipes,
+      );
+      await ref.read(updateProductInventorySettingsUseCaseProvider)(
+        productId: product.id,
+        minimumStock: minimumStock,
+        isTrackInventory: input.isTrackInventory,
+        inventoryDeductionMode: input.inventoryDeductionMode,
       );
       state = state.copyWith(
         status: ProductCreateStatus.success,
@@ -183,6 +208,7 @@ class ProductCreateNotifier
     final price = _resolvePrice(input.basePrice, variants);
     final costPrice = _resolveCostPrice(input.costPrice, variants);
     final recipes = _validatedRecipes(input.recipes);
+    final minimumStock = _validatedMinimumStock(input.minimumStock);
 
     state = state.copyWith(
       status: ProductCreateStatus.submitting,
@@ -204,11 +230,24 @@ class ProductCreateNotifier
         type: input.type,
         variants: variants,
         toppingIds: input.toppingIds,
+      );
+      await ref.read(replaceProductRecipeUseCaseProvider)(
+        productId: product.id,
         recipes: recipes,
+      );
+      await ref.read(updateProductInventorySettingsUseCaseProvider)(
+        productId: product.id,
+        minimumStock: minimumStock,
+        isTrackInventory: input.isTrackInventory,
+        inventoryDeductionMode: input.inventoryDeductionMode,
       );
       state = state.copyWith(
         status: ProductCreateStatus.success,
-        editingProduct: product,
+        editingProduct: product.copyWith(
+          minimumStock: minimumStock,
+          isTrackInventory: input.isTrackInventory,
+          inventoryDeductionMode: input.inventoryDeductionMode,
+        ),
         clearError: true,
       );
     } catch (error) {
@@ -285,6 +324,8 @@ class ProductCreateNotifier
     required int itemType,
     required String unit,
     required int capacity,
+    required double minimumStock,
+    required bool isTrackInventory,
   }) async {
     _ensureAllowed(
       _access.canCreateProduct,
@@ -305,6 +346,7 @@ class ProductCreateNotifier
     if (capacity < 0) {
       throw Exception('Vui lòng nhập dung lượng hợp lệ');
     }
+    final validMinimumStock = _validatedMinimumStock(minimumStock);
 
     final ingredient = await ref.read(createProductIngredientUseCaseProvider)(
       storeId: _access.storeId,
@@ -313,11 +355,20 @@ class ProductCreateNotifier
       unit: cleanUnit,
       capacity: capacity,
     );
+    await ref.read(updateIngredientInventorySettingsUseCaseProvider)(
+      ingredientId: ingredient.id,
+      minimumStock: validMinimumStock,
+      isTrackInventory: isTrackInventory,
+    );
+    final updatedIngredient = ingredient.copyWith(
+      minimumStock: validMinimumStock,
+      isTrackInventory: isTrackInventory,
+    );
     state = state.copyWith(
-      ingredients: [...state.ingredients, ingredient],
+      ingredients: [...state.ingredients, updatedIngredient],
       clearError: true,
     );
-    return ingredient;
+    return updatedIngredient;
   }
 
   Future<ProductIngredient> updateIngredient({
@@ -326,6 +377,8 @@ class ProductCreateNotifier
     required int itemType,
     required String unit,
     required int capacity,
+    required double minimumStock,
+    required bool isTrackInventory,
   }) async {
     _ensureAllowed(
       _access.canUpdateProduct,
@@ -346,6 +399,7 @@ class ProductCreateNotifier
     if (capacity < 0) {
       throw Exception('Vui lòng nhập dung lượng hợp lệ');
     }
+    final validMinimumStock = _validatedMinimumStock(minimumStock);
 
     final ingredient = await ref.read(updateProductIngredientUseCaseProvider)(
       ingredientId: ingredientId,
@@ -354,14 +408,23 @@ class ProductCreateNotifier
       unit: cleanUnit,
       capacity: capacity,
     );
+    await ref.read(updateIngredientInventorySettingsUseCaseProvider)(
+      ingredientId: ingredient.id,
+      minimumStock: validMinimumStock,
+      isTrackInventory: isTrackInventory,
+    );
+    final updatedIngredient = ingredient.copyWith(
+      minimumStock: validMinimumStock,
+      isTrackInventory: isTrackInventory,
+    );
     state = state.copyWith(
       ingredients: [
         for (final item in state.ingredients)
-          if (item.id == ingredientId) ingredient else item,
+          if (item.id == ingredientId) updatedIngredient else item,
       ],
       clearError: true,
     );
-    return ingredient;
+    return updatedIngredient;
   }
 
   Future<void> deleteIngredient(int ingredientId) async {
@@ -521,6 +584,49 @@ class ProductCreateNotifier
     }
 
     return cleanRecipes;
+  }
+
+  double _validatedMinimumStock(double minimumStock) {
+    if (minimumStock < 0) {
+      throw Exception('Vui lòng nhập ngưỡng tồn hợp lệ');
+    }
+
+    return minimumStock;
+  }
+
+  List<ProductIngredient> _mergeIngredientInventorySettings(
+    List<ProductIngredient> ingredients,
+    List<IngredientInventorySettings> settings,
+  ) {
+    final settingsByIngredientId = {
+      for (final setting in settings) setting.ingredientId: setting,
+    };
+    return ingredients.map((ingredient) {
+      final setting = settingsByIngredientId[ingredient.id];
+      return setting == null
+          ? ingredient
+          : ingredient.copyWith(
+              minimumStock: setting.minimumStock,
+              isTrackInventory: setting.isTrackInventory,
+            );
+    }).toList();
+  }
+
+  Product _mergeProductInventorySettings(
+    Product product,
+    List<ProductInventorySettings> settings,
+  ) {
+    for (final setting in settings) {
+      if (setting.productId == product.id) {
+        return product.copyWith(
+          minimumStock: setting.minimumStock,
+          isTrackInventory: setting.isTrackInventory,
+          inventoryDeductionMode: setting.inventoryDeductionMode,
+        );
+      }
+    }
+
+    return product;
   }
 
   String _cleanError(Object error) {

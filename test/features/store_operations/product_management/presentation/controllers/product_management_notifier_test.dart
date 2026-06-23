@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_category.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_deduction_mode.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_item_settings.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_ingredient.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_image_upload.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_recipe_draft.dart';
@@ -293,6 +295,16 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
       const [];
 
   @override
+  Future<List<IngredientInventorySettings>> loadIngredientInventorySettings(
+    int storeId,
+  ) async => const [];
+
+  @override
+  Future<List<ProductInventorySettings>> loadProductInventorySettings(
+    int storeId,
+  ) async => const [];
+
+  @override
   Future<ProductIngredient> createIngredient({
     required int storeId,
     required String name,
@@ -450,7 +462,6 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
-    required List<ProductRecipeDraft> recipes,
   }) async {
     updateProductCallCount += 1;
     return Product(
@@ -484,4 +495,25 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   Future<void> deleteProduct(int productId) async {
     deleteProductCallCount += 1;
   }
+
+  @override
+  Future<void> updateIngredientInventorySettings({
+    required int ingredientId,
+    required double minimumStock,
+    required bool isTrackInventory,
+  }) async {}
+
+  @override
+  Future<void> updateProductInventorySettings({
+    required int productId,
+    required double minimumStock,
+    required bool isTrackInventory,
+    required InventoryDeductionMode inventoryDeductionMode,
+  }) async {}
+
+  @override
+  Future<void> replaceProductRecipe({
+    required int productId,
+    required List<ProductRecipeDraft> recipes,
+  }) async {}
 }

@@ -1,6 +1,7 @@
 import '../../domain/entities/product_type.dart';
 import '../../domain/entities/product_variant_draft.dart';
 import '../../domain/entities/product_recipe_draft.dart';
+import '../../domain/entities/inventory_deduction_mode.dart';
 
 class CreateProductCategoryRequestModel {
   final int storeId;
@@ -180,7 +181,6 @@ class UpdateProductRequestModel {
   final ProductType type;
   final List<ProductVariantDraft>? variants;
   final List<int> toppingIds;
-  final List<ProductRecipeDraft> recipes;
 
   const UpdateProductRequestModel({
     required this.categoryId,
@@ -193,7 +193,6 @@ class UpdateProductRequestModel {
     required this.type,
     this.variants,
     required this.toppingIds,
-    this.recipes = const [],
   });
 
   Map<String, dynamic> toJson() {
@@ -217,16 +216,58 @@ class UpdateProductRequestModel {
           )
           .toList(),
       'toppingIds': toppingIds,
-      'recipes': recipes
-          .map(
-            (recipe) => {
-              'ingredientId': recipe.ingredientId,
-              'quantity': recipe.quantity,
-              'capacity': recipe.capacity,
-            },
-          )
-          .toList(),
     };
+  }
+}
+
+class UpdateIngredientInventorySettingsRequestModel {
+  final double minimumStock;
+  final bool isTrackInventory;
+
+  const UpdateIngredientInventorySettingsRequestModel({
+    required this.minimumStock,
+    required this.isTrackInventory,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {'minimumStock': minimumStock, 'isTrackInventory': isTrackInventory};
+  }
+}
+
+class UpdateProductInventorySettingsRequestModel {
+  final double minimumStock;
+  final bool isTrackInventory;
+  final InventoryDeductionMode inventoryDeductionMode;
+
+  const UpdateProductInventorySettingsRequestModel({
+    required this.minimumStock,
+    required this.isTrackInventory,
+    required this.inventoryDeductionMode,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'minimumStock': minimumStock,
+      'isTrackInventory': isTrackInventory,
+      'inventoryDeductionMode': inventoryDeductionMode.apiValue,
+    };
+  }
+}
+
+class ReplaceProductRecipeRequestModel {
+  final List<ProductRecipeDraft> recipes;
+
+  const ReplaceProductRecipeRequestModel(this.recipes);
+
+  List<Map<String, dynamic>> toJson() {
+    return recipes
+        .map(
+          (recipe) => {
+            'ingredientId': recipe.ingredientId,
+            'quantity': recipe.quantity,
+          },
+        )
+        .toList();
   }
 }
 
