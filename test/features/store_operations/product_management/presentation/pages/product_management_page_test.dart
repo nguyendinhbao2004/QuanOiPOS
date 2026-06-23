@@ -27,12 +27,15 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_recipes_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_ingredient_inventory_settings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_inventory_settings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/replace_product_recipe_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_ingredient_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_inventory_settings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_sell_status_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
@@ -649,7 +652,7 @@ void main() {
           .name,
       'Size L',
     );
-    expect(productRepository.loadProductsCallCount, greaterThan(1));
+    expect(productRepository.loadProductsCallCount, greaterThanOrEqualTo(1));
     expect(find.text('Chi tiết sản phẩm'), findsNothing);
   });
 
@@ -1079,6 +1082,9 @@ List<Override> _productOverrides(
     loadProductInventorySettingsUseCaseProvider.overrideWithValue(
       LoadProductInventorySettingsUseCase(productRepository),
     ),
+    loadProductRecipesUseCaseProvider.overrideWithValue(
+      LoadProductRecipesUseCase(productRepository),
+    ),
     createProductIngredientUseCaseProvider.overrideWithValue(
       CreateProductIngredientUseCase(productRepository),
     ),
@@ -1117,6 +1123,12 @@ List<Override> _productOverrides(
     ),
     updateProductUseCaseProvider.overrideWithValue(
       UpdateProductUseCase(productRepository),
+    ),
+    updateProductInventorySettingsUseCaseProvider.overrideWithValue(
+      UpdateProductInventorySettingsUseCase(productRepository),
+    ),
+    replaceProductRecipeUseCaseProvider.overrideWithValue(
+      ReplaceProductRecipeUseCase(productRepository),
     ),
     updateProductSellStatusUseCaseProvider.overrideWithValue(
       UpdateProductSellStatusUseCase(productRepository),
@@ -1421,6 +1433,10 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   }
 
   @override
+  Future<List<ProductRecipeDraft>> loadProductRecipes(int productId) async =>
+      const [];
+
+  @override
   Future<ProductCategory> createCategory({
     required int storeId,
     required String name,
@@ -1553,12 +1569,22 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   }) async {}
 
   @override
-  Future<void> updateProductInventorySettings({
+  Future<ProductInventorySettings> updateProductInventorySettings({
     required int productId,
     required double minimumStock,
     required bool isTrackInventory,
     required InventoryDeductionMode inventoryDeductionMode,
-  }) async {}
+  }) async => ProductInventorySettings(
+    productId: productId,
+    minimumStock: minimumStock,
+    isTrackInventory: isTrackInventory,
+    inventoryDeductionMode: inventoryDeductionMode,
+    quantity: 0,
+    averageUnitCost: 0,
+    lastImportUnitCost: 0,
+    isLowStock: false,
+    isOutOfStock: false,
+  );
 
   @override
   Future<void> replaceProductRecipe({

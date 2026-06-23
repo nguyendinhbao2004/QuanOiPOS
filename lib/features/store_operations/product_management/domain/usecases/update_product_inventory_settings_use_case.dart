@@ -1,4 +1,5 @@
 import '../entities/inventory_deduction_mode.dart';
+import '../entities/inventory_item_settings.dart';
 import '../repositories/product_management_repository.dart';
 
 class UpdateProductInventorySettingsUseCase {
@@ -6,7 +7,7 @@ class UpdateProductInventorySettingsUseCase {
 
   const UpdateProductInventorySettingsUseCase(this._repository);
 
-  Future<void> call({
+  Future<ProductInventorySettings> call({
     required int productId,
     required double minimumStock,
     required bool isTrackInventory,

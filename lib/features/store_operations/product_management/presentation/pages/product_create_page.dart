@@ -592,8 +592,8 @@ class _AccessReadyContent extends ConsumerWidget {
         ProductRecipeDraft(
           ingredientId: row.ingredient.id,
           ingredient: row.ingredient,
-          quantity: int.tryParse(row.quantityController.text.trim()) ?? 0,
-          capacity: int.tryParse(row.capacityController.text.trim()) ?? 0,
+          quantity: double.tryParse(row.quantityController.text.trim()) ?? 0,
+          capacity: double.tryParse(row.capacityController.text.trim()) ?? 0,
         ),
     ];
   }
@@ -815,7 +815,11 @@ class _ReadyCreateForm extends StatelessWidget {
                     suffixText: 'phút',
                   ),
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'^\d*\.?\d{0,3}'),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppConstants.spacingMd),
                 Row(
@@ -2400,7 +2404,11 @@ class _RecipeDraftList extends StatelessWidget {
                   controller: row.quantityController,
                   decoration: const InputDecoration(labelText: 'SL'),
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'^\d*\.?\d{0,3}'),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: AppConstants.spacingSm),
@@ -2410,7 +2418,11 @@ class _RecipeDraftList extends StatelessWidget {
                   controller: row.capacityController,
                   decoration: const InputDecoration(labelText: 'Dung lượng'),
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'^\d*\.?\d{0,3}'),
+                    ),
+                  ],
                 ),
               ),
             ],

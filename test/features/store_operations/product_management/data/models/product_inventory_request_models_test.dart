@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quan_oi/features/store_operations/product_management/data/models/product_management_request_models.dart';
+import 'package:quan_oi/features/store_operations/product_management/data/models/product_model.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_deduction_mode.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
 
@@ -45,5 +46,32 @@ void main() {
       'minimumStock': 1000.0,
       'isTrackInventory': true,
     });
+  });
+
+  test('maps active product inventory flags from product response', () {
+    final product = ProductModel.fromJson({
+      'id': 20,
+      'storeId': 5,
+      'categoryId': 1,
+      'name': 'Coca Cola lon',
+      'preparationTime': 0,
+      'price': 12000,
+      'costPrice': 10000,
+      'type': 2,
+      'isActive': true,
+      'quantity': 2.5,
+      'minimumStock': 6,
+      'isTrackInventory': true,
+      'inventoryDeductionMode': 'ProductOnly',
+      'isLowStock': true,
+      'isOutOfStock': false,
+      'isDeleted': false,
+    }).toEntity();
+
+    expect(product.isActive, isTrue);
+    expect(product.quantity, 2.5);
+    expect(product.isLowStock, isTrue);
+    expect(product.isOutOfStock, isFalse);
+    expect(product.recipes, isEmpty);
   });
 }

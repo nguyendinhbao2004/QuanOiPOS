@@ -25,7 +25,9 @@ class Product {
   final List<ProductVariantDraft> variants;
   final List<ProductTopping> toppings;
   final List<ProductRecipeDraft> recipes;
-  final bool isSell;
+  final bool isActive;
+  final bool isLowStock;
+  final bool isOutOfStock;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final bool isDeleted;
@@ -51,16 +53,29 @@ class Product {
     this.variants = const [],
     this.toppings = const [],
     this.recipes = const [],
-    required this.isSell,
+    bool? isActive,
+    @Deprecated('Use isActive instead.') bool? isSell,
+    this.isLowStock = false,
+    this.isOutOfStock = false,
     this.createdAt,
     this.updatedAt,
     required this.isDeleted,
-  });
+  }) : isActive = isActive ?? isSell ?? true;
+
+  @Deprecated('Use isActive instead.')
+  bool get isSell => isActive;
 
   Product copyWith({
     double? minimumStock,
     bool? isTrackInventory,
     InventoryDeductionMode? inventoryDeductionMode,
+    double? quantity,
+    double? averageUnitCost,
+    double? lastImportUnitCost,
+    bool? isActive,
+    bool? isLowStock,
+    bool? isOutOfStock,
+    List<ProductRecipeDraft>? recipes,
   }) {
     return Product(
       id: id,
@@ -73,18 +88,20 @@ class Product {
       preparationTime: preparationTime,
       price: price,
       costPrice: costPrice,
-      quantity: quantity,
+      quantity: quantity ?? this.quantity,
       minimumStock: minimumStock ?? this.minimumStock,
-      averageUnitCost: averageUnitCost,
-      lastImportUnitCost: lastImportUnitCost,
+      averageUnitCost: averageUnitCost ?? this.averageUnitCost,
+      lastImportUnitCost: lastImportUnitCost ?? this.lastImportUnitCost,
       isTrackInventory: isTrackInventory ?? this.isTrackInventory,
       inventoryDeductionMode:
           inventoryDeductionMode ?? this.inventoryDeductionMode,
       type: type,
       variants: variants,
       toppings: toppings,
-      recipes: recipes,
-      isSell: isSell,
+      recipes: recipes ?? this.recipes,
+      isActive: isActive,
+      isLowStock: isLowStock ?? this.isLowStock,
+      isOutOfStock: isOutOfStock ?? this.isOutOfStock,
       createdAt: createdAt,
       updatedAt: updatedAt,
       isDeleted: isDeleted,

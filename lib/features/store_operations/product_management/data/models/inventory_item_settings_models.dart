@@ -41,12 +41,22 @@ class ProductInventorySettingsModel {
   final double minimumStock;
   final bool isTrackInventory;
   final InventoryDeductionMode inventoryDeductionMode;
+  final double quantity;
+  final double averageUnitCost;
+  final double lastImportUnitCost;
+  final bool isLowStock;
+  final bool isOutOfStock;
 
   const ProductInventorySettingsModel({
     required this.id,
     required this.minimumStock,
     required this.isTrackInventory,
     required this.inventoryDeductionMode,
+    required this.quantity,
+    required this.averageUnitCost,
+    required this.lastImportUnitCost,
+    required this.isLowStock,
+    required this.isOutOfStock,
   });
 
   factory ProductInventorySettingsModel.fromJson(Object? json) {
@@ -58,6 +68,11 @@ class ProductInventorySettingsModel {
       inventoryDeductionMode: InventoryDeductionMode.fromApi(
         map['inventoryDeductionMode'],
       ),
+      quantity: _double(map['quantity']),
+      averageUnitCost: _double(map['averageUnitCost']),
+      lastImportUnitCost: _double(map['lastImportUnitCost']),
+      isLowStock: _bool(map['isLowStock']),
+      isOutOfStock: _bool(map['isOutOfStock']),
     );
   }
 
@@ -74,6 +89,11 @@ class ProductInventorySettingsModel {
     minimumStock: minimumStock,
     isTrackInventory: isTrackInventory,
     inventoryDeductionMode: inventoryDeductionMode,
+    quantity: quantity,
+    averageUnitCost: averageUnitCost,
+    lastImportUnitCost: lastImportUnitCost,
+    isLowStock: isLowStock,
+    isOutOfStock: isOutOfStock,
   );
 }
 

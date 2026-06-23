@@ -6,11 +6,13 @@ class ProductIngredientModel {
   final String name;
   final int itemType;
   final String unit;
-  final int quantity;
+  final double quantity;
   final double minimumStock;
   final double averageUnitCost;
   final double lastImportUnitCost;
   final bool isTrackInventory;
+  final bool isLowStock;
+  final bool isOutOfStock;
   final int capacity;
   final int currentCapacity;
   final bool isActive;
@@ -27,6 +29,8 @@ class ProductIngredientModel {
     required this.averageUnitCost,
     required this.lastImportUnitCost,
     required this.isTrackInventory,
+    required this.isLowStock,
+    required this.isOutOfStock,
     required this.capacity,
     required this.currentCapacity,
     required this.isActive,
@@ -44,11 +48,13 @@ class ProductIngredientModel {
       name: _stringValue(json['name'], fallback: 'Nguyên liệu'),
       itemType: _intValue(json['itemType']),
       unit: _stringValue(json['unit']),
-      quantity: _intValue(json['quantity']),
+      quantity: _doubleValue(json['quantity']),
       minimumStock: _doubleValue(json['minimumStock']),
       averageUnitCost: _doubleValue(json['averageUnitCost']),
       lastImportUnitCost: _doubleValue(json['lastImportUnitCost']),
       isTrackInventory: _boolValue(json['isTrackInventory']),
+      isLowStock: _boolValue(json['isLowStock']),
+      isOutOfStock: _boolValue(json['isOutOfStock']),
       capacity: _intValue(json['capacity']),
       currentCapacity: _intValue(json['currentCapacity']),
       isActive: _boolValue(json['isActive'], fallback: true),
@@ -87,6 +93,8 @@ class ProductIngredientModel {
       averageUnitCost: averageUnitCost,
       lastImportUnitCost: lastImportUnitCost,
       isTrackInventory: isTrackInventory,
+      isLowStock: isLowStock,
+      isOutOfStock: isOutOfStock,
       capacity: capacity,
       currentCapacity: currentCapacity,
       isActive: isActive,

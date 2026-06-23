@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../../core/network/dio/dio_client.dart';
 import '../../domain/entities/product_image_upload.dart';
+import '../../domain/entities/product_recipe_draft.dart';
 import '../models/product_category_model.dart';
 import '../models/product_ingredient_model.dart';
 import '../models/product_image_upload_url_model.dart';
@@ -123,6 +124,7 @@ class ProductManagementRemoteDataSource {
     return response.data!;
   }
 
+  @Deprecated('Ingredient responses now contain inventory settings directly.')
   Future<List<IngredientInventorySettingsModel>> getIngredientInventorySettings(
     int storeId,
   ) async {
@@ -326,6 +328,7 @@ class ProductManagementRemoteDataSource {
     return response.data!;
   }
 
+  @Deprecated('Product responses now contain inventory settings directly.')
   Future<List<ProductInventorySettingsModel>> getProductInventorySettings(
     int storeId,
   ) async {
@@ -358,6 +361,23 @@ class ProductManagementRemoteDataSource {
         response.message,
         response.errors,
         'Không thể tải chi tiết sản phẩm',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<List<ProductRecipeDraft>> getProductRecipes(int productId) async {
+    final response = await _dioClient.getResponse<List<ProductRecipeDraft>>(
+      '/recipes/product/$productId',
+      dataFromJson: ProductModel.recipeListFromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể tải công thức sản phẩm',
       );
     }
 
@@ -421,22 +441,26 @@ class ProductManagementRemoteDataSource {
     }
   }
 
-  Future<void> updateProductInventorySettings({
+  Future<ProductInventorySettingsModel> updateProductInventorySettings({
     required int productId,
     required UpdateProductInventorySettingsRequestModel request,
   }) async {
-    final response = await _dioClient.putResponse<Object?>(
-      '/inventory/products/$productId/inventory-settings',
-      data: request.toJson(),
-    );
+    final response = await _dioClient
+        .putResponse<ProductInventorySettingsModel>(
+          '/inventory/products/$productId/inventory-settings',
+          data: request.toJson(),
+          dataFromJson: ProductInventorySettingsModel.fromJson,
+        );
 
-    if (!response.succeeded) {
+    if (!response.succeeded || response.data == null) {
       _throwRequestFailure(
         response.message,
         response.errors,
         'Không thể cập nhật cấu hình tồn sản phẩm',
       );
     }
+
+    return response.data!;
   }
 
   Future<void> replaceProductRecipe({

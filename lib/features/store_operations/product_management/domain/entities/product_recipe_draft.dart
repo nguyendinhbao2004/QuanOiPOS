@@ -4,8 +4,8 @@ class ProductRecipeDraft {
   final int? id;
   final int ingredientId;
   final ProductIngredient? ingredient;
-  final int quantity;
-  final int capacity;
+  final double quantity;
+  final double capacity;
 
   const ProductRecipeDraft({
     this.id,

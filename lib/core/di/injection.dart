@@ -99,6 +99,7 @@ import '../../features/store_operations/product_management/domain/usecases/load_
 import '../../features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_ingredient_inventory_settings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_inventory_settings_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/load_product_recipes_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/replace_product_recipe_use_case.dart';
@@ -670,6 +671,9 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<LoadProductDetailUseCase>(
     () => LoadProductDetailUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<LoadProductRecipesUseCase>(
+    () => LoadProductRecipesUseCase(locator<ProductManagementRepository>()),
   );
   locator.registerLazySingleton<UpdateProductUseCase>(
     () => UpdateProductUseCase(locator<ProductManagementRepository>()),

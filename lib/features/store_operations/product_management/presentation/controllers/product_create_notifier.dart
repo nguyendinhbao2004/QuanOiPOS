@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/product_category.dart';
-import '../../domain/entities/product.dart';
 import '../../domain/entities/product_ingredient.dart';
-import '../../domain/entities/inventory_item_settings.dart';
 import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_variant_draft.dart';
@@ -92,28 +90,18 @@ class ProductCreateNotifier
       var editingProduct = editingProductId == null
           ? null
           : await ref.read(loadProductDetailUseCaseProvider)(editingProductId);
-      final ingredientSettings = await ref.read(
-        loadIngredientInventorySettingsUseCaseProvider,
-      )(_access.storeId);
-      final ingredients = _mergeIngredientInventorySettings(
-        ingredientCatalog,
-        ingredientSettings,
-      );
       if (editingProduct != null) {
-        final productSettings = await ref.read(
-          loadProductInventorySettingsUseCaseProvider,
-        )(_access.storeId);
-        editingProduct = _mergeProductInventorySettings(
-          editingProduct,
-          productSettings,
+        final recipes = await ref.read(loadProductRecipesUseCaseProvider)(
+          editingProduct.id,
         );
+        editingProduct = editingProduct.copyWith(recipes: recipes);
       }
 
       state = state.copyWith(
         status: ProductCreateStatus.ready,
         categories: categories,
         toppings: toppings,
-        ingredients: ingredients,
+        ingredients: ingredientCatalog,
         editingProduct: editingProduct,
         clearError: true,
       );
@@ -235,18 +223,25 @@ class ProductCreateNotifier
         productId: product.id,
         recipes: recipes,
       );
-      await ref.read(updateProductInventorySettingsUseCaseProvider)(
-        productId: product.id,
-        minimumStock: minimumStock,
-        isTrackInventory: input.isTrackInventory,
-        inventoryDeductionMode: input.inventoryDeductionMode,
-      );
+      final settings =
+          await ref.read(updateProductInventorySettingsUseCaseProvider)(
+            productId: product.id,
+            minimumStock: minimumStock,
+            isTrackInventory: input.isTrackInventory,
+            inventoryDeductionMode: input.inventoryDeductionMode,
+          );
       state = state.copyWith(
         status: ProductCreateStatus.success,
         editingProduct: product.copyWith(
-          minimumStock: minimumStock,
-          isTrackInventory: input.isTrackInventory,
-          inventoryDeductionMode: input.inventoryDeductionMode,
+          minimumStock: settings.minimumStock,
+          isTrackInventory: settings.isTrackInventory,
+          inventoryDeductionMode: settings.inventoryDeductionMode,
+          quantity: settings.quantity,
+          averageUnitCost: settings.averageUnitCost,
+          lastImportUnitCost: settings.lastImportUnitCost,
+          isLowStock: settings.isLowStock,
+          isOutOfStock: settings.isOutOfStock,
+          recipes: recipes,
         ),
         clearError: true,
       );
@@ -360,14 +355,15 @@ class ProductCreateNotifier
       minimumStock: validMinimumStock,
       isTrackInventory: isTrackInventory,
     );
-    final updatedIngredient = ingredient.copyWith(
-      minimumStock: validMinimumStock,
-      isTrackInventory: isTrackInventory,
+    await _reloadIngredients();
+    final updatedIngredient = state.ingredients.firstWhere(
+      (item) => item.id == ingredient.id,
+      orElse: () => ingredient.copyWith(
+        minimumStock: validMinimumStock,
+        isTrackInventory: isTrackInventory,
+      ),
     );
-    state = state.copyWith(
-      ingredients: [...state.ingredients, updatedIngredient],
-      clearError: true,
-    );
+    state = state.copyWith(clearError: true);
     return updatedIngredient;
   }
 
@@ -413,17 +409,15 @@ class ProductCreateNotifier
       minimumStock: validMinimumStock,
       isTrackInventory: isTrackInventory,
     );
-    final updatedIngredient = ingredient.copyWith(
-      minimumStock: validMinimumStock,
-      isTrackInventory: isTrackInventory,
+    await _reloadIngredients();
+    final updatedIngredient = state.ingredients.firstWhere(
+      (item) => item.id == ingredient.id,
+      orElse: () => ingredient.copyWith(
+        minimumStock: validMinimumStock,
+        isTrackInventory: isTrackInventory,
+      ),
     );
-    state = state.copyWith(
-      ingredients: [
-        for (final item in state.ingredients)
-          if (item.id == ingredientId) updatedIngredient else item,
-      ],
-      clearError: true,
-    );
+    state = state.copyWith(clearError: true);
     return updatedIngredient;
   }
 
@@ -434,12 +428,8 @@ class ProductCreateNotifier
     );
 
     await ref.read(deleteProductIngredientUseCaseProvider)(ingredientId);
-    state = state.copyWith(
-      ingredients: state.ingredients
-          .where((ingredient) => ingredient.id != ingredientId)
-          .toList(),
-      clearError: true,
-    );
+    await _reloadIngredients();
+    state = state.copyWith(clearError: true);
   }
 
   Future<ProductTopping> updateTopping({
@@ -594,39 +584,11 @@ class ProductCreateNotifier
     return minimumStock;
   }
 
-  List<ProductIngredient> _mergeIngredientInventorySettings(
-    List<ProductIngredient> ingredients,
-    List<IngredientInventorySettings> settings,
-  ) {
-    final settingsByIngredientId = {
-      for (final setting in settings) setting.ingredientId: setting,
-    };
-    return ingredients.map((ingredient) {
-      final setting = settingsByIngredientId[ingredient.id];
-      return setting == null
-          ? ingredient
-          : ingredient.copyWith(
-              minimumStock: setting.minimumStock,
-              isTrackInventory: setting.isTrackInventory,
-            );
-    }).toList();
-  }
-
-  Product _mergeProductInventorySettings(
-    Product product,
-    List<ProductInventorySettings> settings,
-  ) {
-    for (final setting in settings) {
-      if (setting.productId == product.id) {
-        return product.copyWith(
-          minimumStock: setting.minimumStock,
-          isTrackInventory: setting.isTrackInventory,
-          inventoryDeductionMode: setting.inventoryDeductionMode,
-        );
-      }
-    }
-
-    return product;
+  Future<void> _reloadIngredients() async {
+    final ingredients = await ref.read(loadProductIngredientsUseCaseProvider)(
+      _access.storeId,
+    );
+    state = state.copyWith(ingredients: ingredients);
   }
 
   String _cleanError(Object error) {

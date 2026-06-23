@@ -200,6 +200,11 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
   }
 
   @override
+  Future<List<ProductRecipeDraft>> loadProductRecipes(int productId) {
+    return _remoteDataSource.getProductRecipes(productId);
+  }
+
+  @override
   Future<Product> createProduct({
     required int storeId,
     required int categoryId,
@@ -240,20 +245,22 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
   }
 
   @override
-  Future<void> updateProductInventorySettings({
+  Future<ProductInventorySettings> updateProductInventorySettings({
     required int productId,
     required double minimumStock,
     required bool isTrackInventory,
     required InventoryDeductionMode inventoryDeductionMode,
   }) {
-    return _remoteDataSource.updateProductInventorySettings(
-      productId: productId,
-      request: UpdateProductInventorySettingsRequestModel(
-        minimumStock: minimumStock,
-        isTrackInventory: isTrackInventory,
-        inventoryDeductionMode: inventoryDeductionMode,
-      ),
-    );
+    return _remoteDataSource
+        .updateProductInventorySettings(
+          productId: productId,
+          request: UpdateProductInventorySettingsRequestModel(
+            minimumStock: minimumStock,
+            isTrackInventory: isTrackInventory,
+            inventoryDeductionMode: inventoryDeductionMode,
+          ),
+        )
+        .then((settings) => settings.toEntity());
   }
 
   @override

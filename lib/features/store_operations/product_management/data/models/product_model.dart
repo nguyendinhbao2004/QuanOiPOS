@@ -27,7 +27,9 @@ class ProductModel {
   final List<ProductVariantDraft> variants;
   final List<ProductTopping> toppings;
   final List<ProductRecipeDraft> recipes;
-  final bool isSell;
+  final bool isActive;
+  final bool isLowStock;
+  final bool isOutOfStock;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final bool isDeleted;
@@ -53,7 +55,9 @@ class ProductModel {
     this.variants = const [],
     this.toppings = const [],
     this.recipes = const [],
-    required this.isSell,
+    required this.isActive,
+    required this.isLowStock,
+    required this.isOutOfStock,
     this.createdAt,
     this.updatedAt,
     required this.isDeleted,
@@ -96,8 +100,10 @@ class ProductModel {
       type: ProductType.fromValue(json['type']),
       variants: _variantDrafts(json['variants']),
       toppings: _toppings(json['toppings'], storeId),
-      recipes: _recipes(json['recipes']),
-      isSell: _boolValue(json['isSell'], fallback: true),
+      recipes: const [],
+      isActive: _boolValue(json['isActive'], fallback: true),
+      isLowStock: _boolValue(json['isLowStock']),
+      isOutOfStock: _boolValue(json['isOutOfStock']),
       createdAt: _dateValue(json['createdAt']),
       updatedAt: _dateValue(json['updatedAt']),
       isDeleted: _boolValue(json['isDeleted']),
@@ -145,7 +151,9 @@ class ProductModel {
       variants: variants,
       toppings: toppings,
       recipes: recipes,
-      isSell: isSell,
+      isActive: isActive,
+      isLowStock: isLowStock,
+      isOutOfStock: isOutOfStock,
       createdAt: createdAt,
       updatedAt: updatedAt,
       isDeleted: isDeleted,
@@ -248,7 +256,7 @@ class ProductModel {
         .toList();
   }
 
-  static List<ProductRecipeDraft> _recipes(Object? value) {
+  static List<ProductRecipeDraft> recipeListFromJson(Object? value) {
     if (value is! List) {
       return const [];
     }
@@ -267,13 +275,15 @@ class ProductModel {
               ),
               itemType: _intValue(ingredientJson['itemType']),
               unit: _stringValue(ingredientJson['unit']),
-              quantity: _intValue(ingredientJson['quantity']),
+              quantity: _doubleValue(ingredientJson['quantity']),
               minimumStock: _doubleValue(ingredientJson['minimumStock']),
               averageUnitCost: _doubleValue(ingredientJson['averageUnitCost']),
               lastImportUnitCost: _doubleValue(
                 ingredientJson['lastImportUnitCost'],
               ),
               isTrackInventory: _boolValue(ingredientJson['isTrackInventory']),
+              isLowStock: _boolValue(ingredientJson['isLowStock']),
+              isOutOfStock: _boolValue(ingredientJson['isOutOfStock']),
               capacity: _intValue(ingredientJson['capacity']),
               currentCapacity: _intValue(ingredientJson['currentCapacity']),
               isActive: _boolValue(ingredientJson['isActive'], fallback: true),
@@ -286,8 +296,8 @@ class ProductModel {
         id: recipeId == 0 ? null : recipeId,
         ingredientId: _intValue(recipe['ingredientId'] ?? ingredient?.id),
         ingredient: ingredient,
-        quantity: _intValue(recipe['quantity']),
-        capacity: _intValue(recipe['capacity']),
+        quantity: _doubleValue(recipe['quantity']),
+        capacity: _doubleValue(recipe['capacity']),
       );
     }).toList();
   }

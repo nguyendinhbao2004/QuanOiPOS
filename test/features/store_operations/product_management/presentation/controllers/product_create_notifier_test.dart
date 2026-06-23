@@ -20,6 +20,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_recipes_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_ingredient_inventory_settings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_inventory_settings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
@@ -649,6 +650,9 @@ ProviderContainer _container(_FakeProductCreateRepository repository) {
       loadProductDetailUseCaseProvider.overrideWithValue(
         LoadProductDetailUseCase(repository),
       ),
+      loadProductRecipesUseCaseProvider.overrideWithValue(
+        LoadProductRecipesUseCase(repository),
+      ),
       updateProductUseCaseProvider.overrideWithValue(
         UpdateProductUseCase(repository),
       ),
@@ -1049,7 +1053,7 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   }
 
   @override
-  Future<void> updateProductInventorySettings({
+  Future<ProductInventorySettings> updateProductInventorySettings({
     required int productId,
     required double minimumStock,
     required bool isTrackInventory,
@@ -1059,6 +1063,17 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
     lastMinimumStock = minimumStock;
     lastIsTrackInventory = isTrackInventory;
     lastInventoryDeductionMode = inventoryDeductionMode;
+    return ProductInventorySettings(
+      productId: productId,
+      minimumStock: minimumStock,
+      isTrackInventory: isTrackInventory,
+      inventoryDeductionMode: inventoryDeductionMode,
+      quantity: 0,
+      averageUnitCost: 0,
+      lastImportUnitCost: 0,
+      isLowStock: false,
+      isOutOfStock: false,
+    );
   }
 
   @override
@@ -1079,6 +1094,10 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   Future<List<Product>> loadProducts(int storeId) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<List<ProductRecipeDraft>> loadProductRecipes(int productId) async =>
+      const [];
 
   @override
   Future<ProductCategory> updateCategory({

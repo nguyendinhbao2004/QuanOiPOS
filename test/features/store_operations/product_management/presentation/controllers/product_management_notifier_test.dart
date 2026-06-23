@@ -416,6 +416,10 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   }
 
   @override
+  Future<List<ProductRecipeDraft>> loadProductRecipes(int productId) async =>
+      const [];
+
+  @override
   Future<Product> createProduct({
     required int storeId,
     required int categoryId,
@@ -504,12 +508,22 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   }) async {}
 
   @override
-  Future<void> updateProductInventorySettings({
+  Future<ProductInventorySettings> updateProductInventorySettings({
     required int productId,
     required double minimumStock,
     required bool isTrackInventory,
     required InventoryDeductionMode inventoryDeductionMode,
-  }) async {}
+  }) async => ProductInventorySettings(
+    productId: productId,
+    minimumStock: minimumStock,
+    isTrackInventory: isTrackInventory,
+    inventoryDeductionMode: inventoryDeductionMode,
+    quantity: 0,
+    averageUnitCost: 0,
+    lastImportUnitCost: 0,
+    isLowStock: false,
+    isOutOfStock: false,
+  );
 
   @override
   Future<void> replaceProductRecipe({

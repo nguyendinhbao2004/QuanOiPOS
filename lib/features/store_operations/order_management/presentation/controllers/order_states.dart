@@ -281,7 +281,7 @@ class OrderCreateState {
   List<Product> get visibleProducts {
     final normalized = query.trim().toLowerCase();
     return products.where((product) {
-      return product.isSell &&
+      return product.isActive &&
           !product.isDeleted &&
           (selectedCategoryId == null ||
               product.categoryId == selectedCategoryId) &&

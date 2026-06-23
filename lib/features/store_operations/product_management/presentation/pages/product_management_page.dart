@@ -11,6 +11,7 @@ import '../../../../workspace_context/presentation/controllers/store_access_stat
 import '../../../../workspace_context/presentation/providers/workspace_context_providers.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
+import '../../domain/entities/inventory_deduction_mode.dart';
 import '../controllers/product_create_state.dart';
 import '../controllers/product_management_notifier.dart';
 import '../controllers/product_management_state.dart';
@@ -734,7 +735,7 @@ class _ProductTile extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: AppConstants.spacingXs),
-                        _SellStatusBadge(isSell: product.isSell),
+                        _ProductStatusBadge(isActive: product.isActive),
                       ],
                     ),
                     const SizedBox(height: AppConstants.spacingXs),
@@ -760,6 +761,12 @@ class _ProductTile extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
+                    if (product.isTrackInventory &&
+                        product.inventoryDeductionMode !=
+                            InventoryDeductionMode.recipeOnly) ...[
+                      const SizedBox(height: AppConstants.spacingXs),
+                      _ProductInventoryStatus(product: product),
+                    ],
                   ],
                 ),
               ),
@@ -771,10 +778,10 @@ class _ProductTile extends StatelessWidget {
   }
 }
 
-class _SellStatusBadge extends StatelessWidget {
-  final bool isSell;
+class _ProductStatusBadge extends StatelessWidget {
+  final bool isActive;
 
-  const _SellStatusBadge({required this.isSell});
+  const _ProductStatusBadge({required this.isActive});
 
   @override
   Widget build(BuildContext context) {
@@ -784,17 +791,34 @@ class _SellStatusBadge extends StatelessWidget {
         vertical: 2,
       ),
       decoration: BoxDecoration(
-        color: isSell ? AppColors.primaryLight : AppColors.muted,
+        color: isActive ? AppColors.primaryLight : AppColors.muted,
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       ),
       child: Text(
-        isSell ? 'Đang bán' : 'Tạm tắt',
+        isActive ? 'Đang hoạt động' : 'Tạm ngưng',
         style: AppTextStyles.caption.copyWith(
-          color: isSell ? AppColors.success : AppColors.textMuted,
+          color: isActive ? AppColors.success : AppColors.textMuted,
           fontWeight: FontWeight.w700,
         ),
       ),
     );
+  }
+}
+
+class _ProductInventoryStatus extends StatelessWidget {
+  final Product product;
+
+  const _ProductInventoryStatus({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color) = switch ((product.isOutOfStock, product.isLowStock)) {
+      (true, _) => ('Hết hàng', AppColors.error),
+      (_, true) => ('Sắp hết hàng', AppColors.warning),
+      _ => ('Tồn: ${_formatStock(product.quantity)}', AppColors.textSecondary),
+    };
+
+    return Text(label, style: AppTextStyles.caption.copyWith(color: color));
   }
 }
 
@@ -1636,6 +1660,9 @@ class _LoadingView extends StatelessWidget {
 String _formatCurrency(int value) {
   return '${NumberFormat.decimalPattern('vi_VN').format(value)} đ';
 }
+
+String _formatStock(double value) =>
+    NumberFormat.decimalPattern('vi_VN').format(value);
 
 String _cleanError(Object error) {
   return error.toString().replaceFirst('Exception: ', '');

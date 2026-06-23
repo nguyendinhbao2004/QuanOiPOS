@@ -4,11 +4,13 @@ class ProductIngredient {
   final String name;
   final int itemType;
   final String unit;
-  final int quantity;
+  final double quantity;
   final double minimumStock;
   final double averageUnitCost;
   final double lastImportUnitCost;
   final bool isTrackInventory;
+  final bool isLowStock;
+  final bool isOutOfStock;
   final int capacity;
   final int currentCapacity;
   final bool isActive;
@@ -25,6 +27,8 @@ class ProductIngredient {
     this.averageUnitCost = 0,
     this.lastImportUnitCost = 0,
     this.isTrackInventory = false,
+    this.isLowStock = false,
+    this.isOutOfStock = false,
     required this.capacity,
     required this.currentCapacity,
     required this.isActive,
@@ -38,6 +42,8 @@ class ProductIngredient {
     int? capacity,
     double? minimumStock,
     bool? isTrackInventory,
+    bool? isLowStock,
+    bool? isOutOfStock,
   }) {
     return ProductIngredient(
       id: id,
@@ -50,6 +56,8 @@ class ProductIngredient {
       averageUnitCost: averageUnitCost,
       lastImportUnitCost: lastImportUnitCost,
       isTrackInventory: isTrackInventory ?? this.isTrackInventory,
+      isLowStock: isLowStock ?? this.isLowStock,
+      isOutOfStock: isOutOfStock ?? this.isOutOfStock,
       capacity: capacity ?? this.capacity,
       currentCapacity: currentCapacity,
       isActive: isActive,

@@ -16,6 +16,7 @@ abstract class ProductManagementRepository {
 
   Future<List<ProductIngredient>> loadIngredients(int storeId);
 
+  @Deprecated('Ingredient responses now contain inventory settings directly.')
   Future<List<IngredientInventorySettings>> loadIngredientInventorySettings(
     int storeId,
   );
@@ -72,11 +73,14 @@ abstract class ProductManagementRepository {
 
   Future<List<Product>> loadProducts(int storeId);
 
+  @Deprecated('Product responses now contain inventory settings directly.')
   Future<List<ProductInventorySettings>> loadProductInventorySettings(
     int storeId,
   );
 
   Future<Product> loadProductDetail(int productId);
+
+  Future<List<ProductRecipeDraft>> loadProductRecipes(int productId);
 
   Future<Product> createProduct({
     required int storeId,
@@ -93,7 +97,7 @@ abstract class ProductManagementRepository {
     required List<ProductRecipeDraft> recipes,
   });
 
-  Future<void> updateProductInventorySettings({
+  Future<ProductInventorySettings> updateProductInventorySettings({
     required int productId,
     required double minimumStock,
     required bool isTrackInventory,

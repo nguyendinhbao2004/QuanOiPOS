@@ -16,6 +16,7 @@ import '../../domain/usecases/load_product_detail_use_case.dart';
 import '../../domain/usecases/load_product_ingredients_use_case.dart';
 import '../../domain/usecases/load_ingredient_inventory_settings_use_case.dart';
 import '../../domain/usecases/load_product_inventory_settings_use_case.dart';
+import '../../domain/usecases/load_product_recipes_use_case.dart';
 import '../../domain/usecases/load_product_toppings_use_case.dart';
 import '../../domain/usecases/load_products_use_case.dart';
 import '../../domain/usecases/replace_product_recipe_use_case.dart';
@@ -57,11 +58,13 @@ final loadProductIngredientsUseCaseProvider =
       return locator<LoadProductIngredientsUseCase>();
     });
 
+@Deprecated('Product and ingredient responses now contain inventory settings.')
 final loadIngredientInventorySettingsUseCaseProvider =
     Provider<LoadIngredientInventorySettingsUseCase>((ref) {
       return locator<LoadIngredientInventorySettingsUseCase>();
     });
 
+@Deprecated('Product and ingredient responses now contain inventory settings.')
 final loadProductInventorySettingsUseCaseProvider =
     Provider<LoadProductInventorySettingsUseCase>((ref) {
       return locator<LoadProductInventorySettingsUseCase>();
@@ -129,6 +132,12 @@ final loadProductDetailUseCaseProvider = Provider<LoadProductDetailUseCase>((
   ref,
 ) {
   return locator<LoadProductDetailUseCase>();
+});
+
+final loadProductRecipesUseCaseProvider = Provider<LoadProductRecipesUseCase>((
+  ref,
+) {
+  return locator<LoadProductRecipesUseCase>();
 });
 
 final updateProductUseCaseProvider = Provider<UpdateProductUseCase>((ref) {
