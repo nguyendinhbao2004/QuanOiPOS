@@ -53,9 +53,12 @@ class InventoryDocumentEditorState {
   final List<InventorySelectableItem> availableItems;
   final List<InventoryDocumentDraftItem> items;
   final int? vendorId;
+  final InventoryIssueReason? reason;
+  final String destinationName;
   final String note;
   final bool isSaving;
   final bool isCompleting;
+  final bool isCancelling;
   final Map<String, InventoryShortageItem> shortages;
   final String? errorMessage;
   const InventoryDocumentEditorState({
@@ -65,9 +68,12 @@ class InventoryDocumentEditorState {
     this.availableItems = const [],
     this.items = const [],
     this.vendorId,
+    this.reason,
+    this.destinationName = '',
     this.note = '',
     this.isSaving = false,
     this.isCompleting = false,
+    this.isCancelling = false,
     this.shortages = const {},
     this.errorMessage,
   });
@@ -78,9 +84,12 @@ class InventoryDocumentEditorState {
       availableItems = const [],
       items = const [],
       vendorId = null,
+      reason = null,
+      destinationName = '',
       note = '',
       isSaving = false,
       isCompleting = false,
+      isCancelling = false,
       shortages = const {},
       errorMessage = null;
   bool get isDraft =>
@@ -96,9 +105,13 @@ class InventoryDocumentEditorState {
     List<InventoryDocumentDraftItem>? items,
     int? vendorId,
     bool clearVendor = false,
+    InventoryIssueReason? reason,
+    bool clearReason = false,
+    String? destinationName,
     String? note,
     bool? isSaving,
     bool? isCompleting,
+    bool? isCancelling,
     Map<String, InventoryShortageItem>? shortages,
     String? errorMessage,
     bool clearError = false,
@@ -109,9 +122,12 @@ class InventoryDocumentEditorState {
     availableItems: availableItems ?? this.availableItems,
     items: items ?? this.items,
     vendorId: clearVendor ? null : (vendorId ?? this.vendorId),
+    reason: clearReason ? null : (reason ?? this.reason),
+    destinationName: destinationName ?? this.destinationName,
     note: note ?? this.note,
     isSaving: isSaving ?? this.isSaving,
     isCompleting: isCompleting ?? this.isCompleting,
+    isCancelling: isCancelling ?? this.isCancelling,
     shortages: shortages ?? this.shortages,
     errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
   );

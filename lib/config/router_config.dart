@@ -29,6 +29,7 @@ import '../features/store_operations/presentation/pages/store_inventory_check_cr
 import '../features/store_operations/presentation/pages/store_inventory_check_draft_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_check_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_import_page.dart';
+import '../features/store_operations/inventory_documents/domain/entities/inventory_document.dart';
 import '../features/store_operations/inventory_documents/presentation/pages/inventory_document_editor_page.dart';
 import '../features/store_operations/inventory_documents/presentation/pages/inventory_import_item_picker_page.dart';
 import '../features/store_operations/presentation/pages/store_inventory_ledger_page.dart';
@@ -74,6 +75,8 @@ abstract final class RouteNames {
   static const String storeInventoryExport = 'store-inventory-export';
   static const String storeInventoryExportDraft =
       'store-inventory-export-draft';
+  static const String storeInventoryExportDetail =
+      'store-inventory-export-detail';
   static const String storeInventoryExportIngredientDraft =
       'store-inventory-export-ingredient-draft';
   static const String storeInventoryExportIngredients =
@@ -140,15 +143,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: RouteNames.storeInventoryImportItemPicker,
         builder: (context, state) {
           final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
-          if (storeId == null)
+          if (storeId == null) {
             return const Scaffold(
               body: Center(child: Text('Cửa hàng không hợp lệ')),
             );
+          }
+          final pickerArgs = state.extra is InventoryItemPickerArgs
+              ? state.extra! as InventoryItemPickerArgs
+              : null;
           return InventoryImportItemPickerPage(
             storeId: storeId,
-            selectedItems: state.extra is List
-                ? state.extra! as List
-                : const [],
+            documentType:
+                pickerArgs?.documentType ?? InventoryDocumentType.import,
+            selectedItems:
+                pickerArgs?.selectedItems ??
+                (state.extra is List ? state.extra! as List : const []),
           );
         },
       ),
@@ -393,13 +402,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             );
           }
 
-          final seedData = state.extra is StoreInventoryExportDraftSeedData
-              ? state.extra! as StoreInventoryExportDraftSeedData
-              : null;
-
-          return StoreInventoryExportDraftPage(
+          return InventoryDocumentEditorPage(
             storeId: storeId,
-            seedData: seedData,
+            documentType: InventoryDocumentType.manualIssue,
           );
         },
       ),
@@ -494,6 +499,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           return StoreInventoryExportSupplementMaterialDraftPage(
             storeId: storeId,
             seedData: seedData,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/stores/:storeId/inventory/exports/:documentId',
+        name: RouteNames.storeInventoryExportDetail,
+        builder: (context, state) {
+          final storeId = int.tryParse(state.pathParameters['storeId'] ?? '');
+          final documentId = int.tryParse(
+            state.pathParameters['documentId'] ?? '',
+          );
+          if (storeId == null || documentId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Phiếu xuất không hợp lệ')),
+            );
+          }
+          return InventoryDocumentEditorPage(
+            storeId: storeId,
+            documentType: InventoryDocumentType.manualIssue,
+            documentId: documentId,
           );
         },
       ),

@@ -7,15 +7,17 @@ class InventoryDocumentRepositoryImpl implements InventoryDocumentRepository {
   final InventoryDocumentRemoteDataSource _remote;
   InventoryDocumentRepositoryImpl(this._remote);
   @override
-  Future<InventoryDocumentPage> loadImports({
+  Future<InventoryDocumentPage> loadDocuments({
     required int storeId,
+    required InventoryDocumentType type,
     InventoryDocumentStatus? status,
     DateTime? from,
     DateTime? to,
     required int pageIndex,
     required int pageSize,
-  }) async => (await _remote.getImports(
+  }) async => (await _remote.getDocuments(
     storeId: storeId,
+    type: type,
     status: status,
     from: from,
     to: to,
@@ -53,36 +55,51 @@ class InventoryDocumentRepositoryImpl implements InventoryDocumentRepository {
   ) async =>
       (await _remote.getItems(storeId)).map((item) => item.toEntity()).toList();
   @override
-  Future<InventoryDocument> createImport({
+  Future<InventoryDocument> createDocument({
     required int storeId,
+    required InventoryDocumentType type,
     int? vendorId,
+    InventoryIssueReason? reason,
+    String? destinationName,
     String? note,
     required List<InventoryDocumentDraftItem> items,
   }) async => (await _remote.create(
     InventoryDocumentRequestModel(
       storeId: storeId,
+      type: type,
       vendorId: vendorId,
+      reason: reason,
+      destinationName: destinationName,
       note: note,
       items: items,
     ),
   )).toEntity();
   @override
-  Future<InventoryDocument> updateImport({
+  Future<InventoryDocument> updateDocument({
     required int documentId,
     required int storeId,
+    required InventoryDocumentType type,
     int? vendorId,
+    InventoryIssueReason? reason,
+    String? destinationName,
     String? note,
     required List<InventoryDocumentDraftItem> items,
   }) async => (await _remote.update(
     documentId,
     InventoryDocumentRequestModel(
       storeId: storeId,
+      type: type,
       vendorId: vendorId,
+      reason: reason,
+      destinationName: destinationName,
       note: note,
       items: items,
     ),
   )).toEntity();
   @override
-  Future<InventoryDocument> completeImport(int documentId) async =>
+  Future<InventoryDocument> completeDocument(int documentId) async =>
       (await _remote.complete(documentId)).toEntity();
+  @override
+  Future<InventoryDocument> cancelDocument(int documentId) async =>
+      (await _remote.cancel(documentId)).toEntity();
 }

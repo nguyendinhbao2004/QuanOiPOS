@@ -21,10 +21,12 @@ String inventorySelectableItemStockLabel(InventorySelectableItem item) {
 
 class InventoryImportItemPickerPage extends ConsumerStatefulWidget {
   final int storeId;
+  final InventoryDocumentType documentType;
   final List selectedItems;
   const InventoryImportItemPickerPage({
     super.key,
     required this.storeId,
+    this.documentType = InventoryDocumentType.import,
     required this.selectedItems,
   });
   @override
@@ -47,7 +49,10 @@ class _InventoryImportItemPickerPageState
 
   @override
   Widget build(BuildContext context) {
-    final args = InventoryDocumentEditorArgs(storeId: widget.storeId);
+    final args = InventoryDocumentEditorArgs(
+      storeId: widget.storeId,
+      type: widget.documentType,
+    );
     final state = ref.watch(inventoryDocumentEditorNotifierProvider(args));
     final items = state.availableItems
         .where((item) => item.type == _type)
@@ -105,7 +110,9 @@ class _InventoryImportItemPickerPageState
         ),
         Expanded(
           child: Text(
-            'Nhập hàng',
+            widget.documentType == InventoryDocumentType.import
+                ? 'Nhập hàng'
+                : 'Xuất hàng',
             style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
@@ -248,7 +255,10 @@ class _InventoryImportItemPickerPageState
     final all = ref
         .read(
           inventoryDocumentEditorNotifierProvider(
-            InventoryDocumentEditorArgs(storeId: widget.storeId),
+            InventoryDocumentEditorArgs(
+              storeId: widget.storeId,
+              type: widget.documentType,
+            ),
           ),
         )
         .availableItems;
@@ -318,4 +328,13 @@ class _InventoryImportItemPickerPageState
       ),
     );
   }
+}
+
+class InventoryItemPickerArgs {
+  final InventoryDocumentType documentType;
+  final List selectedItems;
+  const InventoryItemPickerArgs({
+    required this.documentType,
+    required this.selectedItems,
+  });
 }

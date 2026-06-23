@@ -1,8 +1,9 @@
 import '../entities/inventory_document.dart';
 
 abstract class InventoryDocumentRepository {
-  Future<InventoryDocumentPage> loadImports({
+  Future<InventoryDocumentPage> loadDocuments({
     required int storeId,
+    required InventoryDocumentType type,
     InventoryDocumentStatus? status,
     DateTime? from,
     DateTime? to,
@@ -18,18 +19,25 @@ abstract class InventoryDocumentRepository {
     required String address,
   });
   Future<List<InventorySelectableItem>> loadSelectableItems(int storeId);
-  Future<InventoryDocument> createImport({
+  Future<InventoryDocument> createDocument({
     required int storeId,
+    required InventoryDocumentType type,
     int? vendorId,
+    InventoryIssueReason? reason,
+    String? destinationName,
     String? note,
     required List<InventoryDocumentDraftItem> items,
   });
-  Future<InventoryDocument> updateImport({
+  Future<InventoryDocument> updateDocument({
     required int documentId,
     required int storeId,
+    required InventoryDocumentType type,
     int? vendorId,
+    InventoryIssueReason? reason,
+    String? destinationName,
     String? note,
     required List<InventoryDocumentDraftItem> items,
   });
-  Future<InventoryDocument> completeImport(int documentId);
+  Future<InventoryDocument> completeDocument(int documentId);
+  Future<InventoryDocument> cancelDocument(int documentId);
 }

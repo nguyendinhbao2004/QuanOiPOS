@@ -13,6 +13,7 @@ import '../../../presentation/widgets/store_bottom_sheet_panel.dart';
 import '../../domain/entities/inventory_document.dart';
 import '../controllers/inventory_document_notifiers.dart';
 import '../controllers/inventory_document_state.dart';
+import 'inventory_import_item_picker_page.dart';
 import '../providers/inventory_document_providers.dart';
 
 String _formatInventoryQuantity(double quantity) =>
@@ -32,10 +33,12 @@ String _draftItemStockLabel(InventorySelectableItem item) {
 
 class InventoryDocumentEditorPage extends ConsumerWidget {
   final int storeId;
+  final InventoryDocumentType documentType;
   final int? documentId;
   const InventoryDocumentEditorPage({
     super.key,
     required this.storeId,
+    this.documentType = InventoryDocumentType.import,
     this.documentId,
   });
   @override
@@ -49,25 +52,30 @@ class InventoryDocumentEditorPage extends ConsumerWidget {
       return Scaffold(
         body: Center(
           child: Text(
-            access.errorMessage ?? 'Bạn chưa có quyền truy cập phiếu nhập.',
+            access.errorMessage ?? 'Bạn chưa có quyền truy cập phiếu kho.',
           ),
         ),
       );
     }
     return _DraftView(
       storeId: storeId,
+      documentType: documentType,
       documentId: documentId,
-      canEdit: access.can(AppPermissionCodes.inventoryImport),
+      canEdit: documentType == InventoryDocumentType.manualIssue
+          ? true
+          : access.can(AppPermissionCodes.inventoryImport),
     );
   }
 }
 
 class _DraftView extends ConsumerWidget {
   final int storeId;
+  final InventoryDocumentType documentType;
   final int? documentId;
   final bool canEdit;
   const _DraftView({
     required this.storeId,
+    required this.documentType,
     required this.documentId,
     required this.canEdit,
   });
@@ -75,6 +83,7 @@ class _DraftView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final args = InventoryDocumentEditorArgs(
       storeId: storeId,
+      type: documentType,
       documentId: documentId,
     );
     final state = ref.watch(inventoryDocumentEditorNotifierProvider(args));
@@ -107,10 +116,14 @@ class _DraftView extends ConsumerWidget {
               children: [
                 _DraftHeader(
                   title: documentId == null
-                      ? 'Tạo phiếu nhập hàng'
+                      ? documentType == InventoryDocumentType.import
+                            ? 'Tạo phiếu nhập hàng'
+                            : 'Tạo phiếu xuất hàng'
                       : state.document!.documentCode,
                   onBack: () => context.goNamed(
-                    RouteNames.storeInventoryImport,
+                    documentType == InventoryDocumentType.import
+                        ? RouteNames.storeInventoryImport
+                        : RouteNames.storeInventoryExport,
                     pathParameters: {'storeId': '$storeId'},
                   ),
                 ),
@@ -125,14 +138,22 @@ class _DraftView extends ConsumerWidget {
                           message: state.errorMessage!,
                           error: state.shortages.isNotEmpty,
                         ),
-                      _VendorRow(
-                        state: state,
-                        enabled: editable,
-                        onPick: () =>
-                            _showVendorSheet(context, state, notifier),
-                        onCreate: () =>
-                            _showCreateVendorSheet(context, notifier),
-                      ),
+                      if (documentType == InventoryDocumentType.import)
+                        _VendorRow(
+                          state: state,
+                          enabled: editable,
+                          onPick: () =>
+                              _showVendorSheet(context, state, notifier),
+                          onCreate: () =>
+                              _showCreateVendorSheet(context, notifier),
+                        )
+                      else
+                        _IssueInfoRow(
+                          state: state,
+                          enabled: editable,
+                          onReasonChanged: notifier.setReason,
+                          onDestinationChanged: notifier.setDestinationName,
+                        ),
                       _AddItemButton(
                         enabled: editable,
                         onPressed: () async {
@@ -140,7 +161,10 @@ class _DraftView extends ConsumerWidget {
                               .pushNamed<List<InventorySelectableItem>>(
                                 RouteNames.storeInventoryImportItemPicker,
                                 pathParameters: {'storeId': '$storeId'},
-                                extra: state.items,
+                                extra: InventoryItemPickerArgs(
+                                  documentType: documentType,
+                                  selectedItems: state.items,
+                                ),
                               );
                           if (selected != null) {
                             for (final item in selected) {
@@ -162,6 +186,7 @@ class _DraftView extends ConsumerWidget {
                                     shortage: state
                                         .shortages['${item.item.type.apiValue}:${item.item.id}'],
                                     editable: editable,
+                                    documentType: documentType,
                                     onRemove: () => notifier.removeItem(item),
                                     onQuantity: (value) => notifier.updateItem(
                                       item,
@@ -176,9 +201,10 @@ class _DraftView extends ConsumerWidget {
                                 .toList(),
                           ),
                         ),
-                      _Summary(state: state),
+                      _Summary(state: state, documentType: documentType),
                       _NoteRow(
                         note: state.note,
+                        documentType: documentType,
                         enabled: editable,
                         onChanged: notifier.setNote,
                       ),
@@ -189,12 +215,16 @@ class _DraftView extends ConsumerWidget {
                   _BottomActions(
                     isSaving: state.isSaving,
                     isCompleting: state.isCompleting,
+                    isCancelling: state.isCancelling,
                     canComplete: state.document != null,
+                    canCancel: state.document != null,
                     onSave: () async {
                       final document = await notifier.save();
                       if (document != null && context.mounted) {
                         context.goNamed(
-                          RouteNames.storeInventoryImportDetail,
+                          documentType == InventoryDocumentType.import
+                              ? RouteNames.storeInventoryImportDetail
+                              : RouteNames.storeInventoryExportDetail,
                           pathParameters: {
                             'storeId': '$storeId',
                             'documentId': '${document.id}',
@@ -203,6 +233,7 @@ class _DraftView extends ConsumerWidget {
                       }
                     },
                     onComplete: notifier.complete,
+                    onCancel: notifier.cancel,
                   ),
               ],
             ),
@@ -300,6 +331,52 @@ class _VendorRow extends StatelessWidget {
   );
 }
 
+class _IssueInfoRow extends StatelessWidget {
+  final InventoryDocumentEditorState state;
+  final bool enabled;
+  final ValueChanged<InventoryIssueReason?> onReasonChanged;
+  final ValueChanged<String> onDestinationChanged;
+
+  const _IssueInfoRow({
+    required this.state,
+    required this.enabled,
+    required this.onReasonChanged,
+    required this.onDestinationChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    color: AppColors.surface,
+    margin: const EdgeInsets.only(bottom: AppConstants.spacingSm),
+    padding: const EdgeInsets.all(AppConstants.spacingMd),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<InventoryIssueReason>(
+          initialValue: state.reason,
+          decoration: const InputDecoration(labelText: 'Lý do xuất kho'),
+          items: InventoryIssueReason.values
+              .map(
+                (reason) =>
+                    DropdownMenuItem(value: reason, child: Text(reason.label)),
+              )
+              .toList(),
+          onChanged: enabled ? onReasonChanged : null,
+        ),
+        if (state.reason == InventoryIssueReason.transferOut) ...[
+          const SizedBox(height: AppConstants.spacingSm),
+          TextFormField(
+            initialValue: state.destinationName,
+            enabled: enabled,
+            decoration: const InputDecoration(labelText: 'Nơi nhận'),
+            onChanged: onDestinationChanged,
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
 class _AddItemButton extends StatelessWidget {
   final bool enabled;
   final VoidCallback onPressed;
@@ -331,12 +408,14 @@ class _ItemTile extends StatelessWidget {
   final InventoryDocumentDraftItem item;
   final InventoryShortageItem? shortage;
   final bool editable;
+  final InventoryDocumentType documentType;
   final VoidCallback onRemove;
   final ValueChanged<double> onQuantity, onCost;
   const _ItemTile({
     required this.item,
     required this.shortage,
     required this.editable,
+    required this.documentType,
     required this.onRemove,
     required this.onQuantity,
     required this.onCost,
@@ -422,16 +501,18 @@ class _ItemTile extends StatelessWidget {
                             onChanged: onQuantity,
                           ),
                   ),
-                  const SizedBox(width: AppConstants.spacingSm),
-                  Expanded(
-                    child: _Number(
-                      label: 'Đơn giá',
-                      value: item.unitCost,
-                      enabled: editable,
-                      allowDecimal: true,
-                      onChanged: onCost,
+                  if (documentType == InventoryDocumentType.import) ...[
+                    const SizedBox(width: AppConstants.spacingSm),
+                    Expanded(
+                      child: _Number(
+                        label: 'Đơn giá',
+                        value: item.unitCost,
+                        enabled: editable,
+                        allowDecimal: true,
+                        onChanged: onCost,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
               if (shortage case final shortage?)
@@ -447,14 +528,16 @@ class _ItemTile extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: AppConstants.spacingSm),
-        Text(
-          item.lineTotal.toStringAsFixed(0),
-          style: AppTextStyles.h4.copyWith(
-            color: AppColors.primary,
-            fontWeight: FontWeight.w800,
+        if (documentType == InventoryDocumentType.import) ...[
+          const SizedBox(width: AppConstants.spacingSm),
+          Text(
+            item.lineTotal.toStringAsFixed(0),
+            style: AppTextStyles.h4.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-        ),
+        ],
       ],
     ),
   );
@@ -590,7 +673,8 @@ class _StepperButton extends StatelessWidget {
 
 class _Summary extends StatelessWidget {
   final InventoryDocumentEditorState state;
-  const _Summary({required this.state});
+  final InventoryDocumentType documentType;
+  const _Summary({required this.state, required this.documentType});
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(top: AppConstants.spacingSm),
@@ -605,8 +689,10 @@ class _Summary extends StatelessWidget {
               .toStringAsFixed(0),
         ),
         _row('Mặt hàng', '${state.items.length}'),
-        const Divider(),
-        _row('Tổng cộng', state.totalAmount.toStringAsFixed(0), total: true),
+        if (documentType == InventoryDocumentType.import) ...[
+          const Divider(),
+          _row('Tổng cộng', state.totalAmount.toStringAsFixed(0), total: true),
+        ],
       ],
     ),
   );
@@ -633,10 +719,12 @@ class _Summary extends StatelessWidget {
 
 class _NoteRow extends StatelessWidget {
   final String note;
+  final InventoryDocumentType documentType;
   final bool enabled;
   final ValueChanged<String> onChanged;
   const _NoteRow({
     required this.note,
+    required this.documentType,
     required this.enabled,
     required this.onChanged,
   });
@@ -649,8 +737,10 @@ class _NoteRow extends StatelessWidget {
       initialValue: note,
       enabled: enabled,
       maxLines: 2,
-      decoration: const InputDecoration(
-        hintText: 'Ghi chú phiếu nhập',
+      decoration: InputDecoration(
+        hintText: documentType == InventoryDocumentType.import
+            ? 'Ghi chú phiếu nhập'
+            : 'Ghi chú phiếu xuất',
         border: InputBorder.none,
       ),
       onChanged: onChanged,
@@ -659,14 +749,17 @@ class _NoteRow extends StatelessWidget {
 }
 
 class _BottomActions extends StatelessWidget {
-  final bool isSaving, isCompleting, canComplete;
-  final VoidCallback onSave, onComplete;
+  final bool isSaving, isCompleting, isCancelling, canComplete, canCancel;
+  final VoidCallback onSave, onComplete, onCancel;
   const _BottomActions({
     required this.isSaving,
     required this.isCompleting,
+    required this.isCancelling,
     required this.canComplete,
+    required this.canCancel,
     required this.onSave,
     required this.onComplete,
+    required this.onCancel,
   });
   @override
   Widget build(BuildContext context) => Material(
@@ -692,6 +785,15 @@ class _BottomActions extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppConstants.spacingSm),
+              if (canCancel) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: isCancelling ? null : onCancel,
+                    child: Text(isCancelling ? 'Đang hủy...' : 'Hủy phiếu'),
+                  ),
+                ),
+                const SizedBox(width: AppConstants.spacingSm),
+              ],
               Expanded(
                 child: ElevatedButton(
                   onPressed: isCompleting ? null : onComplete,

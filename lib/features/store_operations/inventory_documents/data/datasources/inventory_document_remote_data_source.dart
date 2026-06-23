@@ -7,8 +7,9 @@ class InventoryDocumentRemoteDataSource {
   final DioClient _client;
   InventoryDocumentRemoteDataSource(this._client);
 
-  Future<InventoryDocumentPageModel> getImports({
+  Future<InventoryDocumentPageModel> getDocuments({
     required int storeId,
+    required InventoryDocumentType type,
     InventoryDocumentStatus? status,
     DateTime? from,
     DateTime? to,
@@ -18,7 +19,7 @@ class InventoryDocumentRemoteDataSource {
     '/inventory/documents',
     query: {
       'storeId': storeId,
-      'type': 'Import',
+      'type': type.apiValue,
       if (status != null) 'status': status.apiValue,
       if (from != null) 'from': from.toUtc().toIso8601String(),
       if (to != null) 'to': to.toUtc().toIso8601String(),
@@ -26,12 +27,14 @@ class InventoryDocumentRemoteDataSource {
       'pageSize': pageSize,
     },
     parser: InventoryDocumentPageModel.fromJson,
-    fallback: 'Không thể tải sổ nhập hàng',
+    fallback: type == InventoryDocumentType.import
+        ? 'Không thể tải sổ nhập hàng'
+        : 'Không thể tải sổ xuất hàng',
   );
   Future<InventoryDocumentModel> getDocument(int id) => _get(
     '/inventory/documents/$id',
     parser: InventoryDocumentModel.fromJson,
-    fallback: 'Không thể tải chi tiết phiếu nhập',
+    fallback: 'Không thể tải chi tiết phiếu kho',
   );
   Future<List<InventoryVendorModel>> getVendors(
     int storeId, {
@@ -100,7 +103,9 @@ class InventoryDocumentRemoteDataSource {
   ) => _post(
     '/inventory/documents',
     request.toJson(),
-    fallback: 'Không thể tạo phiếu nhập',
+    fallback: request.type == InventoryDocumentType.import
+        ? 'Không thể tạo phiếu nhập'
+        : 'Không thể tạo phiếu xuất',
   );
   Future<InventoryDocumentModel> update(
     int id,
@@ -108,7 +113,9 @@ class InventoryDocumentRemoteDataSource {
   ) => _put(
     '/inventory/documents/$id',
     request.toJson(),
-    fallback: 'Không thể cập nhật phiếu nhập',
+    fallback: request.type == InventoryDocumentType.import
+        ? 'Không thể cập nhật phiếu nhập'
+        : 'Không thể cập nhật phiếu xuất',
   );
   Future<InventoryDocumentModel> complete(int id) async {
     try {
@@ -118,7 +125,7 @@ class InventoryDocumentRemoteDataSource {
       return _unwrap(
         response.data,
         InventoryDocumentModel.fromJson,
-        'Không thể hoàn thành phiếu nhập',
+        'Không thể hoàn thành phiếu kho',
       );
     } on DioException catch (error) {
       final data = error.response?.data;
@@ -133,7 +140,22 @@ class InventoryDocumentRemoteDataSource {
           );
         }
       }
-      throw Exception(_message(error, 'Không thể hoàn thành phiếu nhập'));
+      throw Exception(_message(error, 'Không thể hoàn thành phiếu kho'));
+    }
+  }
+
+  Future<InventoryDocumentModel> cancel(int id) async {
+    try {
+      final response = await _client.dio.post<dynamic>(
+        '/inventory/documents/$id/cancel',
+      );
+      return _unwrap(
+        response.data,
+        InventoryDocumentModel.fromJson,
+        'Không thể hủy phiếu kho',
+      );
+    } on DioException catch (error) {
+      throw Exception(_message(error, 'Không thể hủy phiếu kho'));
     }
   }
 

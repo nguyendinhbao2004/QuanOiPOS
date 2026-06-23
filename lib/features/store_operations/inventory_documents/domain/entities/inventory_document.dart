@@ -15,6 +15,40 @@ enum InventoryDocumentStatus {
       );
 }
 
+enum InventoryDocumentType {
+  import('Import', 'Nhập hàng'),
+  manualIssue('ManualIssue', 'Xuất hàng');
+
+  final String apiValue;
+  final String label;
+  const InventoryDocumentType(this.apiValue, this.label);
+
+  static InventoryDocumentType fromApi(Object? value) =>
+      InventoryDocumentType.values.firstWhere(
+        (type) => type.apiValue.toLowerCase() == value.toString().toLowerCase(),
+        orElse: () => InventoryDocumentType.import,
+      );
+}
+
+enum InventoryIssueReason {
+  internalUse('InternalUse', 'Dùng nội bộ'),
+  transferOut('TransferOut', 'Chuyển chi nhánh'),
+  otherIssue('OtherIssue', 'Khác');
+
+  final String apiValue;
+  final String label;
+  const InventoryIssueReason(this.apiValue, this.label);
+
+  static InventoryIssueReason? fromApi(Object? value) {
+    if (value == null) return null;
+    return InventoryIssueReason.values.firstWhere(
+      (reason) =>
+          reason.apiValue.toLowerCase() == value.toString().toLowerCase(),
+      orElse: () => InventoryIssueReason.otherIssue,
+    );
+  }
+}
+
 enum InventoryDocumentItemType {
   ingredient('Ingredient', 'Nguyên liệu'),
   product('Product', 'Sản phẩm');
@@ -95,6 +129,7 @@ class InventoryDocumentItem {
 class InventoryDocumentSummary {
   final int id;
   final String documentCode;
+  final InventoryDocumentType type;
   final InventoryDocumentStatus status;
   final DateTime? createdAt;
   final InventoryDocumentActor? createdBy;
@@ -104,6 +139,7 @@ class InventoryDocumentSummary {
   const InventoryDocumentSummary({
     required this.id,
     required this.documentCode,
+    required this.type,
     required this.status,
     required this.createdAt,
     required this.createdBy,
@@ -117,12 +153,15 @@ class InventoryDocument {
   final int id;
   final int storeId;
   final String documentCode;
+  final InventoryDocumentType type;
   final InventoryDocumentStatus status;
   final DateTime? createdAt;
   final InventoryDocumentActor? createdBy;
   final DateTime? completedAt;
   final InventoryDocumentActor? completedBy;
   final InventoryVendor? vendor;
+  final InventoryIssueReason? reason;
+  final String? destinationName;
   final String? note;
   final double totalAmount;
   final List<InventoryDocumentItem> items;
@@ -130,12 +169,15 @@ class InventoryDocument {
     required this.id,
     required this.storeId,
     required this.documentCode,
+    required this.type,
     required this.status,
     required this.createdAt,
     required this.createdBy,
     required this.completedAt,
     required this.completedBy,
     required this.vendor,
+    required this.reason,
+    required this.destinationName,
     required this.note,
     required this.totalAmount,
     required this.items,

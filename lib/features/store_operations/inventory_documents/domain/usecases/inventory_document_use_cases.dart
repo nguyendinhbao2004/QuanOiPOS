@@ -11,8 +11,31 @@ class LoadInventoryImportsUseCase {
     DateTime? to,
     required int pageIndex,
     required int pageSize,
-  }) => _repository.loadImports(
+  }) => _repository.loadDocuments(
     storeId: storeId,
+    type: InventoryDocumentType.import,
+    status: status,
+    from: from,
+    to: to,
+    pageIndex: pageIndex,
+    pageSize: pageSize,
+  );
+}
+
+class LoadInventoryDocumentsUseCase {
+  final InventoryDocumentRepository _repository;
+  const LoadInventoryDocumentsUseCase(this._repository);
+  Future<InventoryDocumentPage> call({
+    required int storeId,
+    required InventoryDocumentType type,
+    InventoryDocumentStatus? status,
+    DateTime? from,
+    DateTime? to,
+    required int pageIndex,
+    required int pageSize,
+  }) => _repository.loadDocuments(
+    storeId: storeId,
+    type: type,
     status: status,
     from: from,
     to: to,
@@ -65,8 +88,9 @@ class CreateInventoryImportUseCase {
     int? vendorId,
     String? note,
     required List<InventoryDocumentDraftItem> items,
-  }) => _repository.createImport(
+  }) => _repository.createDocument(
     storeId: storeId,
+    type: InventoryDocumentType.import,
     vendorId: vendorId,
     note: note,
     items: items,
@@ -82,9 +106,10 @@ class UpdateInventoryImportUseCase {
     int? vendorId,
     String? note,
     required List<InventoryDocumentDraftItem> items,
-  }) => _repository.updateImport(
+  }) => _repository.updateDocument(
     documentId: documentId,
     storeId: storeId,
+    type: InventoryDocumentType.import,
     vendorId: vendorId,
     note: note,
     items: items,
@@ -94,5 +119,63 @@ class UpdateInventoryImportUseCase {
 class CompleteInventoryImportUseCase {
   final InventoryDocumentRepository _repository;
   const CompleteInventoryImportUseCase(this._repository);
-  Future<InventoryDocument> call(int id) => _repository.completeImport(id);
+  Future<InventoryDocument> call(int id) => _repository.completeDocument(id);
+}
+
+class CreateInventoryDocumentUseCase {
+  final InventoryDocumentRepository _repository;
+  const CreateInventoryDocumentUseCase(this._repository);
+  Future<InventoryDocument> call({
+    required int storeId,
+    required InventoryDocumentType type,
+    int? vendorId,
+    InventoryIssueReason? reason,
+    String? destinationName,
+    String? note,
+    required List<InventoryDocumentDraftItem> items,
+  }) => _repository.createDocument(
+    storeId: storeId,
+    type: type,
+    vendorId: vendorId,
+    reason: reason,
+    destinationName: destinationName,
+    note: note,
+    items: items,
+  );
+}
+
+class UpdateInventoryDocumentUseCase {
+  final InventoryDocumentRepository _repository;
+  const UpdateInventoryDocumentUseCase(this._repository);
+  Future<InventoryDocument> call({
+    required int documentId,
+    required int storeId,
+    required InventoryDocumentType type,
+    int? vendorId,
+    InventoryIssueReason? reason,
+    String? destinationName,
+    String? note,
+    required List<InventoryDocumentDraftItem> items,
+  }) => _repository.updateDocument(
+    documentId: documentId,
+    storeId: storeId,
+    type: type,
+    vendorId: vendorId,
+    reason: reason,
+    destinationName: destinationName,
+    note: note,
+    items: items,
+  );
+}
+
+class CompleteInventoryDocumentUseCase {
+  final InventoryDocumentRepository _repository;
+  const CompleteInventoryDocumentUseCase(this._repository);
+  Future<InventoryDocument> call(int id) => _repository.completeDocument(id);
+}
+
+class CancelInventoryDocumentUseCase {
+  final InventoryDocumentRepository _repository;
+  const CancelInventoryDocumentUseCase(this._repository);
+  Future<InventoryDocument> call(int id) => _repository.cancelDocument(id);
 }

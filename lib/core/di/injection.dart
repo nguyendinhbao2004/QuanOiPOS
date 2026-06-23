@@ -580,6 +580,9 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<LoadInventoryImportsUseCase>(
     () => LoadInventoryImportsUseCase(locator<InventoryDocumentRepository>()),
   );
+  locator.registerLazySingleton<LoadInventoryDocumentsUseCase>(
+    () => LoadInventoryDocumentsUseCase(locator<InventoryDocumentRepository>()),
+  );
   locator.registerLazySingleton<LoadInventoryDocumentUseCase>(
     () => LoadInventoryDocumentUseCase(locator<InventoryDocumentRepository>()),
   );
@@ -603,6 +606,23 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<CompleteInventoryImportUseCase>(
     () =>
         CompleteInventoryImportUseCase(locator<InventoryDocumentRepository>()),
+  );
+  locator.registerLazySingleton<CreateInventoryDocumentUseCase>(
+    () =>
+        CreateInventoryDocumentUseCase(locator<InventoryDocumentRepository>()),
+  );
+  locator.registerLazySingleton<UpdateInventoryDocumentUseCase>(
+    () =>
+        UpdateInventoryDocumentUseCase(locator<InventoryDocumentRepository>()),
+  );
+  locator.registerLazySingleton<CompleteInventoryDocumentUseCase>(
+    () => CompleteInventoryDocumentUseCase(
+      locator<InventoryDocumentRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<CancelInventoryDocumentUseCase>(
+    () =>
+        CancelInventoryDocumentUseCase(locator<InventoryDocumentRepository>()),
   );
   locator.registerLazySingleton<ProductManagementRepository>(
     () => ProductManagementRepositoryImpl(

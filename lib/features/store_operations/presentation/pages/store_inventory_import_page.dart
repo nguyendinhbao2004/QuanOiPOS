@@ -7,6 +7,7 @@ import '../../../../core/constants/app_permission_codes.dart';
 import '../../../../core/theme/index.dart';
 import '../../../workspace_context/presentation/providers/workspace_context_providers.dart';
 import '../../inventory_documents/domain/entities/inventory_document.dart';
+import '../../inventory_documents/presentation/controllers/inventory_document_notifiers.dart';
 import '../../inventory_documents/presentation/controllers/inventory_document_state.dart';
 import '../../inventory_documents/presentation/providers/inventory_document_providers.dart';
 
@@ -16,13 +17,19 @@ class StoreInventoryImportPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final access = ref.watch(storeAccessNotifierProvider(storeId));
-    if (access.isLoading)
+    if (access.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (!access.can(AppPermissionCodes.inventoryView))
+    }
+    if (!access.can(AppPermissionCodes.inventoryView)) {
       return const Scaffold(
         body: Center(child: Text('Bạn chưa có quyền xem sổ nhập hàng.')),
       );
-    final state = ref.watch(inventoryDocumentListNotifierProvider(storeId));
+    }
+    final listArgs = InventoryDocumentListArgs(
+      storeId: storeId,
+      type: InventoryDocumentType.import,
+    );
+    final state = ref.watch(inventoryDocumentListNotifierProvider(listArgs));
     return Scaffold(
       backgroundColor: AppColors.background,
       floatingActionButton: access.can(AppPermissionCodes.inventoryImport)
@@ -44,8 +51,8 @@ class StoreInventoryImportPage extends ConsumerWidget {
             child: Column(
               children: [
                 _Header(storeId),
-                _Tabs(storeId, state.selectedStatus),
-                _Filters(storeId),
+                _Tabs(listArgs, state.selectedStatus),
+                _Filters(listArgs),
                 Expanded(child: _Ledger(storeId, state)),
               ],
             ),
@@ -95,9 +102,9 @@ class _Header extends StatelessWidget {
 }
 
 class _Tabs extends ConsumerWidget {
-  final int storeId;
+  final InventoryDocumentListArgs args;
   final InventoryDocumentStatus? selected;
-  const _Tabs(this.storeId, this.selected);
+  const _Tabs(this.args, this.selected);
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final options = <InventoryDocumentStatus?>[
@@ -115,7 +122,7 @@ class _Tabs extends ConsumerWidget {
                   selected: status == selected,
                   onTap: () => ref
                       .read(
-                        inventoryDocumentListNotifierProvider(storeId).notifier,
+                        inventoryDocumentListNotifierProvider(args).notifier,
                       )
                       .setStatus(status),
                 ),
@@ -164,11 +171,11 @@ class _Tab extends StatelessWidget {
 }
 
 class _Filters extends ConsumerWidget {
-  final int storeId;
-  const _Filters(this.storeId);
+  final InventoryDocumentListArgs args;
+  const _Filters(this.args);
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(inventoryDocumentListNotifierProvider(storeId));
+    final state = ref.watch(inventoryDocumentListNotifierProvider(args));
     final label = state.from == null
         ? 'Tháng này'
         : '${state.from!.day}/${state.from!.month} - ${state.to!.day}/${state.to!.month}';
@@ -182,7 +189,7 @@ class _Filters extends ConsumerWidget {
         children: [
           SizedBox(
             width: 124,
-            child: _Filter(label, () => _showDateFilter(context, ref, storeId)),
+            child: _Filter(label, () => _showDateFilter(context, ref, args)),
           ),
           const SizedBox(width: AppConstants.spacingSm),
           SizedBox(width: 124, child: _Filter('Phân loại', _noop)),
@@ -218,10 +225,12 @@ class _Ledger extends StatelessWidget {
   const _Ledger(this.storeId, this.state);
   @override
   Widget build(BuildContext context) {
-    if (state.status == InventoryDocumentLoadStatus.loading)
+    if (state.status == InventoryDocumentLoadStatus.loading) {
       return const Center(child: CircularProgressIndicator());
-    if (state.page?.items.isEmpty ?? true)
+    }
+    if (state.page?.items.isEmpty ?? true) {
       return const Center(child: Text('Chưa có phiếu nhập hàng.'));
+    }
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(
         AppConstants.spacingMd,
@@ -329,7 +338,7 @@ void _noop() {}
 Future<void> _showDateFilter(
   BuildContext context,
   WidgetRef ref,
-  int storeId,
+  InventoryDocumentListArgs args,
 ) async {
   final choice = await showModalBottomSheet<String>(
     context: context,
@@ -370,6 +379,7 @@ Future<void> _showDateFilter(
     from = DateTime(now.year, now.month);
     to = DateTime(now.year, now.month + 1);
   } else {
+    if (!context.mounted) return;
     final range = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
@@ -384,6 +394,6 @@ Future<void> _showDateFilter(
     to = DateTime(range.end.year, range.end.month, range.end.day + 1);
   }
   await ref
-      .read(inventoryDocumentListNotifierProvider(storeId).notifier)
+      .read(inventoryDocumentListNotifierProvider(args).notifier)
       .setDateRange(from, to);
 }

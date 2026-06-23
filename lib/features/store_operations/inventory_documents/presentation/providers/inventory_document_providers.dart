@@ -18,6 +18,10 @@ final loadInventoryImportsUseCaseProvider =
     Provider<LoadInventoryImportsUseCase>(
       (ref) => locator<LoadInventoryImportsUseCase>(),
     );
+final loadInventoryDocumentsUseCaseProvider =
+    Provider<LoadInventoryDocumentsUseCase>(
+      (ref) => locator<LoadInventoryDocumentsUseCase>(),
+    );
 final loadInventoryDocumentUseCaseProvider =
     Provider<LoadInventoryDocumentUseCase>(
       (ref) => locator<LoadInventoryDocumentUseCase>(),
@@ -46,10 +50,28 @@ final completeInventoryImportUseCaseProvider =
     Provider<CompleteInventoryImportUseCase>(
       (ref) => locator<CompleteInventoryImportUseCase>(),
     );
-final inventoryDocumentListNotifierProvider = NotifierProvider.autoDispose
-    .family<InventoryDocumentListNotifier, InventoryDocumentListState, int>(
-      InventoryDocumentListNotifier.new,
+final createInventoryDocumentUseCaseProvider =
+    Provider<CreateInventoryDocumentUseCase>(
+      (ref) => locator<CreateInventoryDocumentUseCase>(),
     );
+final updateInventoryDocumentUseCaseProvider =
+    Provider<UpdateInventoryDocumentUseCase>(
+      (ref) => locator<UpdateInventoryDocumentUseCase>(),
+    );
+final completeInventoryDocumentUseCaseProvider =
+    Provider<CompleteInventoryDocumentUseCase>(
+      (ref) => locator<CompleteInventoryDocumentUseCase>(),
+    );
+final cancelInventoryDocumentUseCaseProvider =
+    Provider<CancelInventoryDocumentUseCase>(
+      (ref) => locator<CancelInventoryDocumentUseCase>(),
+    );
+final inventoryDocumentListNotifierProvider = NotifierProvider.autoDispose
+    .family<
+      InventoryDocumentListNotifier,
+      InventoryDocumentListState,
+      InventoryDocumentListArgs
+    >(InventoryDocumentListNotifier.new);
 final inventoryDocumentEditorNotifierProvider = NotifierProvider.autoDispose
     .family<
       InventoryDocumentEditorNotifier,

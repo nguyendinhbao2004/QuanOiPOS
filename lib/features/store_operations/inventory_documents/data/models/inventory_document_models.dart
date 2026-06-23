@@ -43,6 +43,7 @@ class InventoryDocumentSummaryModel {
   InventoryDocumentSummary toEntity() => InventoryDocumentSummary(
     id: _int(map['id']),
     documentCode: _string(map['documentCode']),
+    type: InventoryDocumentType.fromApi(map['type']),
     status: InventoryDocumentStatus.fromApi(map['status']),
     createdAt: _date(map['createdAt']),
     createdBy: _actor(map['createdBy']),
@@ -63,12 +64,15 @@ class InventoryDocumentModel {
       id: _int(map['id']),
       storeId: _int(map['storeId']),
       documentCode: _string(map['documentCode']),
+      type: InventoryDocumentType.fromApi(map['type']),
       status: InventoryDocumentStatus.fromApi(map['status']),
       createdAt: _date(map['createdAt']),
       createdBy: _actor(map['createdBy']),
       completedAt: _date(map['completedAt']),
       completedBy: _actor(map['completedBy']),
       vendor: _vendor(map['vendor']),
+      reason: InventoryIssueReason.fromApi(map['reason']),
+      destinationName: _nullableString(map['destinationName']),
       note: _nullableString(map['note']),
       totalAmount: _double(map['totalAmount']),
       items: rawItems.map((value) => _item(value)).toList(),
@@ -133,21 +137,31 @@ class InventoryItemModel {
 
 class InventoryDocumentRequestModel {
   final int storeId;
+  final InventoryDocumentType type;
   final int? vendorId;
+  final InventoryIssueReason? reason;
+  final String? destinationName;
   final String? note;
   final List<InventoryDocumentDraftItem> items;
   const InventoryDocumentRequestModel({
     required this.storeId,
+    required this.type,
     this.vendorId,
+    this.reason,
+    this.destinationName,
     this.note,
     required this.items,
   });
   Map<String, dynamic> toJson() => {
     'storeId': storeId,
-    'type': 'Import',
-    'vendorId': vendorId,
-    'reason': null,
-    'destinationName': null,
+    'type': type.apiValue,
+    'vendorId': type == InventoryDocumentType.import ? vendorId : null,
+    'reason': type == InventoryDocumentType.manualIssue
+        ? reason?.apiValue
+        : null,
+    'destinationName': type == InventoryDocumentType.manualIssue
+        ? destinationName
+        : null,
     'note': note,
     'items': items
         .map(
@@ -155,7 +169,9 @@ class InventoryDocumentRequestModel {
             'itemType': item.item.type.apiValue,
             'itemId': item.item.id,
             'quantity': item.quantity,
-            'unitCost': item.unitCost,
+            'unitCost': type == InventoryDocumentType.manualIssue
+                ? 0
+                : item.unitCost,
           },
         )
         .toList(),
@@ -182,10 +198,11 @@ List<InventoryShortageItem> shortagesFromJson(Object? json) {
 
 InventoryDocumentItem _item(Object? json) {
   final map = _map(json);
+  final itemType = InventoryDocumentItemType.fromApi(map['itemType']);
   return InventoryDocumentItem(
     id: _int(map['id']),
-    itemType: InventoryDocumentItemType.fromApi(map['itemType']),
-    itemId: _int(map['itemId']),
+    itemType: itemType,
+    itemId: _documentItemId(map, itemType),
     itemName: _string(map['itemName']),
     unit: _string(map['unit']),
     currentQuantity: _double(map['currentQuantity']),
@@ -193,6 +210,14 @@ InventoryDocumentItem _item(Object? json) {
     unitCost: _double(map['unitCost']),
     lineTotal: _double(map['lineTotal']),
   );
+}
+
+int _documentItemId(Map<String, dynamic> map, InventoryDocumentItemType type) {
+  final itemId = _int(map['itemId']);
+  if (itemId > 0) return itemId;
+  return type == InventoryDocumentItemType.product
+      ? _int(map['productId'])
+      : _int(map['ingredientId']);
 }
 
 InventoryVendor? _vendor(Object? json) {

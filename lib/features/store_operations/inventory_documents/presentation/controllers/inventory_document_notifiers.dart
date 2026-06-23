@@ -4,11 +4,15 @@ import '../providers/inventory_document_providers.dart';
 import 'inventory_document_state.dart';
 
 class InventoryDocumentListNotifier
-    extends AutoDisposeFamilyNotifier<InventoryDocumentListState, int> {
-  late int _storeId;
+    extends
+        AutoDisposeFamilyNotifier<
+          InventoryDocumentListState,
+          InventoryDocumentListArgs
+        > {
+  late InventoryDocumentListArgs _args;
   @override
-  InventoryDocumentListState build(int arg) {
-    _storeId = arg;
+  InventoryDocumentListState build(InventoryDocumentListArgs arg) {
+    _args = arg;
     Future.microtask(load);
     return const InventoryDocumentListState.initial();
   }
@@ -19,8 +23,9 @@ class InventoryDocumentListNotifier
       clearError: true,
     );
     try {
-      final page = await ref.read(loadInventoryImportsUseCaseProvider)(
-        storeId: _storeId,
+      final page = await ref.read(loadInventoryDocumentsUseCaseProvider)(
+        storeId: _args.storeId,
+        type: _args.type,
         status: state.selectedStatus,
         from: state.from,
         to: state.to,
@@ -50,6 +55,19 @@ class InventoryDocumentListNotifier
   }
 }
 
+class InventoryDocumentListArgs {
+  final int storeId;
+  final InventoryDocumentType type;
+  const InventoryDocumentListArgs({required this.storeId, required this.type});
+  @override
+  bool operator ==(Object other) =>
+      other is InventoryDocumentListArgs &&
+      other.storeId == storeId &&
+      other.type == type;
+  @override
+  int get hashCode => Object.hash(storeId, type);
+}
+
 class InventoryDocumentEditorNotifier
     extends
         AutoDisposeFamilyNotifier<
@@ -70,9 +88,9 @@ class InventoryDocumentEditorNotifier
       clearError: true,
     );
     try {
-      final vendorsFuture = ref.read(loadInventoryVendorsUseCaseProvider)(
-        _args.storeId,
-      );
+      final vendorsFuture = _args.type == InventoryDocumentType.import
+          ? ref.read(loadInventoryVendorsUseCaseProvider)(_args.storeId)
+          : Future<List<InventoryVendor>>.value(const []);
       final itemsFuture = ref.read(loadInventorySelectableItemsUseCaseProvider)(
         _args.storeId,
       );
@@ -109,6 +127,9 @@ class InventoryDocumentEditorNotifier
             const [],
         vendorId: document?.vendor?.id,
         clearVendor: document?.vendor == null,
+        reason: document?.reason,
+        clearReason: document?.reason == null,
+        destinationName: document?.destinationName ?? '',
         note: document?.note ?? '',
         shortages: const {},
       );
@@ -122,6 +143,12 @@ class InventoryDocumentEditorNotifier
 
   void setVendor(int? vendorId) =>
       state = state.copyWith(vendorId: vendorId, clearVendor: vendorId == null);
+
+  void setReason(InventoryIssueReason? reason) =>
+      state = state.copyWith(reason: reason, clearReason: reason == null);
+
+  void setDestinationName(String destinationName) =>
+      state = state.copyWith(destinationName: destinationName);
 
   Future<InventoryVendor?> createVendor({
     required String name,
@@ -169,7 +196,9 @@ class InventoryDocumentEditorNotifier
         InventoryDocumentDraftItem(
           item: item,
           quantity: 1,
-          unitCost: item.lastImportUnitCost,
+          unitCost: _args.type == InventoryDocumentType.manualIssue
+              ? 0
+              : item.lastImportUnitCost,
         ),
       ],
       shortages: const {},
@@ -217,6 +246,23 @@ class InventoryDocumentEditorNotifier
       );
       return null;
     }
+    if (_args.type == InventoryDocumentType.manualIssue) {
+      if (state.reason == null) {
+        state = state.copyWith(errorMessage: 'Vui lòng chọn lý do xuất kho.');
+        return null;
+      }
+      if (state.note.trim().isEmpty) {
+        state = state.copyWith(errorMessage: 'Vui lòng nhập ghi chú xuất kho.');
+        return null;
+      }
+      if (state.reason == InventoryIssueReason.transferOut &&
+          state.destinationName.trim().isEmpty) {
+        state = state.copyWith(
+          errorMessage: 'Vui lòng nhập nơi nhận khi chuyển chi nhánh.',
+        );
+        return null;
+      }
+    }
     if (state.items.any(
       (item) =>
           item.item.type == InventoryDocumentItemType.product &&
@@ -230,16 +276,34 @@ class InventoryDocumentEditorNotifier
     state = state.copyWith(isSaving: true, clearError: true);
     try {
       final document = _args.documentId == null
-          ? await ref.read(createInventoryImportUseCaseProvider)(
+          ? await ref.read(createInventoryDocumentUseCaseProvider)(
               storeId: _args.storeId,
-              vendorId: state.vendorId,
+              type: _args.type,
+              vendorId: _args.type == InventoryDocumentType.import
+                  ? state.vendorId
+                  : null,
+              reason: _args.type == InventoryDocumentType.manualIssue
+                  ? state.reason
+                  : null,
+              destinationName: _args.type == InventoryDocumentType.manualIssue
+                  ? state.destinationName.trim()
+                  : null,
               note: state.note.trim().isEmpty ? null : state.note.trim(),
               items: state.items,
             )
-          : await ref.read(updateInventoryImportUseCaseProvider)(
+          : await ref.read(updateInventoryDocumentUseCaseProvider)(
               documentId: _args.documentId!,
               storeId: _args.storeId,
-              vendorId: state.vendorId,
+              type: _args.type,
+              vendorId: _args.type == InventoryDocumentType.import
+                  ? state.vendorId
+                  : null,
+              reason: _args.type == InventoryDocumentType.manualIssue
+                  ? state.reason
+                  : null,
+              destinationName: _args.type == InventoryDocumentType.manualIssue
+                  ? state.destinationName.trim()
+                  : null,
               note: state.note.trim().isEmpty ? null : state.note.trim(),
               items: state.items,
             );
@@ -263,7 +327,7 @@ class InventoryDocumentEditorNotifier
       shortages: const {},
     );
     try {
-      final document = await ref.read(completeInventoryImportUseCaseProvider)(
+      final document = await ref.read(completeInventoryDocumentUseCaseProvider)(
         id,
       );
       state = state.copyWith(document: document, isCompleting: false);
@@ -283,17 +347,42 @@ class InventoryDocumentEditorNotifier
       return false;
     }
   }
+
+  Future<bool> cancel() async {
+    final id = state.document?.id;
+    if (id == null) return false;
+    state = state.copyWith(isCancelling: true, clearError: true);
+    try {
+      final document = await ref.read(cancelInventoryDocumentUseCaseProvider)(
+        id,
+      );
+      state = state.copyWith(document: document, isCancelling: false);
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        isCancelling: false,
+        errorMessage: error.toString().replaceFirst('Exception: ', ''),
+      );
+      return false;
+    }
+  }
 }
 
 class InventoryDocumentEditorArgs {
   final int storeId;
+  final InventoryDocumentType type;
   final int? documentId;
-  const InventoryDocumentEditorArgs({required this.storeId, this.documentId});
+  const InventoryDocumentEditorArgs({
+    required this.storeId,
+    this.type = InventoryDocumentType.import,
+    this.documentId,
+  });
   @override
   bool operator ==(Object other) =>
       other is InventoryDocumentEditorArgs &&
       other.storeId == storeId &&
+      other.type == type &&
       other.documentId == documentId;
   @override
-  int get hashCode => Object.hash(storeId, documentId);
+  int get hashCode => Object.hash(storeId, type, documentId);
 }
