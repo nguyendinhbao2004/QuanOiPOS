@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/product_ingredient.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
 import '../providers/product_management_providers.dart';
@@ -52,15 +53,20 @@ class ProductManagementNotifier
       final toppingsFuture = _access.canCreateProduct
           ? ref.read(loadProductToppingsUseCaseProvider)(_access.storeId)
           : Future.value(const <ProductTopping>[]);
+      final ingredientsFuture = ref.read(loadProductIngredientsUseCaseProvider)(
+        _access.storeId,
+      );
 
       final categories = await categoriesFuture;
       final products = await productsFuture;
       final toppings = await toppingsFuture;
+      final ingredients = await ingredientsFuture;
 
       state = state.copyWith(
         status: ProductManagementStatus.ready,
         categories: categories,
         toppings: toppings,
+        ingredients: ingredients,
         products: products,
         clearError: true,
       );
@@ -123,7 +129,7 @@ class ProductManagementNotifier
       storeId: _access.storeId,
       categoryId: categoryId,
       name: name,
-      imageUpload: null,
+      imageUrl: imageUrl,
       description: description,
       preparationTime: preparationTime,
       price: price,
@@ -133,6 +139,87 @@ class ProductManagementNotifier
       toppingIds: const [],
       recipes: const [],
     );
+    await load();
+  }
+
+  Future<ProductIngredient> createIngredient({
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+    required double minimumStock,
+    required bool isTrackInventory,
+  }) async {
+    _ensureAllowed(
+      _access.canCreateProduct,
+      'Bạn chưa có quyền thêm nguyên liệu',
+    );
+
+    final ingredient = await ref.read(createProductIngredientUseCaseProvider)(
+      storeId: _access.storeId,
+      name: _cleanRequired(name, 'Vui lòng nhập tên nguyên liệu'),
+      itemType: itemType,
+      unit: _cleanRequired(unit, 'Vui lòng nhập đơn vị nguyên liệu'),
+      capacity: capacity,
+    );
+    await ref.read(updateIngredientInventorySettingsUseCaseProvider)(
+      ingredientId: ingredient.id,
+      minimumStock: _validMinimumStock(minimumStock),
+      isTrackInventory: isTrackInventory,
+    );
+    await load();
+    return state.ingredients.firstWhere(
+      (item) => item.id == ingredient.id,
+      orElse: () => ingredient.copyWith(
+        minimumStock: minimumStock,
+        isTrackInventory: isTrackInventory,
+      ),
+    );
+  }
+
+  Future<ProductIngredient> updateIngredient({
+    required int ingredientId,
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+    required double minimumStock,
+    required bool isTrackInventory,
+  }) async {
+    _ensureAllowed(
+      _access.canUpdateProduct,
+      'Bạn chưa có quyền cập nhật nguyên liệu',
+    );
+
+    final ingredient = await ref.read(updateProductIngredientUseCaseProvider)(
+      ingredientId: ingredientId,
+      name: _cleanRequired(name, 'Vui lòng nhập tên nguyên liệu'),
+      itemType: itemType,
+      unit: _cleanRequired(unit, 'Vui lòng nhập đơn vị nguyên liệu'),
+      capacity: capacity,
+    );
+    await ref.read(updateIngredientInventorySettingsUseCaseProvider)(
+      ingredientId: ingredient.id,
+      minimumStock: _validMinimumStock(minimumStock),
+      isTrackInventory: isTrackInventory,
+    );
+    await load();
+    return state.ingredients.firstWhere(
+      (item) => item.id == ingredient.id,
+      orElse: () => ingredient.copyWith(
+        minimumStock: minimumStock,
+        isTrackInventory: isTrackInventory,
+      ),
+    );
+  }
+
+  Future<void> deleteIngredient(int ingredientId) async {
+    _ensureAllowed(
+      _access.canDeleteProduct,
+      'Bạn chưa có quyền xóa nguyên liệu',
+    );
+
+    await ref.read(deleteProductIngredientUseCaseProvider)(ingredientId);
     await load();
   }
 
@@ -184,6 +271,23 @@ class ProductManagementNotifier
 
   String _cleanError(Object error) {
     return error.toString().replaceFirst('Exception: ', '');
+  }
+
+  String _cleanRequired(String value, String message) {
+    final cleaned = value.trim();
+    if (cleaned.isEmpty) {
+      throw Exception(message);
+    }
+
+    return cleaned;
+  }
+
+  double _validMinimumStock(double value) {
+    if (value < 0) {
+      throw Exception('Vui lòng nhập ngưỡng tồn hợp lệ');
+    }
+
+    return value;
   }
 
   void _ensureAllowed(bool isAllowed, String message) {

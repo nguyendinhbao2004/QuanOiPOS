@@ -306,49 +306,69 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
     });
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImage(ProductCreateNotifier notifier) async {
+    await _selectAndUploadImage(notifier, ImageSource.gallery);
+  }
+
+  Future<void> _captureImage(ProductCreateNotifier notifier) async {
+    await _selectAndUploadImage(notifier, ImageSource.camera);
+  }
+
+  Future<void> _selectAndUploadImage(
+    ProductCreateNotifier notifier,
+    ImageSource source,
+  ) async {
     try {
-      final file = await ImagePicker().pickImage(source: ImageSource.gallery);
+      final file = await ImagePicker().pickImage(source: source);
       if (file == null) {
         return;
       }
 
-      _setSelectedImage(file.name, await file.readAsBytes());
-    } catch (_) {
-      if (mounted) {
-        _showMessage(context, 'Không thể chọn ảnh. Vui lòng thử lại.');
-      }
-    }
-  }
-
-  Future<void> _captureImage() async {
-    try {
-      final file = await ImagePicker().pickImage(source: ImageSource.camera);
-      if (file == null) {
+      final bytes = await file.readAsBytes();
+      final contentType = _contentTypeFromFileName(file.name);
+      if (contentType == null) {
+        if (mounted) {
+          _showMessage(context, 'Chỉ hỗ trợ ảnh JPEG, PNG hoặc WebP.');
+        }
         return;
       }
 
-      _setSelectedImage(file.name, await file.readAsBytes());
-    } catch (_) {
+      final upload = ProductImageUpload(bytes: bytes, contentType: contentType);
+      setState(() {
+        _selectedImage = _SelectedProductImage(
+          bytes: bytes,
+          contentType: contentType,
+          isUploading: true,
+        );
+      });
+
+      final imageUrl = await notifier.uploadImage(upload);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _selectedImage = _SelectedProductImage(
+          bytes: bytes,
+          contentType: contentType,
+          imageUrl: imageUrl,
+        );
+      });
+    } catch (error) {
       if (mounted) {
-        _showMessage(context, 'Không thể chụp ảnh. Vui lòng thử lại.');
+        final message = _cleanError(error);
+        setState(() {
+          final selectedImage = _selectedImage;
+          if (selectedImage != null) {
+            _selectedImage = selectedImage.copyWith(
+              isUploading: false,
+              errorMessage: message,
+            );
+          }
+        });
+        _showMessage(context, message);
       }
     }
-  }
-
-  void _setSelectedImage(String fileName, Uint8List bytes) {
-    final contentType = _contentTypeFromFileName(fileName);
-    if (contentType == null) {
-      _showMessage(context, 'Chỉ hỗ trợ ảnh JPEG, PNG hoặc WebP.');
-      return;
-    }
-
-    setState(() {
-      _selectedImage = _SelectedProductImage(
-        bytes: bytes,
-        contentType: contentType,
-      );
-    });
   }
 }
 
@@ -375,8 +395,8 @@ class _AccessReadyContent extends ConsumerWidget {
   final bool didPrefillProduct;
   final _SelectedProductImage? selectedImage;
   final ValueChanged<Product> onEditProductLoaded;
-  final Future<void> Function() onPickImage;
-  final Future<void> Function() onCaptureImage;
+  final Future<void> Function(ProductCreateNotifier notifier) onPickImage;
+  final Future<void> Function(ProductCreateNotifier notifier) onCaptureImage;
   final VoidCallback onClearSelectedImage;
   final ValueChanged<int?> onCategoryChanged;
   final ValueChanged<ProductType> onTypeChanged;
@@ -538,8 +558,8 @@ class _AccessReadyContent extends ConsumerWidget {
               onToppingChanged: onToppingChanged,
               onToppingSelectionChanged: onToppingSelectionChanged,
               onRecipeRowsChanged: onRecipeRowsChanged,
-              onPickImage: onPickImage,
-              onCaptureImage: onCaptureImage,
+              onPickImage: () => onPickImage(notifier),
+              onCaptureImage: () => onCaptureImage(notifier),
               onClearSelectedImage: onClearSelectedImage,
               onSubmit: () =>
                   _submit(context, state, notifier, isEditing, selectedImage),
@@ -570,6 +590,19 @@ class _AccessReadyContent extends ConsumerWidget {
       return;
     }
 
+    if (selectedImage?.isUploading == true) {
+      _showMessage(context, 'Ảnh sản phẩm đang được tải lên');
+      return;
+    }
+
+    if (selectedImage != null && selectedImage.imageUrl.isEmpty) {
+      _showMessage(
+        context,
+        selectedImage.errorMessage ?? 'Vui lòng tải ảnh lại trước khi lưu',
+      );
+      return;
+    }
+
     try {
       final input = ProductCreateInput(
         name: nameController.text,
@@ -587,7 +620,8 @@ class _AccessReadyContent extends ConsumerWidget {
         minimumStock: double.tryParse(minimumStockController.text.trim()) ?? 0,
         isTrackInventory: isTrackInventory,
         inventoryDeductionMode: inventoryDeductionMode,
-        imageUpload: selectedImage?.toUpload(),
+        imageUrl:
+            selectedImage?.imageUrl ?? state.editingProduct?.imageUrl ?? '',
       );
       if (isEditing) {
         await notifier.update(input);
@@ -1124,6 +1158,9 @@ class _ReadyCreateForm extends StatelessWidget {
           onCreateIngredient: notifier.createIngredient,
           onUpdateIngredient: notifier.updateIngredient,
           onDeleteIngredient: notifier.deleteIngredient,
+          onSaveRecipes: state.editingProduct == null
+              ? null
+              : notifier.replaceProductRecipe,
           onRecipesChanged: onRecipeRowsChanged,
         );
       },
@@ -1190,9 +1227,10 @@ class _ProductImageSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasSelectedImage = selectedImage != null;
     final hasExistingImage = existingImageUrl.trim().isNotEmpty;
+    final isBusy = isSubmitting || (selectedImage?.isUploading ?? false);
 
     return Container(
-      height: 116,
+      constraints: const BoxConstraints(minHeight: 116),
       padding: const EdgeInsets.all(AppConstants.spacingSm),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -1230,7 +1268,7 @@ class _ProductImageSection extends StatelessWidget {
                       : 'Thêm ảnh sản phẩm',
                   child: IconButton.outlined(
                     key: const Key('product_pick_image_button'),
-                    onPressed: isSubmitting ? null : onPickImage,
+                    onPressed: isBusy ? null : onPickImage,
                     icon: const Icon(Icons.image_outlined),
                   ),
                 ),
@@ -1239,7 +1277,7 @@ class _ProductImageSection extends StatelessWidget {
                   message: 'Chụp ảnh sản phẩm',
                   child: IconButton.outlined(
                     key: const Key('product_capture_image_button'),
-                    onPressed: isSubmitting ? null : onCaptureImage,
+                    onPressed: isBusy ? null : onCaptureImage,
                     icon: const Icon(Icons.camera_alt_outlined),
                   ),
                 ),
@@ -1249,9 +1287,24 @@ class _ProductImageSection extends StatelessWidget {
                     message: 'Giữ ảnh cũ',
                     child: IconButton.outlined(
                       key: const Key('product_clear_selected_image_button'),
-                      onPressed: isSubmitting ? null : onClearSelectedImage,
+                      onPressed: isBusy ? null : onClearSelectedImage,
                       icon: const Icon(Icons.undo_rounded),
                     ),
+                  ),
+                ],
+                if (selectedImage?.isUploading == true) ...[
+                  const SizedBox(width: AppConstants.spacingSm),
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ] else if (selectedImage != null &&
+                    selectedImage!.imageUrl.isNotEmpty) ...[
+                  const SizedBox(width: AppConstants.spacingSm),
+                  const Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: AppColors.success,
                   ),
                 ],
               ],
@@ -1295,11 +1348,34 @@ class _ImagePreviewFallback extends StatelessWidget {
 class _SelectedProductImage {
   final Uint8List bytes;
   final String contentType;
+  final String imageUrl;
+  final bool isUploading;
+  final String? errorMessage;
 
-  const _SelectedProductImage({required this.bytes, required this.contentType});
+  const _SelectedProductImage({
+    required this.bytes,
+    required this.contentType,
+    this.imageUrl = '',
+    this.isUploading = false,
+    this.errorMessage,
+  });
 
   ProductImageUpload toUpload() {
     return ProductImageUpload(bytes: bytes, contentType: contentType);
+  }
+
+  _SelectedProductImage copyWith({
+    String? imageUrl,
+    bool? isUploading,
+    String? errorMessage,
+  }) {
+    return _SelectedProductImage(
+      bytes: bytes,
+      contentType: contentType,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isUploading: isUploading ?? this.isUploading,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
   }
 }
 
@@ -2647,6 +2723,7 @@ class _RecipePickerBottomSheet extends StatefulWidget {
   })
   onUpdateIngredient;
   final Future<void> Function(int ingredientId) onDeleteIngredient;
+  final Future<void> Function(List<ProductRecipeDraft> recipes)? onSaveRecipes;
   final ValueChanged<List<_RecipeRowState>> onRecipesChanged;
 
   const _RecipePickerBottomSheet({
@@ -2656,6 +2733,7 @@ class _RecipePickerBottomSheet extends StatefulWidget {
     required this.onCreateIngredient,
     required this.onUpdateIngredient,
     required this.onDeleteIngredient,
+    required this.onSaveRecipes,
     required this.onRecipesChanged,
   });
 
@@ -2668,8 +2746,10 @@ class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
   final _searchController = TextEditingController();
   late List<ProductIngredient> _ingredients;
   late List<_RecipeRowState> _recipeRows;
+  _RecipeSheetTab _selectedTab = _RecipeSheetTab.catalog;
   String _query = '';
   bool _isEditing = false;
+  bool _isSaving = false;
   bool _submitted = false;
 
   @override
@@ -2718,84 +2798,62 @@ class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
       footer: _PickerFooter(
         updateKey: const Key('product_create_recipe_picker_update_button'),
         onCancel: () => Navigator.of(context).pop(),
-        onUpdate: _submit,
+        onUpdate: _isSaving ? null : _submit,
       ),
       child: Column(
         children: [
-          Expanded(
-            child: ingredients.isEmpty
-                ? const _InlineEmptyState(
-                    icon: Icons.inventory_2_outlined,
-                    message: 'Chưa có nguyên liệu phù hợp.',
-                  )
-                : GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppConstants.spacingLg,
-                      0,
-                      AppConstants.spacingLg,
-                      AppConstants.spacingXl,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppConstants.spacingLg,
+              0,
+              AppConstants.spacingLg,
+              AppConstants.spacingMd,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<_RecipeSheetTab>(
+                key: const Key('product_create_recipe_picker_tabs'),
+                segments: [
+                  ButtonSegment(
+                    value: _RecipeSheetTab.catalog,
+                    label: const Text(
+                      'Danh sách nguyên liệu',
+                      key: Key('recipe_tab_catalog_label'),
                     ),
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 132,
-                          mainAxisSpacing: AppConstants.spacingMd,
-                          crossAxisSpacing: AppConstants.spacingMd,
-                          mainAxisExtent: 130,
-                        ),
-                    itemCount: ingredients.length,
-                    itemBuilder: (context, index) {
-                      final ingredient = ingredients[index];
-                      return _PickerGridItem(
-                        key: Key(
-                          'product_create_recipe_picker_item_${ingredient.id}',
-                        ),
-                        title: ingredient.name,
-                        subtitle: ingredient.unit.isEmpty
-                            ? null
-                            : 'Đơn vị: ${ingredient.unit}',
-                        icon: Icons.inventory_2_outlined,
-                        visualSize: 70,
-                        textAreaHeight: 46,
-                        isSelected: _hasIngredient(ingredient.id),
-                        leadingAction: _isEditing
-                            ? _PickerItemActionButton(
-                                key: Key(
-                                  'delete_product_ingredient_${ingredient.id}',
-                                ),
-                                tooltip: widget.access.canDeleteProduct
-                                    ? 'Xóa nguyên liệu'
-                                    : 'Không có quyền xóa',
-                                icon: Icons.remove_circle_rounded,
-                                color: AppColors.error,
-                                onPressed: widget.access.canDeleteProduct
-                                    ? () => _confirmDeleteIngredient(ingredient)
-                                    : null,
-                              )
-                            : null,
-                        trailingAction: _isEditing
-                            ? _PickerItemActionButton(
-                                key: Key(
-                                  'edit_product_ingredient_${ingredient.id}',
-                                ),
-                                tooltip: widget.access.canUpdateProduct
-                                    ? 'Sửa nguyên liệu'
-                                    : 'Không có quyền sửa',
-                                icon: Icons.edit_outlined,
-                                color: AppColors.primary,
-                                onPressed: widget.access.canUpdateProduct
-                                    ? () =>
-                                          _showUpdateIngredientForm(ingredient)
-                                    : null,
-                              )
-                            : null,
-                        onTap: _isEditing
-                            ? null
-                            : () => _toggleIngredient(ingredient),
-                      );
-                    },
+                    icon: const Icon(Icons.list_alt_rounded),
+                  ),
+                  ButtonSegment(
+                    value: _RecipeSheetTab.selected,
+                    label: Text(
+                      'Đã chọn (${_recipeRows.length})',
+                      key: const Key('recipe_tab_selected_label'),
+                    ),
+                    icon: const Icon(Icons.playlist_add_check_rounded),
+                  ),
+                ],
+                selected: {_selectedTab},
+                onSelectionChanged: _isEditing
+                    ? null
+                    : (value) => setState(() => _selectedTab = value.first),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _selectedTab == _RecipeSheetTab.catalog
+                ? _RecipeCatalogGrid(
+                    ingredients: ingredients,
+                    isEditing: _isEditing,
+                    access: widget.access,
+                    isSelected: _hasIngredient,
+                    onToggle: _toggleIngredient,
+                    onEdit: _showUpdateIngredientForm,
+                    onDelete: _confirmDeleteIngredient,
+                  )
+                : _SelectedRecipeList(
+                    rows: _recipeRows,
+                    onRemove: _removeRecipeAt,
                   ),
           ),
-          if (_recipeRows.isNotEmpty) _RecipeDraftList(rows: _recipeRows),
         ],
       ),
     );
@@ -2824,10 +2882,17 @@ class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
       if (index == -1) {
         _recipeRows.add(_RecipeRowState(ingredient: ingredient));
       } else {
-        final row = _recipeRows.removeAt(index);
-        row.dispose();
+        _removeRecipeAt(index);
       }
     });
+  }
+
+  void _removeRecipeAt(int index) {
+    final row = _recipeRows.removeAt(index);
+    row.dispose();
+    if (_recipeRows.isEmpty) {
+      _selectedTab = _RecipeSheetTab.catalog;
+    }
   }
 
   Future<void> _showCreateIngredientForm() async {
@@ -2959,51 +3024,192 @@ class _RecipePickerBottomSheetState extends State<_RecipePickerBottomSheet> {
     }
   }
 
-  void _submit() {
-    _submitted = true;
-    widget.onRecipesChanged(_recipeRows);
-    Navigator.of(context).pop();
+  Future<void> _submit() async {
+    setState(() => _isSaving = true);
+    try {
+      final rows = _recipeRows.map((row) => row.clone()).toList();
+      final recipes = [
+        for (final row in rows)
+          ProductRecipeDraft(
+            ingredientId: row.ingredient.id,
+            ingredient: row.ingredient,
+            quantity: double.tryParse(row.quantityController.text.trim()) ?? 0,
+            capacity: 0,
+          ),
+      ];
+      await widget.onSaveRecipes?.call(recipes);
+      _submitted = true;
+      widget.onRecipesChanged(rows);
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (error) {
+      if (mounted) {
+        _showMessage(context, _cleanError(error));
+        setState(() => _isSaving = false);
+      }
+    }
   }
 }
 
-class _RecipeDraftList extends StatelessWidget {
-  final List<_RecipeRowState> rows;
+enum _RecipeSheetTab { catalog, selected }
 
-  const _RecipeDraftList({required this.rows});
+class _RecipeCatalogGrid extends StatelessWidget {
+  final List<ProductIngredient> ingredients;
+  final bool isEditing;
+  final ProductCreateAccess access;
+  final bool Function(int ingredientId) isSelected;
+  final ValueChanged<ProductIngredient> onToggle;
+  final ValueChanged<ProductIngredient> onEdit;
+  final ValueChanged<ProductIngredient> onDelete;
+
+  const _RecipeCatalogGrid({
+    required this.ingredients,
+    required this.isEditing,
+    required this.access,
+    required this.isSelected,
+    required this.onToggle,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 220),
+    if (ingredients.isEmpty) {
+      return const _InlineEmptyState(
+        icon: Icons.inventory_2_outlined,
+        message: 'Chưa có nguyên liệu phù hợp.',
+      );
+    }
+
+    return GridView.builder(
       padding: const EdgeInsets.fromLTRB(
         AppConstants.spacingLg,
         0,
         AppConstants.spacingLg,
-        AppConstants.spacingMd,
+        AppConstants.spacingXl,
       ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        itemCount: rows.length,
-        separatorBuilder: (_, _) =>
-            const SizedBox(height: AppConstants.spacingSm),
-        itemBuilder: (context, index) {
-          final row = rows[index];
-          return Row(
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 132,
+        mainAxisSpacing: AppConstants.spacingMd,
+        crossAxisSpacing: AppConstants.spacingMd,
+        mainAxisExtent: 130,
+      ),
+      itemCount: ingredients.length,
+      itemBuilder: (context, index) {
+        final ingredient = ingredients[index];
+        return _PickerGridItem(
+          key: Key('product_create_recipe_picker_item_${ingredient.id}'),
+          title: ingredient.name,
+          subtitle: ingredient.unit.isEmpty
+              ? null
+              : 'Đơn vị: ${ingredient.unit}',
+          icon: Icons.inventory_2_outlined,
+          visualSize: 70,
+          textAreaHeight: 46,
+          isSelected: isSelected(ingredient.id),
+          leadingAction: isEditing
+              ? _PickerItemActionButton(
+                  key: Key('delete_product_ingredient_${ingredient.id}'),
+                  tooltip: access.canDeleteProduct
+                      ? 'Xóa nguyên liệu'
+                      : 'Không có quyền xóa',
+                  icon: Icons.remove_circle_rounded,
+                  color: AppColors.error,
+                  onPressed: access.canDeleteProduct
+                      ? () => onDelete(ingredient)
+                      : null,
+                )
+              : null,
+          trailingAction: isEditing
+              ? _PickerItemActionButton(
+                  key: Key('edit_product_ingredient_${ingredient.id}'),
+                  tooltip: access.canUpdateProduct
+                      ? 'Sửa nguyên liệu'
+                      : 'Không có quyền sửa',
+                  icon: Icons.edit_outlined,
+                  color: AppColors.primary,
+                  onPressed: access.canUpdateProduct
+                      ? () => onEdit(ingredient)
+                      : null,
+                )
+              : null,
+          onTap: isEditing ? null : () => onToggle(ingredient),
+        );
+      },
+    );
+  }
+}
+
+class _SelectedRecipeList extends StatelessWidget {
+  final List<_RecipeRowState> rows;
+  final ValueChanged<int> onRemove;
+
+  const _SelectedRecipeList({required this.rows, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    if (rows.isEmpty) {
+      return const _InlineEmptyState(
+        icon: Icons.playlist_add_check_rounded,
+        message: 'Chưa chọn nguyên liệu cho sản phẩm này.',
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(
+        AppConstants.spacingLg,
+        0,
+        AppConstants.spacingLg,
+        AppConstants.spacingXl,
+      ),
+      itemCount: rows.length,
+      separatorBuilder: (_, _) =>
+          const SizedBox(height: AppConstants.spacingSm),
+      itemBuilder: (context, index) {
+        final row = rows[index];
+        final unitLabel = row.ingredient.unit.trim().isEmpty
+            ? 'Đơn vị chưa đặt'
+            : row.ingredient.unit;
+
+        return Container(
+          padding: const EdgeInsets.all(AppConstants.spacingSm),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
             children: [
               Expanded(
-                flex: 3,
-                child: Text(row.ingredient.name, style: AppTextStyles.labelSm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      row.ingredient.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.labelSm.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.spacingXs),
+                    Text(
+                      'Đơn vị: $unitLabel',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(width: AppConstants.spacingSm),
-              Expanded(
+              SizedBox(
+                width: 128,
                 child: TextFormField(
                   key: Key('recipe_${row.ingredient.id}_quantity_field'),
                   controller: row.quantityController,
-                  decoration: InputDecoration(
-                    labelText: row.ingredient.unit.isEmpty
-                        ? 'Định mức'
-                        : 'Định mức (${row.ingredient.unit})',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Định lượng'),
                   keyboardType: TextInputType.number,
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(
@@ -3012,10 +3218,15 @@ class _RecipeDraftList extends StatelessWidget {
                   ],
                 ),
               ),
+              IconButton(
+                tooltip: 'Bỏ nguyên liệu',
+                onPressed: () => onRemove(index),
+                icon: const Icon(Icons.close_rounded),
+              ),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,5 +1,4 @@
 import '../entities/product.dart';
-import '../entities/product_image_upload.dart';
 import '../entities/product_type.dart';
 import '../entities/product_variant_draft.dart';
 import '../repositories/product_management_repository.dart';
@@ -14,8 +13,7 @@ class UpdateProductUseCase {
     required int storeId,
     required int categoryId,
     required String name,
-    required String existingImageUrl,
-    ProductImageUpload? imageUpload,
+    required String imageUrl,
     required String description,
     required int preparationTime,
     required int price,
@@ -29,8 +27,7 @@ class UpdateProductUseCase {
       storeId: storeId,
       categoryId: categoryId,
       name: name,
-      existingImageUrl: existingImageUrl,
-      imageUpload: imageUpload,
+      imageUrl: imageUrl,
       description: description,
       preparationTime: preparationTime,
       price: price,

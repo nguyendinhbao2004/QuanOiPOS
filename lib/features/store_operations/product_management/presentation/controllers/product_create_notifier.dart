@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/product_category.dart';
 import '../../domain/entities/product_ingredient.dart';
+import '../../domain/entities/product_image_upload.dart';
 import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_variant_draft.dart';
@@ -139,7 +140,7 @@ class ProductCreateNotifier
         storeId: _access.storeId,
         categoryId: input.categoryId,
         name: cleanName,
-        imageUpload: input.imageUpload,
+        imageUrl: input.imageUrl,
         description: input.description.trim(),
         preparationTime: input.preparationTime,
         price: price,
@@ -192,7 +193,6 @@ class ProductCreateNotifier
     final price = _resolvePrice(input.basePrice, variants);
     final costPrice = _resolveCostPrice(input.costPrice, variants);
     final recipes = _validatedRecipes(input.recipes);
-    final minimumStock = _validatedMinimumStock(input.minimumStock);
 
     state = state.copyWith(
       status: ProductCreateStatus.submitting,
@@ -200,28 +200,25 @@ class ProductCreateNotifier
     );
 
     try {
-      final detail = await ref.read(saveProductManagementDetailUseCaseProvider)(
+      final product = await ref.read(updateProductUseCaseProvider)(
         productId: editingProduct.id,
         storeId: _access.storeId,
         categoryId: input.categoryId,
         name: cleanName,
-        existingImageUrl: editingProduct.imageUrl,
-        imageUpload: input.imageUpload,
+        imageUrl: input.imageUrl.isEmpty
+            ? editingProduct.imageUrl
+            : input.imageUrl,
         description: input.description.trim(),
         preparationTime: input.preparationTime,
         price: price,
         costPrice: costPrice,
         type: input.type,
         variants: variants,
-        recipes: recipes,
         toppingIds: input.toppingIds,
-        minimumStock: minimumStock,
-        isTrackInventory: input.isTrackInventory,
-        inventoryDeductionMode: input.inventoryDeductionMode,
       );
       state = state.copyWith(
         status: ProductCreateStatus.success,
-        editingProduct: detail.editableProduct,
+        editingProduct: product.copyWith(recipes: recipes),
         clearError: true,
       );
     } catch (error) {
@@ -231,6 +228,35 @@ class ProductCreateNotifier
       );
       rethrow;
     }
+  }
+
+  Future<String> uploadImage(ProductImageUpload image) {
+    return ref.read(uploadProductImageUseCaseProvider)(
+      storeId: _access.storeId,
+      image: image,
+    );
+  }
+
+  Future<void> replaceProductRecipe(List<ProductRecipeDraft> recipes) async {
+    _ensureAllowed(
+      _access.canUpdateProduct,
+      'Bạn chưa có quyền cập nhật nguyên liệu sản phẩm',
+    );
+
+    final editingProduct = state.editingProduct;
+    if (editingProduct == null) {
+      throw Exception('Không tìm thấy sản phẩm cần cập nhật');
+    }
+
+    final cleanRecipes = _validatedRecipes(recipes);
+    await ref.read(replaceProductRecipeUseCaseProvider)(
+      productId: editingProduct.id,
+      recipes: cleanRecipes,
+    );
+    state = state.copyWith(
+      editingProduct: editingProduct.copyWith(recipes: cleanRecipes),
+      clearError: true,
+    );
   }
 
   Future<void> deleteProduct() async {

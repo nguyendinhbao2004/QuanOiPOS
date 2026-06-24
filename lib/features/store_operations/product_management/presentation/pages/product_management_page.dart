@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +12,7 @@ import '../../../../workspace_context/presentation/controllers/store_access_stat
 import '../../../../workspace_context/presentation/providers/workspace_context_providers.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
+import '../../domain/entities/product_ingredient.dart';
 import '../../domain/entities/inventory_deduction_mode.dart';
 import '../controllers/product_create_state.dart';
 import '../controllers/product_management_notifier.dart';
@@ -101,6 +103,7 @@ class _AccessReadyView extends ConsumerWidget {
         access: access,
         onCreateProduct: () =>
             _openProductCreatePage(context, access, state, notifier),
+        onCreateIngredient: () => _showIngredientForm(context, ref, access),
         onManageCategories: () => _showCategoryManagement(context, access),
       ),
       body: Column(
@@ -111,15 +114,7 @@ class _AccessReadyView extends ConsumerWidget {
           ),
           _ProductManagementTabs(
             selectedTab: state.selectedTab,
-            onSelected: (tab) {
-              if (tab == ProductManagementTab.inventory ||
-                  tab == ProductManagementTab.addOns) {
-                _showComingSoon(context, tab.label);
-                return;
-              }
-
-              notifier.setTab(tab);
-            },
+            onSelected: notifier.setTab,
           ),
           Expanded(
             child: switch (state.status) {
@@ -153,6 +148,16 @@ class _AccessReadyView extends ConsumerWidget {
                     _showCategoryManagement(context, access),
                 onOpenProduct: (product) =>
                     _openProductDetail(context, notifier, state, product),
+                onCreateIngredient: () =>
+                    _showIngredientForm(context, ref, access),
+                onEditIngredient: (ingredient) => _showIngredientForm(
+                  context,
+                  ref,
+                  access,
+                  ingredient: ingredient,
+                ),
+                onDeleteIngredient: (ingredient) =>
+                    _confirmDeleteIngredient(context, ref, access, ingredient),
                 onEditCategory: (category) =>
                     _showCategoryForm(context, ref, access, category: category),
                 onDeleteCategory: (category) =>
@@ -180,6 +185,7 @@ class _AccessReadyView extends ConsumerWidget {
       extra: ProductCreateSeedData(
         categories: state.categories,
         toppings: state.toppings,
+        ingredients: state.ingredients,
         editingProductId: product.id,
         editingProduct: product,
       ),
@@ -207,6 +213,7 @@ class _AccessReadyView extends ConsumerWidget {
       extra: ProductCreateSeedData(
         categories: state.categories,
         toppings: state.toppings,
+        ingredients: state.ingredients,
       ),
     );
     if (created == true) {
@@ -275,6 +282,125 @@ class _AccessReadyView extends ConsumerWidget {
     );
   }
 
+  Future<void> _showIngredientForm(
+    BuildContext context,
+    WidgetRef ref,
+    ProductManagementAccess access, {
+    ProductIngredient? ingredient,
+  }) async {
+    final canSubmit = ingredient == null
+        ? access.canCreateProduct
+        : access.canUpdateProduct;
+    if (!canSubmit) {
+      _showMessage(
+        context,
+        ingredient == null
+            ? 'Bạn chưa có quyền thêm nguyên liệu'
+            : 'Bạn chưa có quyền cập nhật nguyên liệu',
+      );
+      return;
+    }
+
+    final notifier = ref.read(
+      productManagementNotifierProvider(access).notifier,
+    );
+
+    await showModalBottomSheet<ProductIngredient>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _ManagementIngredientFormBottomSheet(
+          ingredient: ingredient,
+          onSubmit:
+              ({
+                required name,
+                required itemType,
+                required unit,
+                required capacity,
+                required minimumStock,
+                required isTrackInventory,
+              }) {
+                if (ingredient == null) {
+                  return notifier.createIngredient(
+                    name: name,
+                    itemType: itemType,
+                    unit: unit,
+                    capacity: capacity,
+                    minimumStock: minimumStock,
+                    isTrackInventory: isTrackInventory,
+                  );
+                }
+
+                return notifier.updateIngredient(
+                  ingredientId: ingredient.id,
+                  name: name,
+                  itemType: itemType,
+                  unit: unit,
+                  capacity: capacity,
+                  minimumStock: minimumStock,
+                  isTrackInventory: isTrackInventory,
+                );
+              },
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDeleteIngredient(
+    BuildContext context,
+    WidgetRef ref,
+    ProductManagementAccess access,
+    ProductIngredient ingredient,
+  ) async {
+    if (!access.canDeleteProduct) {
+      _showMessage(context, 'Bạn chưa có quyền xóa nguyên liệu');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Xóa nguyên liệu?'),
+          content: Text(
+            'Nguyên liệu "${ingredient.name}" sẽ bị xóa khỏi cửa hàng.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Hủy'),
+            ),
+            TextButton(
+              key: const Key('confirm_delete_management_ingredient_button'),
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+              child: const Text('Xóa'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(productManagementNotifierProvider(access).notifier)
+          .deleteIngredient(ingredient.id);
+      if (context.mounted) {
+        _showMessage(context, 'Đã xóa nguyên liệu');
+      }
+    } catch (error) {
+      if (context.mounted) {
+        _showMessage(context, _cleanError(error));
+      }
+    }
+  }
+
   Future<void> _confirmDeleteCategory(
     BuildContext context,
     WidgetRef ref,
@@ -331,12 +457,14 @@ class _ProductFab extends StatelessWidget {
   final ProductManagementState state;
   final ProductManagementAccess access;
   final VoidCallback onCreateProduct;
+  final VoidCallback onCreateIngredient;
   final VoidCallback onManageCategories;
 
   const _ProductFab({
     required this.state,
     required this.access,
     required this.onCreateProduct,
+    required this.onCreateIngredient,
     required this.onManageCategories,
   });
 
@@ -348,21 +476,37 @@ class _ProductFab extends StatelessWidget {
 
     final isProductTab = state.selectedTab == ProductManagementTab.products;
     final isCategoryTab = state.selectedTab == ProductManagementTab.categories;
-    final canUseFab = isProductTab
+    final isIngredientTab =
+        state.selectedTab == ProductManagementTab.ingredients;
+    final canUseFab = isProductTab || isIngredientTab
         ? access.canCreateProduct
         : access.canCreateProduct ||
               access.canUpdateProduct ||
               access.canDeleteProduct;
-    if ((!isProductTab && !isCategoryTab) || !canUseFab) {
+    if ((!isProductTab && !isCategoryTab && !isIngredientTab) || !canUseFab) {
       return const SizedBox.shrink();
     }
 
     return FloatingActionButton(
-      key: Key(isProductTab ? 'add_product_button' : 'add_category_button'),
-      onPressed: isProductTab ? onCreateProduct : onManageCategories,
+      key: Key(
+        isProductTab
+            ? 'add_product_button'
+            : isIngredientTab
+            ? 'add_ingredient_button'
+            : 'add_category_button',
+      ),
+      onPressed: isProductTab
+          ? onCreateProduct
+          : isIngredientTab
+          ? onCreateIngredient
+          : onManageCategories,
       backgroundColor: AppColors.primary,
       foregroundColor: AppColors.surface,
-      child: Icon(isProductTab ? Icons.add_rounded : Icons.grid_view_rounded),
+      child: Icon(
+        isProductTab || isIngredientTab
+            ? Icons.add_rounded
+            : Icons.grid_view_rounded,
+      ),
     );
   }
 }
@@ -374,6 +518,9 @@ class _ReadyContent extends StatelessWidget {
   final ValueChanged<int?> onCategorySelected;
   final VoidCallback onManageCategories;
   final ValueChanged<Product> onOpenProduct;
+  final VoidCallback onCreateIngredient;
+  final ValueChanged<ProductIngredient> onEditIngredient;
+  final ValueChanged<ProductIngredient> onDeleteIngredient;
   final ValueChanged<ProductCategory> onEditCategory;
   final ValueChanged<ProductCategory> onDeleteCategory;
 
@@ -384,6 +531,9 @@ class _ReadyContent extends StatelessWidget {
     required this.onCategorySelected,
     required this.onManageCategories,
     required this.onOpenProduct,
+    required this.onCreateIngredient,
+    required this.onEditIngredient,
+    required this.onDeleteIngredient,
     required this.onEditCategory,
     required this.onDeleteCategory,
   });
@@ -399,6 +549,15 @@ class _ReadyContent extends StatelessWidget {
           onCategorySelected: onCategorySelected,
           onProductTap: onOpenProduct,
         ),
+        ProductManagementTab.ingredients => _IngredientsTabContent(
+          ingredients: state.visibleIngredients,
+          canCreateIngredient: access.canCreateProduct,
+          canUpdateIngredient: access.canUpdateProduct,
+          canDeleteIngredient: access.canDeleteProduct,
+          onCreateIngredient: onCreateIngredient,
+          onEditIngredient: onEditIngredient,
+          onDeleteIngredient: onDeleteIngredient,
+        ),
         ProductManagementTab.categories => _CategoriesTabContent(
           categories: state.visibleCategories,
           canUpdateCategory: access.canUpdateProduct,
@@ -406,8 +565,6 @@ class _ReadyContent extends StatelessWidget {
           onEditCategory: onEditCategory,
           onDeleteCategory: onDeleteCategory,
         ),
-        ProductManagementTab.inventory ||
-        ProductManagementTab.addOns => const _ComingSoonTab(),
       },
     );
   }
@@ -795,7 +952,7 @@ class _ProductStatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       ),
       child: Text(
-        isActive ? 'Đang hoạt động' : 'Tạm ngưng',
+        isActive ? 'Đang bán' : 'Tạm ngưng',
         style: AppTextStyles.caption.copyWith(
           color: isActive ? AppColors.success : AppColors.textMuted,
           fontWeight: FontWeight.w700,
@@ -821,6 +978,218 @@ class _ProductInventoryStatus extends StatelessWidget {
     return Text(label, style: AppTextStyles.caption.copyWith(color: color));
   }
 }
+
+class _IngredientsTabContent extends StatelessWidget {
+  final List<ProductIngredient> ingredients;
+  final bool canCreateIngredient;
+  final bool canUpdateIngredient;
+  final bool canDeleteIngredient;
+  final VoidCallback onCreateIngredient;
+  final ValueChanged<ProductIngredient> onEditIngredient;
+  final ValueChanged<ProductIngredient> onDeleteIngredient;
+
+  const _IngredientsTabContent({
+    required this.ingredients,
+    required this.canCreateIngredient,
+    required this.canUpdateIngredient,
+    required this.canDeleteIngredient,
+    required this.onCreateIngredient,
+    required this.onEditIngredient,
+    required this.onDeleteIngredient,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppConstants.spacingMd,
+        AppConstants.spacingMd,
+        AppConstants.spacingMd,
+        AppConstants.spacingXxl,
+      ),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Nguyên liệu',
+                style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            TextButton.icon(
+              key: const Key('product_management_add_ingredient_button'),
+              onPressed: canCreateIngredient ? onCreateIngredient : null,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Thêm'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppConstants.spacingMd),
+        if (ingredients.isEmpty)
+          const _EmptyState(
+            icon: Icons.inventory_2_outlined,
+            title: 'Chưa có nguyên liệu phù hợp',
+            message: 'Hãy thử đổi từ khóa hoặc thêm nguyên liệu mới.',
+          )
+        else
+          for (final ingredient in ingredients) ...[
+            _IngredientTile(
+              ingredient: ingredient,
+              canUpdateIngredient: canUpdateIngredient,
+              canDeleteIngredient: canDeleteIngredient,
+              onEdit: () => onEditIngredient(ingredient),
+              onDelete: () => onDeleteIngredient(ingredient),
+            ),
+            const SizedBox(height: AppConstants.spacingSm),
+          ],
+      ],
+    );
+  }
+}
+
+class _IngredientTile extends StatelessWidget {
+  final ProductIngredient ingredient;
+  final bool canUpdateIngredient;
+  final bool canDeleteIngredient;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _IngredientTile({
+    required this.ingredient,
+    required this.canUpdateIngredient,
+    required this.canDeleteIngredient,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final stockLabel = ingredient.isTrackInventory
+        ? 'Tồn ${_formatStock(ingredient.quantity)}'
+        : 'Không theo dõi kho';
+    final stockColor = ingredient.isOutOfStock
+        ? AppColors.error
+        : ingredient.isLowStock
+        ? AppColors.warning
+        : AppColors.textSecondary;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        key: Key('product_ingredient_tile_${ingredient.id}'),
+        leading: CircleAvatar(
+          backgroundColor: AppColors.primaryLight,
+          foregroundColor: AppColors.primary,
+          child: Icon(
+            ingredient.itemType == 2
+                ? Icons.inventory_2_outlined
+                : Icons.soup_kitchen_outlined,
+          ),
+        ),
+        title: Text(
+          ingredient.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: AppConstants.spacingXs),
+          child: Wrap(
+            spacing: AppConstants.spacingXs,
+            runSpacing: AppConstants.spacingXs,
+            children: [
+              _IngredientInfoChip(
+                icon: Icons.straighten_rounded,
+                label: ingredient.unit.isEmpty
+                    ? 'Chưa có đơn vị'
+                    : 'Đơn vị ${ingredient.unit}',
+                color: AppColors.textSecondary,
+              ),
+              _IngredientInfoChip(
+                icon: Icons.inventory_2_outlined,
+                label: stockLabel,
+                color: stockColor,
+              ),
+              _IngredientInfoChip(
+                icon: Icons.flag_outlined,
+                label: 'Ngưỡng ${_formatStock(ingredient.minimumStock)}',
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+        trailing: PopupMenuButton<_IngredientAction>(
+          tooltip: 'Thao tác nguyên liệu',
+          onSelected: (action) {
+            switch (action) {
+              case _IngredientAction.edit:
+                onEdit();
+              case _IngredientAction.delete:
+                onDelete();
+            }
+          },
+          itemBuilder: (context) {
+            return [
+              PopupMenuItem<_IngredientAction>(
+                enabled: canUpdateIngredient,
+                value: _IngredientAction.edit,
+                child: const Text('Sửa nguyên liệu'),
+              ),
+              PopupMenuItem<_IngredientAction>(
+                enabled: canDeleteIngredient,
+                value: _IngredientAction.delete,
+                child: const Text('Xóa nguyên liệu'),
+              ),
+            ];
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _IngredientInfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _IngredientInfoChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.spacingXs,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _IngredientAction { edit, delete }
 
 class _ProductThumbnail extends StatelessWidget {
   final String imageUrl;
@@ -1473,6 +1842,227 @@ class _CategoryFormBottomSheetState extends State<_CategoryFormBottomSheet> {
   }
 }
 
+class _ManagementIngredientFormBottomSheet extends StatefulWidget {
+  final ProductIngredient? ingredient;
+  final Future<ProductIngredient> Function({
+    required String name,
+    required int itemType,
+    required String unit,
+    required int capacity,
+    required double minimumStock,
+    required bool isTrackInventory,
+  })
+  onSubmit;
+
+  const _ManagementIngredientFormBottomSheet({
+    this.ingredient,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_ManagementIngredientFormBottomSheet> createState() =>
+      _ManagementIngredientFormBottomSheetState();
+}
+
+class _ManagementIngredientFormBottomSheetState
+    extends State<_ManagementIngredientFormBottomSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _unitController;
+  late final TextEditingController _capacityController;
+  late final TextEditingController _minimumStockController;
+  late int _itemType;
+  late bool _isTrackInventory;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final ingredient = widget.ingredient;
+    _nameController = TextEditingController(text: ingredient?.name ?? '');
+    _unitController = TextEditingController(text: ingredient?.unit ?? '');
+    _capacityController = TextEditingController(
+      text: ingredient == null ? '' : ingredient.capacity.toString(),
+    );
+    _minimumStockController = TextEditingController(
+      text: ingredient == null
+          ? '0'
+          : _formatStockInput(ingredient.minimumStock),
+    );
+    _itemType = ingredient?.itemType == 2 ? 2 : 1;
+    _isTrackInventory = ingredient?.isTrackInventory ?? false;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _unitController.dispose();
+    _capacityController.dispose();
+    _minimumStockController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _BottomSheetFrame(
+      title: widget.ingredient == null ? 'Thêm nguyên liệu' : 'Sửa nguyên liệu',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              key: const Key('management_ingredient_name_field'),
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: _itemType == 2 ? 'Tên sản phẩm' : 'Tên nguyên liệu',
+              ),
+              textInputAction: TextInputAction.next,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return _itemType == 2
+                      ? 'Vui lòng nhập tên sản phẩm'
+                      : 'Vui lòng nhập tên nguyên liệu';
+                }
+
+                return null;
+              },
+            ),
+            const SizedBox(height: AppConstants.spacingMd),
+            DropdownButtonFormField<int>(
+              key: const Key('management_ingredient_item_type_field'),
+              initialValue: _itemType,
+              decoration: const InputDecoration(labelText: 'Loại'),
+              items: const [
+                DropdownMenuItem(value: 1, child: Text('Nguyên liệu')),
+                DropdownMenuItem(value: 2, child: Text('Sản phẩm bán lại')),
+              ],
+              onChanged: _isSubmitting
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() => _itemType = value);
+                      }
+                    },
+            ),
+            const SizedBox(height: AppConstants.spacingMd),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    key: const Key('management_ingredient_capacity_field'),
+                    controller: _capacityController,
+                    decoration: const InputDecoration(labelText: 'Dung lượng'),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (value) {
+                      final capacity = int.tryParse(value ?? '');
+                      if (capacity == null || capacity < 0) {
+                        return 'Nhập dung lượng hợp lệ';
+                      }
+
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: AppConstants.spacingMd),
+                Expanded(
+                  child: TextFormField(
+                    key: const Key('management_ingredient_unit_field'),
+                    controller: _unitController,
+                    decoration: const InputDecoration(labelText: 'Đơn vị'),
+                    textInputAction: TextInputAction.next,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Nhập đơn vị';
+                      }
+
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppConstants.spacingMd),
+            SwitchListTile(
+              key: const Key('management_ingredient_track_inventory_switch'),
+              value: _isTrackInventory,
+              onChanged: _isSubmitting
+                  ? null
+                  : (value) => setState(() => _isTrackInventory = value),
+              title: const Text('Theo dõi tồn nguyên liệu'),
+              subtitle: const Text('Bật để cảnh báo tồn thấp/hết hàng.'),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: AppConstants.spacingMd),
+            TextFormField(
+              key: const Key('management_ingredient_minimum_stock_field'),
+              controller: _minimumStockController,
+              decoration: const InputDecoration(
+                labelText: 'Ngưỡng cảnh báo tồn',
+                suffixText: 'đv',
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
+              ],
+              validator: (value) {
+                final stock = double.tryParse(value ?? '');
+                if (stock == null || stock < 0) {
+                  return 'Nhập ngưỡng tồn hợp lệ';
+                }
+
+                return null;
+              },
+            ),
+            const SizedBox(height: AppConstants.spacingLg),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                key: const Key('management_ingredient_form_submit_button'),
+                onPressed: _isSubmitting ? null : _submit,
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Lưu'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      final ingredient = await widget.onSubmit(
+        name: _nameController.text,
+        itemType: _itemType,
+        unit: _unitController.text,
+        capacity: int.tryParse(_capacityController.text.trim()) ?? 0,
+        minimumStock: double.tryParse(_minimumStockController.text.trim()) ?? 0,
+        isTrackInventory: _isTrackInventory,
+      );
+      if (mounted) {
+        Navigator.of(context).pop(ingredient);
+      }
+    } catch (error) {
+      if (mounted) {
+        _showMessage(context, _cleanError(error));
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+}
+
 class _BottomSheetFrame extends StatelessWidget {
   final String title;
   final Widget child;
@@ -1532,24 +2122,6 @@ class _BottomSheetFrame extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ComingSoonTab extends StatelessWidget {
-  const _ComingSoonTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(AppConstants.spacingLg),
-      children: const [
-        _EmptyState(
-          icon: Icons.construction_outlined,
-          title: 'Sắp triển khai',
-          message: 'Tab này sẽ được bổ sung ở phiên bản sau.',
-        ),
-      ],
     );
   }
 }
@@ -1663,6 +2235,14 @@ String _formatCurrency(int value) {
 
 String _formatStock(double value) =>
     NumberFormat.decimalPattern('vi_VN').format(value);
+
+String _formatStockInput(double value) {
+  if (value == value.roundToDouble()) {
+    return value.toInt().toString();
+  }
+
+  return value.toString();
+}
 
 String _cleanError(Object error) {
   return error.toString().replaceFirst('Exception: ', '');

@@ -216,11 +216,19 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
   }
 
   @override
+  Future<String> uploadProductImage({
+    required int storeId,
+    required ProductImageUpload image,
+  }) {
+    return _remoteDataSource.uploadProductImage(storeId: storeId, image: image);
+  }
+
+  @override
   Future<Product> createProduct({
     required int storeId,
     required int categoryId,
     required String name,
-    ProductImageUpload? imageUpload,
+    required String imageUrl,
     required String description,
     required int preparationTime,
     required int price,
@@ -230,12 +238,6 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     required List<int> toppingIds,
     required List<ProductRecipeDraft> recipes,
   }) async {
-    final imageUrl = imageUpload == null
-        ? ''
-        : await _remoteDataSource.uploadProductImage(
-            storeId: storeId,
-            image: imageUpload,
-          );
     final product = await _remoteDataSource.createProduct(
       CreateProductRequestModel(
         storeId: storeId,
@@ -291,8 +293,7 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     required int storeId,
     required int categoryId,
     required String name,
-    required String existingImageUrl,
-    ProductImageUpload? imageUpload,
+    required String imageUrl,
     required String description,
     required int preparationTime,
     required int price,
@@ -301,12 +302,6 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
   }) async {
-    final imageUrl = imageUpload == null
-        ? existingImageUrl
-        : await _remoteDataSource.uploadProductImage(
-            storeId: storeId,
-            image: imageUpload,
-          );
     final product = await _remoteDataSource.updateProduct(
       productId: productId,
       request: UpdateProductRequestModel(

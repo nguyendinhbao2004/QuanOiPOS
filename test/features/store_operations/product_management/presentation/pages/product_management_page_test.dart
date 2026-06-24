@@ -167,6 +167,51 @@ void main() {
     );
   });
 
+  testWidgets('renders ingredient tab and opens ingredient form', (
+    tester,
+  ) async {
+    await _pumpPage(
+      tester,
+      permissions: const [
+        StorePermission(permissionId: 1, code: AppPermissionCodes.productView),
+        StorePermission(
+          permissionId: 2,
+          code: AppPermissionCodes.productCreate,
+        ),
+        StorePermission(
+          permissionId: 3,
+          code: AppPermissionCodes.productUpdate,
+        ),
+        StorePermission(
+          permissionId: 4,
+          code: AppPermissionCodes.productDelete,
+        ),
+      ],
+      productRepository: _FakeProductManagementRepository(),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tồn kho'), findsNothing);
+    expect(find.text('Bán kèm'), findsNothing);
+
+    await tester.tap(
+      find.byKey(const Key('product_management_tab_ingredients')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nguyên liệu'), findsWidgets);
+    expect(find.byKey(const Key('product_ingredient_tile_1')), findsOneWidget);
+    expect(find.text('Đơn vị gram'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('add_ingredient_button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('management_ingredient_name_field')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'product FAB opens create page and submits variants with toppings',
     (tester) async {
@@ -479,6 +524,13 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('product_create_recipe_field')));
     await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('product_create_recipe_picker_tabs')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('recipe_tab_catalog_label')), findsOneWidget);
+    expect(find.byKey(const Key('recipe_tab_selected_label')), findsOneWidget);
 
     await tester.tap(find.byTooltip('Thêm nguyên liệu'));
     await tester.pumpAndSettle();
@@ -1538,7 +1590,7 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required int storeId,
     required int categoryId,
     required String name,
-    ProductImageUpload? imageUpload,
+    required String imageUrl,
     required String description,
     required int preparationTime,
     required int price,
@@ -1557,7 +1609,7 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
       categoryId: categoryId,
       categoryName: 'Đồ uống',
       name: name,
-      imageUrl: imageUpload == null ? '' : 'https://cdn.example/product.jpg',
+      imageUrl: imageUrl,
       description: description,
       preparationTime: preparationTime,
       price: price,
@@ -1573,8 +1625,7 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required int storeId,
     required int categoryId,
     required String name,
-    required String existingImageUrl,
-    ProductImageUpload? imageUpload,
+    required String imageUrl,
     required String description,
     required int preparationTime,
     required int price,
@@ -1594,9 +1645,7 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
       categoryId: categoryId,
       categoryName: 'Đồ uống',
       name: name,
-      imageUrl: imageUpload == null
-          ? existingImageUrl
-          : 'https://cdn.example/product.jpg',
+      imageUrl: imageUrl,
       description: description,
       preparationTime: preparationTime,
       price: price,
@@ -1640,8 +1689,9 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
       storeId: storeId,
       categoryId: categoryId,
       name: name,
-      existingImageUrl: existingImageUrl,
-      imageUpload: imageUpload,
+      imageUrl: imageUpload == null
+          ? existingImageUrl
+          : 'https://cdn.example/product.jpg',
       description: description,
       preparationTime: preparationTime,
       price: price,
@@ -1707,4 +1757,12 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required int productId,
     required List<ProductRecipeDraft> recipes,
   }) async {}
+
+  @override
+  Future<String> uploadProductImage({
+    required int storeId,
+    required ProductImageUpload image,
+  }) async {
+    return 'https://cdn.example/product.jpg';
+  }
 }

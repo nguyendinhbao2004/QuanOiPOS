@@ -33,6 +33,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_ingredient_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/save_product_management_detail_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/upload_product_image_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/controllers/product_create_state.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/providers/product_management_providers.dart';
 
@@ -324,7 +325,8 @@ void main() {
       ),
     );
 
-    expect(repository.saveProductManagementDetailCallCount, 1);
+    expect(repository.updateProductCallCount, 1);
+    expect(repository.saveProductManagementDetailCallCount, 0);
     expect(repository.lastPrice, 0);
     expect(repository.lastCostPrice, 0);
     expect(repository.lastVariants?.map((variant) => variant.name), [
@@ -365,7 +367,8 @@ void main() {
       ),
     );
 
-    expect(repository.saveProductManagementDetailCallCount, 1);
+    expect(repository.updateProductCallCount, 1);
+    expect(repository.saveProductManagementDetailCallCount, 0);
     expect(repository.lastVariants, isEmpty);
     expect(repository.lastPrice, 25000);
   });
@@ -397,9 +400,32 @@ void main() {
       ),
     );
 
-    expect(repository.saveProductManagementDetailCallCount, 1);
+    expect(repository.updateProductCallCount, 1);
+    expect(repository.saveProductManagementDetailCallCount, 0);
     expect(repository.lastVariants, isEmpty);
     expect(repository.lastToppingIds, [2]);
+  });
+
+  test('replace product recipe saves recipe separately on edit', () async {
+    final repository = _FakeProductCreateRepository();
+    final container = _container(repository);
+    addTearDown(container.dispose);
+
+    final access = _editingAccess(repository);
+    final notifier = container.read(
+      productCreateNotifierProvider(access).notifier,
+    );
+    await notifier.load();
+
+    await notifier.replaceProductRecipe(const [
+      ProductRecipeDraft(ingredientId: 1, quantity: 2.5, capacity: 0),
+    ]);
+
+    expect(repository.replaceProductRecipeCallCount, 1);
+    expect(repository.updateProductCallCount, 0);
+    expect(repository.saveProductManagementDetailCallCount, 0);
+    expect(repository.lastRecipes?.single.ingredientId, 1);
+    expect(repository.lastRecipes?.single.quantity, 2.5);
   });
 
   test('update rejects incomplete variant rows', () async {
@@ -659,6 +685,9 @@ ProviderContainer _container(_FakeProductCreateRepository repository) {
       loadProductRecipesUseCaseProvider.overrideWithValue(
         LoadProductRecipesUseCase(repository),
       ),
+      uploadProductImageUseCaseProvider.overrideWithValue(
+        UploadProductImageUseCase(repository),
+      ),
       updateProductUseCaseProvider.overrideWithValue(
         UpdateProductUseCase(repository),
       ),
@@ -733,6 +762,7 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   int deleteIngredientCallCount = 0;
   int createProductCallCount = 0;
   int updateProductCallCount = 0;
+  int uploadProductImageCallCount = 0;
   int saveProductManagementDetailCallCount = 0;
   int updateProductInventorySettingsCallCount = 0;
   int replaceProductRecipeCallCount = 0;
@@ -744,6 +774,7 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   List<ProductVariantDraft>? lastVariants;
   List<int>? lastToppingIds;
   List<ProductRecipeDraft>? lastRecipes;
+  String? lastImageUrl;
 
   final categories = <ProductCategory>[
     ProductCategory(id: 1, storeId: 5, name: 'Đồ uống', isDeleted: false),
@@ -996,7 +1027,7 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
     required int storeId,
     required int categoryId,
     required String name,
-    ProductImageUpload? imageUpload,
+    required String imageUrl,
     required String description,
     required int preparationTime,
     required int price,
@@ -1012,13 +1043,14 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
     lastVariants = variants;
     lastToppingIds = toppingIds;
     lastRecipes = recipes;
+    lastImageUrl = imageUrl;
     return Product(
       id: 9,
       storeId: storeId,
       categoryId: categoryId,
       categoryName: 'Đồ uống',
       name: name,
-      imageUrl: imageUpload == null ? '' : 'https://cdn.example/product.jpg',
+      imageUrl: imageUrl,
       description: description,
       preparationTime: preparationTime,
       price: price,
@@ -1034,8 +1066,7 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
     required int storeId,
     required int categoryId,
     required String name,
-    required String existingImageUrl,
-    ProductImageUpload? imageUpload,
+    required String imageUrl,
     required String description,
     required int preparationTime,
     required int price,
@@ -1049,15 +1080,14 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
     lastCostPrice = costPrice;
     lastVariants = variants;
     lastToppingIds = toppingIds;
+    lastImageUrl = imageUrl;
     return Product(
       id: productId,
       storeId: 5,
       categoryId: categoryId,
       categoryName: 'Đồ uống',
       name: name,
-      imageUrl: imageUpload == null
-          ? existingImageUrl
-          : 'https://cdn.example/product.jpg',
+      imageUrl: imageUrl,
       description: description,
       preparationTime: preparationTime,
       price: price,
@@ -1130,6 +1160,15 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
       ],
       toppings: product.toppings,
     );
+  }
+
+  @override
+  Future<String> uploadProductImage({
+    required int storeId,
+    required ProductImageUpload image,
+  }) async {
+    uploadProductImageCallCount += 1;
+    return 'https://cdn.example/product.jpg';
   }
 
   @override

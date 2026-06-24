@@ -1,13 +1,13 @@
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
+import '../../domain/entities/product_ingredient.dart';
 import '../../domain/entities/product_topping.dart';
 
 enum ProductManagementStatus { initial, loading, ready, forbidden, error }
 
 enum ProductManagementTab {
   products('Sản phẩm'),
-  inventory('Tồn kho'),
-  addOns('Bán kèm'),
+  ingredients('Nguyên liệu'),
   categories('Danh mục');
 
   final String label;
@@ -56,6 +56,7 @@ class ProductManagementState {
   final ProductManagementStatus status;
   final List<ProductCategory> categories;
   final List<ProductTopping> toppings;
+  final List<ProductIngredient> ingredients;
   final List<Product> products;
   final ProductManagementTab selectedTab;
   final int? selectedCategoryId;
@@ -66,6 +67,7 @@ class ProductManagementState {
     required this.status,
     this.categories = const [],
     this.toppings = const [],
+    this.ingredients = const [],
     this.products = const [],
     this.selectedTab = ProductManagementTab.products,
     this.selectedCategoryId,
@@ -77,6 +79,7 @@ class ProductManagementState {
     : status = ProductManagementStatus.initial,
       categories = const [],
       toppings = const [],
+      ingredients = const [],
       products = const [],
       selectedTab = ProductManagementTab.products,
       selectedCategoryId = null,
@@ -116,10 +119,26 @@ class ProductManagementState {
         .toList();
   }
 
+  List<ProductIngredient> get visibleIngredients {
+    final normalizedQuery = query.toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return ingredients;
+    }
+
+    return ingredients
+        .where(
+          (ingredient) =>
+              ingredient.name.toLowerCase().contains(normalizedQuery) ||
+              ingredient.unit.toLowerCase().contains(normalizedQuery),
+        )
+        .toList();
+  }
+
   ProductManagementState copyWith({
     ProductManagementStatus? status,
     List<ProductCategory>? categories,
     List<ProductTopping>? toppings,
+    List<ProductIngredient>? ingredients,
     List<Product>? products,
     ProductManagementTab? selectedTab,
     int? selectedCategoryId,
@@ -132,6 +151,7 @@ class ProductManagementState {
       status: status ?? this.status,
       categories: categories ?? this.categories,
       toppings: toppings ?? this.toppings,
+      ingredients: ingredients ?? this.ingredients,
       products: products ?? this.products,
       selectedTab: selectedTab ?? this.selectedTab,
       selectedCategoryId: clearSelectedCategory

@@ -85,11 +85,16 @@ abstract class ProductManagementRepository {
 
   Future<List<ProductRecipeDraft>> loadProductRecipes(int productId);
 
+  Future<String> uploadProductImage({
+    required int storeId,
+    required ProductImageUpload image,
+  });
+
   Future<Product> createProduct({
     required int storeId,
     required int categoryId,
     required String name,
-    ProductImageUpload? imageUpload,
+    required String imageUrl,
     required String description,
     required int preparationTime,
     required int price,
@@ -117,8 +122,7 @@ abstract class ProductManagementRepository {
     required int storeId,
     required int categoryId,
     required String name,
-    required String existingImageUrl,
-    ProductImageUpload? imageUpload,
+    required String imageUrl,
     required String description,
     required int preparationTime,
     required int price,

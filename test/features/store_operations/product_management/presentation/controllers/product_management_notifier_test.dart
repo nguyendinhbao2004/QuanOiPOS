@@ -16,6 +16,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_category_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
@@ -70,6 +71,7 @@ void main() {
         'Bánh mì',
       ]);
       expect(state.toppings.map((topping) => topping.name), ['Trân châu đen']);
+      expect(state.ingredients, isEmpty);
       expect(repository.loadToppingsCallCount, 1);
     },
   );
@@ -173,6 +175,9 @@ ProviderContainer _container(_FakeProductManagementRepository repository) {
       ),
       loadProductToppingsUseCaseProvider.overrideWithValue(
         LoadProductToppingsUseCase(repository),
+      ),
+      loadProductIngredientsUseCaseProvider.overrideWithValue(
+        LoadProductIngredientsUseCase(repository),
       ),
       createProductCategoryUseCaseProvider.overrideWithValue(
         CreateProductCategoryUseCase(repository),
@@ -439,7 +444,7 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required int storeId,
     required int categoryId,
     required String name,
-    ProductImageUpload? imageUpload,
+    required String imageUrl,
     required String description,
     required int preparationTime,
     required int price,
@@ -456,7 +461,7 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
       categoryId: categoryId,
       categoryName: 'Đồ uống',
       name: name,
-      imageUrl: imageUpload == null ? '' : 'https://cdn.example/product.jpg',
+      imageUrl: imageUrl,
       description: description,
       preparationTime: preparationTime,
       price: price,
@@ -472,8 +477,7 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required int storeId,
     required int categoryId,
     required String name,
-    required String existingImageUrl,
-    ProductImageUpload? imageUpload,
+    required String imageUrl,
     required String description,
     required int preparationTime,
     required int price,
@@ -489,9 +493,7 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
       categoryId: categoryId,
       categoryName: 'Đồ uống',
       name: name,
-      imageUrl: imageUpload == null
-          ? existingImageUrl
-          : 'https://cdn.example/product.jpg',
+      imageUrl: imageUrl,
       description: description,
       preparationTime: preparationTime,
       price: price,
@@ -527,8 +529,9 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
       storeId: storeId,
       categoryId: categoryId,
       name: name,
-      existingImageUrl: existingImageUrl,
-      imageUpload: imageUpload,
+      imageUrl: imageUpload == null
+          ? existingImageUrl
+          : 'https://cdn.example/product.jpg',
       description: description,
       preparationTime: preparationTime,
       price: price,
@@ -595,4 +598,12 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required int productId,
     required List<ProductRecipeDraft> recipes,
   }) async {}
+
+  @override
+  Future<String> uploadProductImage({
+    required int storeId,
+    required ProductImageUpload image,
+  }) async {
+    return 'https://cdn.example/product.jpg';
+  }
 }

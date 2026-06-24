@@ -29,6 +29,7 @@ import '../../domain/usecases/update_product_ingredient_use_case.dart';
 import '../../domain/usecases/update_product_sell_status_use_case.dart';
 import '../../domain/usecases/update_product_topping_use_case.dart';
 import '../../domain/usecases/update_product_use_case.dart';
+import '../../domain/usecases/upload_product_image_use_case.dart';
 import '../controllers/product_create_notifier.dart';
 import '../controllers/product_create_state.dart';
 import '../controllers/product_management_notifier.dart';
@@ -145,6 +146,12 @@ final loadProductRecipesUseCaseProvider = Provider<LoadProductRecipesUseCase>((
   ref,
 ) {
   return locator<LoadProductRecipesUseCase>();
+});
+
+final uploadProductImageUseCaseProvider = Provider<UploadProductImageUseCase>((
+  ref,
+) {
+  return locator<UploadProductImageUseCase>();
 });
 
 final updateProductUseCaseProvider = Provider<UpdateProductUseCase>((ref) {

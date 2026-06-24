@@ -2,7 +2,6 @@ import '../../domain/entities/product.dart';
 import '../../domain/entities/product_category.dart';
 import '../../domain/entities/inventory_deduction_mode.dart';
 import '../../domain/entities/product_ingredient.dart';
-import '../../domain/entities/product_image_upload.dart';
 import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
@@ -88,7 +87,7 @@ class ProductCreateInput {
   final double minimumStock;
   final bool isTrackInventory;
   final InventoryDeductionMode inventoryDeductionMode;
-  final ProductImageUpload? imageUpload;
+  final String imageUrl;
 
   const ProductCreateInput({
     required this.name,
@@ -105,7 +104,7 @@ class ProductCreateInput {
     this.minimumStock = 0,
     this.isTrackInventory = false,
     this.inventoryDeductionMode = InventoryDeductionMode.recipeOnly,
-    this.imageUpload,
+    this.imageUrl = '',
   });
 }
 
