@@ -66,9 +66,10 @@ class StoreOverviewPage extends ConsumerWidget {
                   onTap: () => _showComingSoon(context, 'Bán hàng'),
                 ),
                 StoreBottomNavItemData(
-                  title: 'Đơn hàng',
-                  icon: Icons.receipt_long_outlined,
-                  onTap: () => _showComingSoon(context, 'Đơn hàng'),
+                  title: 'Báo cáo',
+                  icon: Icons.bar_chart_rounded,
+                  isEnabled: state.can(AppPermissionCodes.dashboardView),
+                  onTap: () => _openBusinessReport(context, storeId),
                 ),
                 StoreBottomNavItemData(
                   title: 'Sản phẩm',
@@ -599,4 +600,17 @@ void _showComingSoon(BuildContext context, String feature) {
   ScaffoldMessenger.of(
     context,
   ).showSnackBar(SnackBar(content: Text('$feature sẽ được triển khai sau')));
+}
+
+void _openBusinessReport(BuildContext context, int storeId) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!context.mounted) {
+      return;
+    }
+
+    context.goNamed(
+      RouteNames.storeBusinessReport,
+      pathParameters: {'storeId': storeId.toString()},
+    );
+  });
 }
