@@ -89,13 +89,9 @@ class ProductCreateNotifier
           seedData?.editingProductId ?? seedData?.editingProduct?.id;
       var editingProduct = editingProductId == null
           ? null
-          : await ref.read(loadProductDetailUseCaseProvider)(editingProductId);
-      if (editingProduct != null) {
-        final recipes = await ref.read(loadProductRecipesUseCaseProvider)(
-          editingProduct.id,
-        );
-        editingProduct = editingProduct.copyWith(recipes: recipes);
-      }
+          : (await ref.read(loadProductManagementDetailUseCaseProvider)(
+              editingProductId,
+            )).editableProduct;
 
       state = state.copyWith(
         status: ProductCreateStatus.ready,
@@ -204,7 +200,7 @@ class ProductCreateNotifier
     );
 
     try {
-      final product = await ref.read(updateProductUseCaseProvider)(
+      final detail = await ref.read(saveProductManagementDetailUseCaseProvider)(
         productId: editingProduct.id,
         storeId: _access.storeId,
         categoryId: input.categoryId,
@@ -217,32 +213,15 @@ class ProductCreateNotifier
         costPrice: costPrice,
         type: input.type,
         variants: variants,
-        toppingIds: input.toppingIds,
-      );
-      await ref.read(replaceProductRecipeUseCaseProvider)(
-        productId: product.id,
         recipes: recipes,
+        toppingIds: input.toppingIds,
+        minimumStock: minimumStock,
+        isTrackInventory: input.isTrackInventory,
+        inventoryDeductionMode: input.inventoryDeductionMode,
       );
-      final settings =
-          await ref.read(updateProductInventorySettingsUseCaseProvider)(
-            productId: product.id,
-            minimumStock: minimumStock,
-            isTrackInventory: input.isTrackInventory,
-            inventoryDeductionMode: input.inventoryDeductionMode,
-          );
       state = state.copyWith(
         status: ProductCreateStatus.success,
-        editingProduct: product.copyWith(
-          minimumStock: settings.minimumStock,
-          isTrackInventory: settings.isTrackInventory,
-          inventoryDeductionMode: settings.inventoryDeductionMode,
-          quantity: settings.quantity,
-          averageUnitCost: settings.averageUnitCost,
-          lastImportUnitCost: settings.lastImportUnitCost,
-          isLowStock: settings.isLowStock,
-          isOutOfStock: settings.isOutOfStock,
-          recipes: recipes,
-        ),
+        editingProduct: detail.editableProduct,
         clearError: true,
       );
     } catch (error) {
@@ -505,6 +484,8 @@ class ProductCreateNotifier
     List<ProductVariantDraft> variants,
   ) {
     final cleanVariants = <ProductVariantDraft>[];
+    final names = <String>{};
+    var defaultCount = 0;
 
     for (final variant in variants) {
       final cleanName = variant.name.trim();
@@ -516,14 +497,42 @@ class ProductCreateNotifier
         throw Exception('Vui lòng nhập giá vốn tùy chọn hợp lệ');
       }
 
+      if (variant.minimumStock < 0) {
+        throw Exception('Vui lòng nhập ngưỡng tồn tùy chọn hợp lệ');
+      }
+
+      if (!names.add(cleanName.toLowerCase())) {
+        throw Exception('Tên tùy chọn không được trùng nhau');
+      }
+
+      if (variant.isDefault) {
+        defaultCount++;
+      }
+
       cleanVariants.add(
         ProductVariantDraft(
+          id: variant.id,
           name: cleanName,
           price: variant.price,
           costPrice: variant.costPrice,
           isDefault: variant.isDefault,
+          isActive: variant.isActive,
+          quantity: variant.quantity,
+          minimumStock: variant.minimumStock,
+          averageUnitCost: variant.averageUnitCost,
+          lastImportUnitCost: variant.lastImportUnitCost,
+          isTrackInventory: variant.isTrackInventory,
+          isLowStock: variant.isLowStock,
+          isOutOfStock: variant.isOutOfStock,
+          recipeAdjustments: variant.recipeAdjustments
+              .where((adjustment) => adjustment.quantityDelta != 0)
+              .toList(),
         ),
       );
+    }
+
+    if (defaultCount > 1) {
+      throw Exception('Chỉ được chọn một tùy chọn mặc định');
     }
 
     return cleanVariants;

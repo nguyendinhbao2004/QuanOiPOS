@@ -7,6 +7,7 @@ import '../models/product_category_model.dart';
 import '../models/product_ingredient_model.dart';
 import '../models/product_image_upload_url_model.dart';
 import '../models/inventory_item_settings_models.dart';
+import '../models/product_management_detail_model.dart';
 import '../models/product_management_request_models.dart';
 import '../models/product_model.dart';
 import '../models/product_topping_model.dart';
@@ -367,6 +368,25 @@ class ProductManagementRemoteDataSource {
     return response.data!;
   }
 
+  Future<ProductManagementDetailModel> getProductManagementDetail(
+    int productId,
+  ) async {
+    final response = await _dioClient.getResponse<ProductManagementDetailModel>(
+      '/products/$productId/management-detail',
+      dataFromJson: ProductManagementDetailModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể tải màn quản lý sản phẩm',
+      );
+    }
+
+    return response.data!;
+  }
+
   Future<List<ProductRecipeDraft>> getProductRecipes(int productId) async {
     final response = await _dioClient.getResponse<List<ProductRecipeDraft>>(
       '/recipes/product/$productId',
@@ -417,6 +437,27 @@ class ProductManagementRemoteDataSource {
         response.message,
         response.errors,
         'Không thể cập nhật sản phẩm',
+      );
+    }
+
+    return response.data!;
+  }
+
+  Future<ProductManagementDetailModel> updateProductManagementDetail({
+    required int productId,
+    required UpdateProductManagementDetailRequestModel request,
+  }) async {
+    final response = await _dioClient.putResponse<ProductManagementDetailModel>(
+      '/products/$productId/management-detail',
+      data: request.toJson(),
+      dataFromJson: ProductManagementDetailModel.fromJson,
+    );
+
+    if (!response.succeeded || response.data == null) {
+      _throwRequestFailure(
+        response.message,
+        response.errors,
+        'Không thể lưu màn quản lý sản phẩm',
       );
     }
 

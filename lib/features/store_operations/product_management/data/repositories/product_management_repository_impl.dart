@@ -4,6 +4,7 @@ import '../../domain/entities/inventory_deduction_mode.dart';
 import '../../domain/entities/inventory_item_settings.dart';
 import '../../domain/entities/product_ingredient.dart';
 import '../../domain/entities/product_image_upload.dart';
+import '../../domain/entities/product_management_detail.dart';
 import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
@@ -200,6 +201,16 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
   }
 
   @override
+  Future<ProductManagementDetail> loadProductManagementDetail(
+    int productId,
+  ) async {
+    final detail = await _remoteDataSource.getProductManagementDetail(
+      productId,
+    );
+    return detail.toEntity();
+  }
+
+  @override
   Future<List<ProductRecipeDraft>> loadProductRecipes(int productId) {
     return _remoteDataSource.getProductRecipes(productId);
   }
@@ -312,6 +323,54 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
       ),
     );
     return product.toEntity();
+  }
+
+  @override
+  Future<ProductManagementDetail> saveProductManagementDetail({
+    required int productId,
+    required int storeId,
+    required int categoryId,
+    required String name,
+    required String existingImageUrl,
+    ProductImageUpload? imageUpload,
+    required String description,
+    required int preparationTime,
+    required int price,
+    required int costPrice,
+    required ProductType type,
+    required List<ProductVariantDraft> variants,
+    required List<ProductRecipeDraft> recipes,
+    required List<int> toppingIds,
+    required double minimumStock,
+    required bool isTrackInventory,
+    required InventoryDeductionMode inventoryDeductionMode,
+  }) async {
+    final imageUrl = imageUpload == null
+        ? existingImageUrl
+        : await _remoteDataSource.uploadProductImage(
+            storeId: storeId,
+            image: imageUpload,
+          );
+    final detail = await _remoteDataSource.updateProductManagementDetail(
+      productId: productId,
+      request: UpdateProductManagementDetailRequestModel(
+        categoryId: categoryId,
+        name: name,
+        imageUrl: imageUrl,
+        description: description,
+        preparationTime: preparationTime,
+        price: price,
+        costPrice: costPrice,
+        type: type,
+        variants: variants,
+        recipes: recipes,
+        toppingIds: toppingIds,
+        minimumStock: minimumStock,
+        isTrackInventory: isTrackInventory,
+        inventoryDeductionMode: inventoryDeductionMode,
+      ),
+    );
+    return detail.toEntity();
   }
 
   @override

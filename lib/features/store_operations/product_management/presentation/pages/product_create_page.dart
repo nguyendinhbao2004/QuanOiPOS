@@ -20,6 +20,7 @@ import '../../domain/entities/product_recipe_draft.dart';
 import '../../domain/entities/product_topping.dart';
 import '../../domain/entities/product_type.dart';
 import '../../domain/entities/product_variant_draft.dart';
+import '../../domain/entities/product_variant_recipe_adjustment.dart';
 import '../controllers/product_create_notifier.dart';
 import '../controllers/product_create_state.dart';
 import '../providers/product_management_providers.dart';
@@ -103,6 +104,27 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
   void _toggleDefaultVariantOption(int id) {
     setState(() {
       _defaultVariantOptionId = _defaultVariantOptionId == id ? null : id;
+    });
+  }
+
+  void _setVariantTrackInventory(int id, bool value) {
+    setState(() {
+      final index = _variantOptions.indexWhere((option) => option.id == id);
+      if (index != -1) {
+        _variantOptions[index].isTrackInventory = value;
+      }
+    });
+  }
+
+  void _setVariantRecipeAdjustments(
+    int id,
+    List<ProductVariantRecipeAdjustment> adjustments,
+  ) {
+    setState(() {
+      final index = _variantOptions.indexWhere((option) => option.id == id);
+      if (index != -1) {
+        _variantOptions[index].recipeAdjustments = adjustments;
+      }
     });
   }
 
@@ -197,6 +219,8 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
             onAddVariantOption: _addVariantOption,
             onRemoveVariantOption: _removeVariantOption,
             onDefaultVariantOptionToggled: _toggleDefaultVariantOption,
+            onVariantTrackInventoryChanged: _setVariantTrackInventory,
+            onVariantRecipeAdjustmentsChanged: _setVariantRecipeAdjustments,
             onToppingChanged: (toppingId, isSelected) {
               setState(() {
                 if (isSelected) {
@@ -250,10 +274,22 @@ class _ProductCreatePageState extends ConsumerState<ProductCreatePage> {
       if (hasExplicitVariants) {
         for (final variant in product.variants) {
           final id = _nextVariantOptionId++;
-          final option = _VariantOptionRowState(id: id);
+          final option = _VariantOptionRowState(id: id, variantId: variant.id);
           option.nameController.text = variant.name;
           option.priceController.text = variant.price.toString();
           option.costPriceController.text = variant.costPrice.toString();
+          option.minimumStockController.text = _formatStockInput(
+            variant.minimumStock,
+          );
+          option.isTrackInventory = variant.isTrackInventory;
+          option.quantity = variant.quantity;
+          option.averageUnitCost = variant.averageUnitCost;
+          option.lastImportUnitCost = variant.lastImportUnitCost;
+          option.isLowStock = variant.isLowStock;
+          option.isOutOfStock = variant.isOutOfStock;
+          option.recipeAdjustments = variant.recipeAdjustments
+              .where((adjustment) => adjustment.isActive)
+              .toList();
           _variantOptions.add(option);
           if (variant.isDefault) {
             _defaultVariantOptionId = id;
@@ -350,6 +386,13 @@ class _AccessReadyContent extends ConsumerWidget {
   final VoidCallback onAddVariantOption;
   final ValueChanged<int> onRemoveVariantOption;
   final ValueChanged<int> onDefaultVariantOptionToggled;
+  final void Function(int variantOptionId, bool isTrackInventory)
+  onVariantTrackInventoryChanged;
+  final void Function(
+    int variantOptionId,
+    List<ProductVariantRecipeAdjustment> adjustments,
+  )
+  onVariantRecipeAdjustmentsChanged;
   final void Function(int toppingId, bool isSelected) onToppingChanged;
   final ValueChanged<Set<int>> onToppingSelectionChanged;
   final ValueChanged<List<_RecipeRowState>> onRecipeRowsChanged;
@@ -388,6 +431,8 @@ class _AccessReadyContent extends ConsumerWidget {
     required this.onAddVariantOption,
     required this.onRemoveVariantOption,
     required this.onDefaultVariantOptionToggled,
+    required this.onVariantTrackInventoryChanged,
+    required this.onVariantRecipeAdjustmentsChanged,
     required this.onToppingChanged,
     required this.onToppingSelectionChanged,
     required this.onRecipeRowsChanged,
@@ -487,6 +532,9 @@ class _AccessReadyContent extends ConsumerWidget {
               onAddVariantOption: onAddVariantOption,
               onRemoveVariantOption: onRemoveVariantOption,
               onDefaultVariantOptionToggled: onDefaultVariantOptionToggled,
+              onVariantTrackInventoryChanged: onVariantTrackInventoryChanged,
+              onVariantRecipeAdjustmentsChanged:
+                  onVariantRecipeAdjustmentsChanged,
               onToppingChanged: onToppingChanged,
               onToppingSelectionChanged: onToppingSelectionChanged,
               onRecipeRowsChanged: onRecipeRowsChanged,
@@ -569,10 +617,20 @@ class _AccessReadyContent extends ConsumerWidget {
     return [
       for (final option in variantOptions)
         ProductVariantDraft(
+          id: option.variantId,
           name: option.nameController.text.trim(),
           price: int.tryParse(option.priceController.text.trim()) ?? 0,
           costPrice: int.tryParse(option.costPriceController.text.trim()) ?? 0,
           isDefault: defaultVariantOptionId == option.id,
+          minimumStock:
+              double.tryParse(option.minimumStockController.text.trim()) ?? 0,
+          isTrackInventory: option.isTrackInventory,
+          quantity: option.quantity ?? 0,
+          averageUnitCost: option.averageUnitCost ?? 0,
+          lastImportUnitCost: option.lastImportUnitCost ?? 0,
+          isLowStock: option.isLowStock,
+          isOutOfStock: option.isOutOfStock,
+          recipeAdjustments: option.recipeAdjustments,
         ),
     ];
   }
@@ -663,6 +721,13 @@ class _ReadyCreateForm extends StatelessWidget {
   final VoidCallback onAddVariantOption;
   final ValueChanged<int> onRemoveVariantOption;
   final ValueChanged<int> onDefaultVariantOptionToggled;
+  final void Function(int variantOptionId, bool isTrackInventory)
+  onVariantTrackInventoryChanged;
+  final void Function(
+    int variantOptionId,
+    List<ProductVariantRecipeAdjustment> adjustments,
+  )
+  onVariantRecipeAdjustmentsChanged;
   final void Function(int toppingId, bool isSelected) onToppingChanged;
   final ValueChanged<Set<int>> onToppingSelectionChanged;
   final ValueChanged<List<_RecipeRowState>> onRecipeRowsChanged;
@@ -701,6 +766,8 @@ class _ReadyCreateForm extends StatelessWidget {
     required this.onAddVariantOption,
     required this.onRemoveVariantOption,
     required this.onDefaultVariantOptionToggled,
+    required this.onVariantTrackInventoryChanged,
+    required this.onVariantRecipeAdjustmentsChanged,
     required this.onToppingChanged,
     required this.onToppingSelectionChanged,
     required this.onRecipeRowsChanged,
@@ -888,10 +955,17 @@ class _ReadyCreateForm extends StatelessWidget {
                   const SizedBox(height: AppConstants.spacingSm),
                   _VariantOptionsSection(
                     options: variantOptions,
+                    ingredients: state.ingredients,
+                    showVariantInventory:
+                        inventoryDeductionMode ==
+                        InventoryDeductionMode.variantOnly,
                     defaultOptionId: defaultVariantOptionId,
                     onAddOption: onAddVariantOption,
                     onRemoveOption: onRemoveVariantOption,
                     onDefaultOptionToggled: onDefaultVariantOptionToggled,
+                    onTrackInventoryChanged: onVariantTrackInventoryChanged,
+                    onRecipeAdjustmentsChanged:
+                        onVariantRecipeAdjustmentsChanged,
                   ),
                 ],
                 const SizedBox(height: AppConstants.spacingXl),
@@ -1555,19 +1629,37 @@ class _InventoryHintBox extends StatelessWidget {
 
 class _VariantOptionRowState {
   final int id;
+  final int? variantId;
   final TextEditingController nameController;
   final TextEditingController priceController;
   final TextEditingController costPriceController;
+  final TextEditingController minimumStockController;
+  bool isTrackInventory;
+  double? quantity;
+  double? averageUnitCost;
+  double? lastImportUnitCost;
+  bool isLowStock;
+  bool isOutOfStock;
+  List<ProductVariantRecipeAdjustment> recipeAdjustments;
 
-  _VariantOptionRowState({required this.id})
+  _VariantOptionRowState({required this.id, this.variantId})
     : nameController = TextEditingController(),
       priceController = TextEditingController(),
-      costPriceController = TextEditingController(text: '0');
+      costPriceController = TextEditingController(text: '0'),
+      minimumStockController = TextEditingController(text: '0'),
+      isTrackInventory = false,
+      quantity = null,
+      averageUnitCost = null,
+      lastImportUnitCost = null,
+      isLowStock = false,
+      isOutOfStock = false,
+      recipeAdjustments = [];
 
   void dispose() {
     nameController.dispose();
     priceController.dispose();
     costPriceController.dispose();
+    minimumStockController.dispose();
   }
 }
 
@@ -1613,17 +1705,30 @@ class _RecipeRowState {
 
 class _VariantOptionsSection extends StatelessWidget {
   final List<_VariantOptionRowState> options;
+  final List<ProductIngredient> ingredients;
+  final bool showVariantInventory;
   final int? defaultOptionId;
   final VoidCallback onAddOption;
   final ValueChanged<int> onRemoveOption;
   final ValueChanged<int> onDefaultOptionToggled;
+  final void Function(int variantOptionId, bool isTrackInventory)
+  onTrackInventoryChanged;
+  final void Function(
+    int variantOptionId,
+    List<ProductVariantRecipeAdjustment> adjustments,
+  )
+  onRecipeAdjustmentsChanged;
 
   const _VariantOptionsSection({
     required this.options,
+    required this.ingredients,
+    required this.showVariantInventory,
     required this.defaultOptionId,
     required this.onAddOption,
     required this.onRemoveOption,
     required this.onDefaultOptionToggled,
+    required this.onTrackInventoryChanged,
+    required this.onRecipeAdjustmentsChanged,
   });
 
   @override
@@ -1639,9 +1744,15 @@ class _VariantOptionsSection extends StatelessWidget {
         for (final option in options) ...[
           _VariantOptionRow(
             option: option,
+            ingredients: ingredients,
+            showVariantInventory: showVariantInventory,
             isDefault: defaultOptionId == option.id,
             onRemove: () => onRemoveOption(option.id),
             onDefaultToggled: () => onDefaultOptionToggled(option.id),
+            onTrackInventoryChanged: (value) =>
+                onTrackInventoryChanged(option.id, value),
+            onRecipeAdjustmentsChanged: (adjustments) =>
+                onRecipeAdjustmentsChanged(option.id, adjustments),
           ),
           const SizedBox(height: AppConstants.spacingSm),
         ],
@@ -1658,80 +1769,415 @@ class _VariantOptionsSection extends StatelessWidget {
 
 class _VariantOptionRow extends StatelessWidget {
   final _VariantOptionRowState option;
+  final List<ProductIngredient> ingredients;
+  final bool showVariantInventory;
   final bool isDefault;
   final VoidCallback onRemove;
   final VoidCallback onDefaultToggled;
+  final ValueChanged<bool> onTrackInventoryChanged;
+  final ValueChanged<List<ProductVariantRecipeAdjustment>>
+  onRecipeAdjustmentsChanged;
 
   const _VariantOptionRow({
     required this.option,
+    required this.ingredients,
+    required this.showVariantInventory,
     required this.isDefault,
     required this.onRemove,
     required this.onDefaultToggled,
+    required this.onTrackInventoryChanged,
+    required this.onRecipeAdjustmentsChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 5,
-          child: TextFormField(
-            key: Key('product_create_variant_${option.id}_name_field'),
-            controller: option.nameController,
-            decoration: const InputDecoration(labelText: 'Tên tùy chọn'),
-            textInputAction: TextInputAction.next,
+    return Container(
+      padding: const EdgeInsets.all(AppConstants.spacingSm),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 5,
+                child: TextFormField(
+                  key: Key('product_create_variant_${option.id}_name_field'),
+                  controller: option.nameController,
+                  decoration: const InputDecoration(labelText: 'Tên tùy chọn'),
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
+              const SizedBox(width: AppConstants.spacingSm),
+              Expanded(
+                flex: 3,
+                child: TextFormField(
+                  key: Key('product_create_variant_${option.id}_price_field'),
+                  controller: option.priceController,
+                  decoration: const InputDecoration(
+                    labelText: 'Giá',
+                    suffixText: 'đ',
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+              ),
+              const SizedBox(width: AppConstants.spacingSm),
+              Expanded(
+                flex: 3,
+                child: TextFormField(
+                  key: Key(
+                    'product_create_variant_${option.id}_cost_price_field',
+                  ),
+                  controller: option.costPriceController,
+                  decoration: const InputDecoration(
+                    labelText: 'Giá vốn',
+                    suffixText: 'đ',
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+              ),
+              IconButton(
+                key: Key('product_create_variant_${option.id}_default_button'),
+                tooltip: isDefault ? 'Bỏ chọn mặc định' : 'Chọn mặc định',
+                onPressed: onDefaultToggled,
+                icon: Icon(
+                  isDefault
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  color: isDefault ? AppColors.primary : AppColors.textMuted,
+                ),
+              ),
+              IconButton(
+                key: Key('product_create_variant_${option.id}_delete_button'),
+                tooltip: 'Xóa tùy chọn',
+                onPressed: onRemove,
+                icon: const Icon(Icons.close_rounded),
+                color: AppColors.textMuted,
+              ),
+            ],
           ),
-        ),
-        const SizedBox(width: AppConstants.spacingSm),
-        Expanded(
-          flex: 3,
-          child: TextFormField(
-            key: Key('product_create_variant_${option.id}_price_field'),
-            controller: option.priceController,
-            decoration: const InputDecoration(
-              labelText: 'Giá',
-              suffixText: 'đ',
+          const SizedBox(height: AppConstants.spacingXs),
+          TextButton.icon(
+            key: Key('product_create_variant_${option.id}_adjustments_button'),
+            onPressed: ingredients.isEmpty
+                ? null
+                : () => _showRecipeAdjustments(context),
+            icon: const Icon(Icons.tune_rounded),
+            label: Text(
+              'Điều chỉnh công thức (${option.recipeAdjustments.length})',
             ),
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
-        ),
-        const SizedBox(width: AppConstants.spacingSm),
-        Expanded(
-          flex: 3,
-          child: TextFormField(
-            key: Key('product_create_variant_${option.id}_cost_price_field'),
-            controller: option.costPriceController,
-            decoration: const InputDecoration(
-              labelText: 'Giá vốn',
-              suffixText: 'đ',
+          if (showVariantInventory) ...[
+            const Divider(height: AppConstants.spacingLg),
+            SwitchListTile(
+              key: Key(
+                'product_create_variant_${option.id}_track_inventory_switch',
+              ),
+              value: option.isTrackInventory,
+              onChanged: onTrackInventoryChanged,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Theo dõi tồn cho tùy chọn này'),
+              subtitle: Text(
+                'Tồn hiện tại: ${_formatInventoryQuantity(option.quantity)}',
+              ),
             ),
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          ),
-        ),
-        IconButton(
-          key: Key('product_create_variant_${option.id}_default_button'),
-          tooltip: isDefault ? 'Bỏ chọn mặc định' : 'Chọn mặc định',
-          onPressed: onDefaultToggled,
-          icon: Icon(
-            isDefault
-                ? Icons.radio_button_checked
-                : Icons.radio_button_unchecked,
-            color: isDefault ? AppColors.primary : AppColors.textMuted,
-          ),
-        ),
-        IconButton(
-          key: Key('product_create_variant_${option.id}_delete_button'),
-          tooltip: 'Xóa tùy chọn',
-          onPressed: onRemove,
-          icon: const Icon(Icons.close_rounded),
-          color: AppColors.textMuted,
-        ),
-      ],
+            TextFormField(
+              key: Key(
+                'product_create_variant_${option.id}_minimum_stock_field',
+              ),
+              controller: option.minimumStockController,
+              decoration: const InputDecoration(
+                labelText: 'Ngưỡng cảnh báo tồn của tùy chọn',
+                suffixText: 'đv',
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              validator: (value) {
+                final stock = double.tryParse(value ?? '');
+                return stock == null || stock < 0
+                    ? 'Nhập ngưỡng tồn hợp lệ'
+                    : null;
+              },
+            ),
+          ],
+        ],
+      ),
     );
   }
+
+  Future<void> _showRecipeAdjustments(BuildContext context) async {
+    final adjustments =
+        await showModalBottomSheet<List<ProductVariantRecipeAdjustment>>(
+          context: context,
+          isScrollControlled: true,
+          builder: (context) => _VariantRecipeAdjustmentSheet(
+            variantId: option.variantId ?? 0,
+            ingredients: ingredients,
+            initialAdjustments: option.recipeAdjustments,
+          ),
+        );
+    if (adjustments != null) {
+      onRecipeAdjustmentsChanged(adjustments);
+    }
+  }
+}
+
+class _VariantRecipeAdjustmentSheet extends StatefulWidget {
+  final int variantId;
+  final List<ProductIngredient> ingredients;
+  final List<ProductVariantRecipeAdjustment> initialAdjustments;
+
+  const _VariantRecipeAdjustmentSheet({
+    required this.variantId,
+    required this.ingredients,
+    required this.initialAdjustments,
+  });
+
+  @override
+  State<_VariantRecipeAdjustmentSheet> createState() =>
+      _VariantRecipeAdjustmentSheetState();
+}
+
+class _VariantRecipeAdjustmentSheetState
+    extends State<_VariantRecipeAdjustmentSheet> {
+  late final List<_VariantAdjustmentRowState> _rows;
+  int? _selectedIngredientId;
+
+  @override
+  void initState() {
+    super.initState();
+    _rows = [
+      for (final adjustment in widget.initialAdjustments)
+        _VariantAdjustmentRowState.fromAdjustment(
+          adjustment,
+          widget.ingredients.firstWhere(
+            (ingredient) => ingredient.id == adjustment.ingredientId,
+            orElse: () =>
+                adjustment.ingredient ??
+                ProductIngredient(
+                  id: adjustment.ingredientId,
+                  storeId: 0,
+                  name: adjustment.ingredientName,
+                  itemType: 1,
+                  unit: adjustment.ingredientUnit,
+                  quantity: 0,
+                  capacity: 0,
+                  currentCapacity: 0,
+                  isActive: true,
+                  isDeleted: false,
+                ),
+          ),
+        ),
+    ];
+  }
+
+  @override
+  void dispose() {
+    for (final row in _rows) {
+      row.dispose();
+    }
+    super.dispose();
+  }
+
+  void _addIngredient() {
+    final ingredientId = _selectedIngredientId;
+    if (ingredientId == null ||
+        _rows.any((row) => row.ingredient.id == ingredientId)) {
+      return;
+    }
+    final ingredient = widget.ingredients.firstWhere(
+      (item) => item.id == ingredientId,
+    );
+    setState(() {
+      _rows.add(_VariantAdjustmentRowState(ingredient: ingredient));
+      _selectedIngredientId = null;
+    });
+  }
+
+  void _save() {
+    Navigator.of(context).pop([
+      for (final row in _rows)
+        ProductVariantRecipeAdjustment(
+          id: row.id,
+          variantId: widget.variantId,
+          ingredientId: row.ingredient.id,
+          ingredient: row.ingredient,
+          ingredientName: row.ingredient.name,
+          ingredientUnit: row.ingredient.unit,
+          quantityDelta: double.tryParse(row.deltaController.text.trim()) ?? 0,
+        ),
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final availableIngredients = widget.ingredients
+        .where(
+          (ingredient) =>
+              !_rows.any((row) => row.ingredient.id == ingredient.id),
+        )
+        .toList();
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppConstants.spacingMd,
+          AppConstants.spacingMd,
+          AppConstants.spacingMd,
+          bottomInset + AppConstants.spacingMd,
+        ),
+        child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * 0.72,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Điều chỉnh công thức theo biến thể',
+                style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: AppConstants.spacingXs),
+              Text(
+                'Dùng số dương để thêm, số âm để bớt so với công thức nền.',
+                style: AppTextStyles.bodySm.copyWith(
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: AppConstants.spacingMd),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _selectedIngredientId,
+                      decoration: const InputDecoration(
+                        labelText: 'Thêm nguyên liệu',
+                      ),
+                      items: [
+                        for (final ingredient in availableIngredients)
+                          DropdownMenuItem(
+                            value: ingredient.id,
+                            child: Text(
+                              '${ingredient.name} (${ingredient.unit})',
+                            ),
+                          ),
+                      ],
+                      onChanged: availableIngredients.isEmpty
+                          ? null
+                          : (value) =>
+                                setState(() => _selectedIngredientId = value),
+                    ),
+                  ),
+                  const SizedBox(width: AppConstants.spacingSm),
+                  IconButton(
+                    tooltip: 'Thêm nguyên liệu',
+                    onPressed: _selectedIngredientId == null
+                        ? null
+                        : _addIngredient,
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppConstants.spacingMd),
+              Expanded(
+                child: _rows.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Chưa có điều chỉnh cho biến thể này.',
+                          style: AppTextStyles.bodySm.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: _rows.length,
+                        separatorBuilder: (context, index) => const Divider(),
+                        itemBuilder: (context, index) {
+                          final row = _rows[index];
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${row.ingredient.name} (${row.ingredient.unit})',
+                                  style: AppTextStyles.bodySm,
+                                ),
+                              ),
+                              SizedBox(
+                                width: 104,
+                                child: TextFormField(
+                                  key: Key(
+                                    'product_create_variant_adjustment_${row.ingredient.id}',
+                                  ),
+                                  controller: row.deltaController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Chênh lệch',
+                                  ),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                        signed: true,
+                                      ),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Xóa điều chỉnh',
+                                onPressed: () {
+                                  setState(() {
+                                    final removed = _rows.removeAt(index);
+                                    removed.dispose();
+                                  });
+                                },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+              ),
+              const SizedBox(height: AppConstants.spacingSm),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: _save,
+                  child: const Text('Áp dụng'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VariantAdjustmentRowState {
+  final int? id;
+  final ProductIngredient ingredient;
+  final TextEditingController deltaController;
+
+  _VariantAdjustmentRowState({
+    this.id,
+    required this.ingredient,
+    String quantityDelta = '0',
+  }) : deltaController = TextEditingController(text: quantityDelta);
+
+  factory _VariantAdjustmentRowState.fromAdjustment(
+    ProductVariantRecipeAdjustment adjustment,
+    ProductIngredient ingredient,
+  ) {
+    return _VariantAdjustmentRowState(
+      id: adjustment.id,
+      ingredient: ingredient,
+      quantityDelta: _formatStockInput(adjustment.quantityDelta),
+    );
+  }
+
+  void dispose() => deltaController.dispose();
 }
 
 class _SelectionField extends StatelessWidget {

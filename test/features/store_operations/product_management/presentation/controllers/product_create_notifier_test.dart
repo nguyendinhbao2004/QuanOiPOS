@@ -6,6 +6,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/enti
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_item_settings.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_ingredient.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_image_upload.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_management_detail.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_recipe_draft.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_topping.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
@@ -19,6 +20,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_ingredient_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_management_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_recipes_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_ingredient_inventory_settings_use_case.dart';
@@ -30,6 +32,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_ingredient_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/save_product_management_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/controllers/product_create_state.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/providers/product_management_providers.dart';
 
@@ -321,7 +324,7 @@ void main() {
       ),
     );
 
-    expect(repository.updateProductCallCount, 1);
+    expect(repository.saveProductManagementDetailCallCount, 1);
     expect(repository.lastPrice, 0);
     expect(repository.lastCostPrice, 0);
     expect(repository.lastVariants?.map((variant) => variant.name), [
@@ -333,8 +336,8 @@ void main() {
       'Size L',
     );
     expect(repository.lastToppingIds, [1]);
-    expect(repository.replaceProductRecipeCallCount, 1);
-    expect(repository.updateProductInventorySettingsCallCount, 1);
+    expect(repository.replaceProductRecipeCallCount, 0);
+    expect(repository.updateProductInventorySettingsCallCount, 0);
   });
 
   test('update can clear variants when all size rows are removed', () async {
@@ -362,7 +365,7 @@ void main() {
       ),
     );
 
-    expect(repository.updateProductCallCount, 1);
+    expect(repository.saveProductManagementDetailCallCount, 1);
     expect(repository.lastVariants, isEmpty);
     expect(repository.lastPrice, 25000);
   });
@@ -394,7 +397,7 @@ void main() {
       ),
     );
 
-    expect(repository.updateProductCallCount, 1);
+    expect(repository.saveProductManagementDetailCallCount, 1);
     expect(repository.lastVariants, isEmpty);
     expect(repository.lastToppingIds, [2]);
   });
@@ -650,11 +653,17 @@ ProviderContainer _container(_FakeProductCreateRepository repository) {
       loadProductDetailUseCaseProvider.overrideWithValue(
         LoadProductDetailUseCase(repository),
       ),
+      loadProductManagementDetailUseCaseProvider.overrideWithValue(
+        LoadProductManagementDetailUseCase(repository),
+      ),
       loadProductRecipesUseCaseProvider.overrideWithValue(
         LoadProductRecipesUseCase(repository),
       ),
       updateProductUseCaseProvider.overrideWithValue(
         UpdateProductUseCase(repository),
+      ),
+      saveProductManagementDetailUseCaseProvider.overrideWithValue(
+        SaveProductManagementDetailUseCase(repository),
       ),
       updateProductInventorySettingsUseCaseProvider.overrideWithValue(
         UpdateProductInventorySettingsUseCase(repository),
@@ -724,6 +733,7 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   int deleteIngredientCallCount = 0;
   int createProductCallCount = 0;
   int updateProductCallCount = 0;
+  int saveProductManagementDetailCallCount = 0;
   int updateProductInventorySettingsCallCount = 0;
   int replaceProductRecipeCallCount = 0;
   int? lastPrice;
@@ -907,6 +917,20 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
   }
 
   @override
+  Future<ProductManagementDetail> loadProductManagementDetail(
+    int productId,
+  ) async {
+    final product = await loadProductDetail(productId);
+    return ProductManagementDetail(
+      product: product,
+      variants: product.variants,
+      recipes: const [],
+      variantRecipeAdjustments: const [],
+      toppings: product.toppings,
+    );
+  }
+
+  @override
   Future<ProductCategory> createCategory({
     required int storeId,
     required String name,
@@ -1044,6 +1068,67 @@ class _FakeProductCreateRepository implements ProductManagementRepository {
           .toList(),
       isSell: true,
       isDeleted: false,
+    );
+  }
+
+  @override
+  Future<ProductManagementDetail> saveProductManagementDetail({
+    required int productId,
+    required int storeId,
+    required int categoryId,
+    required String name,
+    required String existingImageUrl,
+    ProductImageUpload? imageUpload,
+    required String description,
+    required int preparationTime,
+    required int price,
+    required int costPrice,
+    required ProductType type,
+    required List<ProductVariantDraft> variants,
+    required List<ProductRecipeDraft> recipes,
+    required List<int> toppingIds,
+    required double minimumStock,
+    required bool isTrackInventory,
+    required InventoryDeductionMode inventoryDeductionMode,
+  }) async {
+    saveProductManagementDetailCallCount += 1;
+    lastPrice = price;
+    lastCostPrice = costPrice;
+    lastVariants = variants;
+    lastToppingIds = toppingIds;
+    final product = Product(
+      id: productId,
+      storeId: storeId,
+      categoryId: categoryId,
+      categoryName: 'Đồ uống',
+      name: name,
+      imageUrl: imageUpload == null
+          ? existingImageUrl
+          : 'https://cdn.example/product.jpg',
+      description: description,
+      preparationTime: preparationTime,
+      price: price,
+      costPrice: costPrice,
+      type: type,
+      variants: variants,
+      toppings: toppings
+          .where((topping) => toppingIds.contains(topping.id))
+          .toList(),
+      isSell: true,
+      isDeleted: false,
+    );
+    return ProductManagementDetail(
+      product: product.copyWith(
+        minimumStock: minimumStock,
+        isTrackInventory: isTrackInventory,
+        inventoryDeductionMode: inventoryDeductionMode,
+      ),
+      variants: variants,
+      recipes: recipes,
+      variantRecipeAdjustments: [
+        for (final variant in variants) ...variant.recipeAdjustments,
+      ],
+      toppings: product.toppings,
     );
   }
 

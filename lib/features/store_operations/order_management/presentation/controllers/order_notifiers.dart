@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../product_management/presentation/providers/product_management_providers.dart';
+import '../../../product_management/domain/entities/inventory_deduction_mode.dart';
+import '../../../product_management/domain/entities/product_variant_draft.dart';
 import '../../domain/entities/create_order_draft.dart';
 import '../../domain/entities/order.dart';
 import '../../domain/entities/session_invoice.dart';
@@ -340,11 +342,12 @@ class OrderCreateNotifier
     try {
       final items = <CreateOrderItemDraft>[];
       for (final cartItem in state.cart) {
+        final variantId = _orderVariantId(cartItem);
         for (var index = 0; index < cartItem.quantity; index++) {
           items.add(
             CreateOrderItemDraft(
               productId: cartItem.product.id,
-              variantId: cartItem.variant?.id,
+              variantId: variantId,
               note: cartItem.note.trim().isEmpty ? null : cartItem.note.trim(),
               toppings: cartItem.toppings
                   .map(
@@ -376,4 +379,39 @@ class OrderCreateNotifier
 
 String _cleanError(Object error) {
   return error.toString().replaceFirst('Exception: ', '');
+}
+
+int? _orderVariantId(OrderCartItem cartItem) {
+  final variant = cartItem.variant;
+  if (variant == null) {
+    if (cartItem.product.inventoryDeductionMode ==
+        InventoryDeductionMode.variantOnly) {
+      throw Exception('Vui lòng chọn phiên bản cho "${cartItem.product.name}"');
+    }
+    return null;
+  }
+
+  if (variant.id == null) {
+    throw Exception(
+      'Variant của "${cartItem.product.name}" chưa có ID từ backend',
+    );
+  }
+
+  if (!_isActiveProductVariant(cartItem.product.variants, variant)) {
+    throw Exception('Phiên bản của "${cartItem.product.name}" đã ngừng bán');
+  }
+
+  return variant.id;
+}
+
+bool _isActiveProductVariant(
+  List<ProductVariantDraft> productVariants,
+  ProductVariantDraft selectedVariant,
+) {
+  return productVariants.any((variant) {
+    final isSame = selectedVariant.id != null && variant.id != null
+        ? selectedVariant.id == variant.id
+        : selectedVariant.name == variant.name;
+    return isSame && variant.isActive;
+  });
 }

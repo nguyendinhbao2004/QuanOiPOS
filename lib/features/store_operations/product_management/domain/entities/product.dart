@@ -76,6 +76,8 @@ class Product {
     bool? isLowStock,
     bool? isOutOfStock,
     List<ProductRecipeDraft>? recipes,
+    List<ProductVariantDraft>? variants,
+    List<ProductTopping>? toppings,
   }) {
     return Product(
       id: id,
@@ -96,8 +98,8 @@ class Product {
       inventoryDeductionMode:
           inventoryDeductionMode ?? this.inventoryDeductionMode,
       type: type,
-      variants: variants,
-      toppings: toppings,
+      variants: variants ?? this.variants,
+      toppings: toppings ?? this.toppings,
       recipes: recipes ?? this.recipes,
       isActive: isActive,
       isLowStock: isLowStock ?? this.isLowStock,

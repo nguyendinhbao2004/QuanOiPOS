@@ -220,6 +220,91 @@ class UpdateProductRequestModel {
   }
 }
 
+class UpdateProductManagementDetailRequestModel {
+  final int categoryId;
+  final String name;
+  final String? imageUrl;
+  final String description;
+  final int preparationTime;
+  final int price;
+  final int costPrice;
+  final ProductType type;
+  final List<ProductVariantDraft> variants;
+  final List<ProductRecipeDraft> recipes;
+  final List<int> toppingIds;
+  final double minimumStock;
+  final bool isTrackInventory;
+  final InventoryDeductionMode inventoryDeductionMode;
+
+  const UpdateProductManagementDetailRequestModel({
+    required this.categoryId,
+    required this.name,
+    required this.imageUrl,
+    required this.description,
+    required this.preparationTime,
+    required this.price,
+    required this.costPrice,
+    required this.type,
+    required this.variants,
+    required this.recipes,
+    required this.toppingIds,
+    required this.minimumStock,
+    required this.isTrackInventory,
+    required this.inventoryDeductionMode,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'categoryId': categoryId,
+      'name': name,
+      'imageUrl': imageUrl,
+      'description': description,
+      'preparationTime': preparationTime,
+      'price': price,
+      'costPrice': costPrice,
+      'type': type.value,
+      'variants': variants.map(_variantToJson).toList(),
+      'recipes': recipes.map(_recipeToJson).toList(),
+      'toppingIds': toppingIds,
+      'inventorySettings': {
+        'minimumStock': minimumStock,
+        'isTrackInventory': isTrackInventory,
+        'inventoryDeductionMode': inventoryDeductionMode.apiValue,
+      },
+    };
+  }
+
+  Map<String, dynamic> _variantToJson(ProductVariantDraft variant) {
+    return {
+      'id': variant.id,
+      'name': variant.name,
+      'price': variant.price,
+      'costPrice': variant.costPrice,
+      'isDefault': variant.isDefault,
+      'minimumStock': variant.minimumStock,
+      'isTrackInventory': variant.isTrackInventory,
+      'recipeAdjustments': variant.recipeAdjustments
+          .where((adjustment) => adjustment.quantityDelta != 0)
+          .map(
+            (adjustment) => {
+              'id': adjustment.id,
+              'ingredientId': adjustment.ingredientId,
+              'quantityDelta': adjustment.quantityDelta,
+            },
+          )
+          .toList(),
+    };
+  }
+
+  Map<String, dynamic> _recipeToJson(ProductRecipeDraft recipe) {
+    return {
+      'ingredientId': recipe.ingredientId,
+      'quantity': recipe.quantity,
+      'capacity': recipe.capacity,
+    };
+  }
+}
+
 class UpdateIngredientInventorySettingsRequestModel {
   final double minimumStock;
   final bool isTrackInventory;

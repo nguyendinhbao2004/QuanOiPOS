@@ -230,6 +230,14 @@ class ProductModel {
             price: _intValue(variant['price']),
             costPrice: _intValue(variant['costPrice']),
             isDefault: _boolValue(variant['isDefault']),
+            isActive: _boolValue(variant['isActive'], fallback: true),
+            quantity: _doubleValue(variant['quantity']),
+            minimumStock: _doubleValue(variant['minimumStock']),
+            averageUnitCost: _doubleValue(variant['averageUnitCost']),
+            lastImportUnitCost: _doubleValue(variant['lastImportUnitCost']),
+            isTrackInventory: _boolValue(variant['isTrackInventory']),
+            isLowStock: _boolValue(variant['isLowStock']),
+            isOutOfStock: _boolValue(variant['isOutOfStock']),
           ),
         )
         .toList();
