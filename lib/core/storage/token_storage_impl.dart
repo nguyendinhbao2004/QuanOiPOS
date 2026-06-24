@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'token_storage.dart';
 
@@ -20,17 +21,35 @@ class TokenStorageImpl implements TokenStorage {
   }
 
   @override
-  Future<String?> getAccessToken() {
-    return storage.read(key: _accessTokenKey);
-  }
+  Future<String?> getAccessToken() => _readToken(_accessTokenKey);
 
   @override
-  Future<String?> getRefreshToken() {
-    return storage.read(key: _refreshTokenKey);
-  }
+  Future<String?> getRefreshToken() => _readToken(_refreshTokenKey);
 
   @override
   Future<void> clear() async {
-    await storage.deleteAll();
+    await storage.delete(key: _accessTokenKey);
+    await storage.delete(key: _refreshTokenKey);
+  }
+
+  Future<String?> _readToken(String key) async {
+    try {
+      return await storage.read(key: key);
+    } on PlatformException catch (error) {
+      if (!_isRecoverableReadError(error)) {
+        rethrow;
+      }
+
+      await storage.delete(key: key);
+      return null;
+    }
+  }
+
+  bool _isRecoverableReadError(PlatformException error) {
+    final message = '${error.code} ${error.message} ${error.details}'
+        .toUpperCase();
+    return message.contains('BAD_DECRYPT') ||
+        message.contains('FAILED TO UNWRAP KEY') ||
+        message.contains('INVALIDKEYEXCEPTION');
   }
 }
