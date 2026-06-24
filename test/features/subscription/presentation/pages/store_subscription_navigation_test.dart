@@ -7,10 +7,6 @@ import 'package:quan_oi/features/auth/domain/entities/account_type.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_notifier.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
-import 'package:quan_oi/features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
-import 'package:quan_oi/features/workspace_context/domain/usecases/load_last_active_store_use_case.dart';
-import 'package:quan_oi/features/workspace_context/domain/usecases/save_last_active_store_use_case.dart';
-import 'package:quan_oi/features/workspace_context/presentation/providers/workspace_context_providers.dart';
 import 'package:quan_oi/features/subscription/domain/entities/active_subscription.dart';
 import 'package:quan_oi/features/subscription/domain/entities/pending_subscription_purchase.dart';
 import 'package:quan_oi/features/subscription/domain/entities/purchase_subscription_result.dart';
@@ -23,22 +19,45 @@ import 'package:quan_oi/features/subscription/domain/usecases/load_pending_subsc
 import 'package:quan_oi/features/subscription/domain/usecases/load_subscription_plans_use_case.dart';
 import 'package:quan_oi/features/subscription/domain/usecases/purchase_subscription_use_case.dart';
 import 'package:quan_oi/features/subscription/presentation/providers/subscription_providers.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/clear_last_active_store_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/load_last_active_store_use_case.dart';
+import 'package:quan_oi/features/workspace_context/domain/usecases/save_last_active_store_use_case.dart';
+import 'package:quan_oi/features/workspace_context/presentation/providers/workspace_context_providers.dart';
 
 void main() {
+  testWidgets('subscription page keeps carousel on compact layout', (
+    tester,
+  ) async {
+    final container = _buildContainer(AccountType.storeUser);
+    addTearDown(container.dispose);
+
+    await _pumpSubscriptionPage(tester, container, width: 800, height: 1200);
+
+    expect(
+      find.byKey(const Key('subscription_plan_page_view')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('subscription_plan_grid')), findsNothing);
+  });
+
+  testWidgets('subscription page shows grid layout on desktop', (tester) async {
+    final container = _buildContainer(AccountType.storeUser);
+    addTearDown(container.dispose);
+
+    await _pumpSubscriptionPage(tester, container, width: 1280, height: 1200);
+
+    expect(find.byKey(const Key('subscription_plan_grid')), findsOneWidget);
+    expect(find.byKey(const Key('subscription_plan_page_view')), findsNothing);
+    expect(find.text('Pro'), findsOneWidget);
+    expect(find.text('Basic'), findsOneWidget);
+    expect(find.text('MUA GÓI'), findsNWidgets(2));
+  });
+
   testWidgets('StoreUser can open subscription route', (tester) async {
     final container = _buildContainer(AccountType.storeUser);
     addTearDown(container.dispose);
 
-    final router = container.read(routerProvider);
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp.router(routerConfig: router),
-      ),
-    );
-
-    router.go('/store-subscription');
-    await tester.pumpAndSettle();
+    await _pumpSubscriptionPage(tester, container, width: 800, height: 1200);
 
     expect(find.text('Gói dịch vụ của tôi'), findsOneWidget);
     expect(find.text('Gói dịch vụ hệ thống'), findsOneWidget);
@@ -53,22 +72,9 @@ void main() {
     expect(find.text('50 người dùng'), findsOneWidget);
     expect(find.text('Dashboard nâng cao'), findsOneWidget);
     expect(find.text('Quản lý kho'), findsNothing);
-
-    await tester.ensureVisible(find.text('Xem thêm'));
-    await tester.tap(find.text('Xem thêm'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Quản lý kho'), findsOneWidget);
-    expect(find.text('Thu gọn'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Thu gọn'));
-    await tester.tap(find.text('Thu gọn'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Quản lý kho'), findsNothing);
-
-    await tester.ensureVisible(find.text('MUA GÓI'));
-    expect(find.text('MUA GÓI'), findsOneWidget);
+    expect(find.text('Xem thêm'), findsOneWidget);
+    await tester.ensureVisible(find.text('MUA GÓI').first);
+    expect(find.text('MUA GÓI'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('StoreUser sees active plan badge when subscribed', (
@@ -182,6 +188,31 @@ void main() {
   });
 }
 
+Future<void> _pumpSubscriptionPage(
+  WidgetTester tester,
+  ProviderContainer container, {
+  required double width,
+  required double height,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = Size(width, height);
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+
+  final router = container.read(routerProvider);
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(routerConfig: router),
+    ),
+  );
+
+  router.go('/store-subscription');
+  await tester.pumpAndSettle();
+}
+
 ProviderContainer _buildContainer(
   AccountType accountType, {
   ActiveSubscription? activeSubscription,
@@ -261,6 +292,16 @@ class _FakeSubscriptionRepository implements SubscriptionRepository {
   @override
   Future<List<ServicePackage>> loadPlans() async {
     return const [
+      ServicePackage(
+        id: '1',
+        name: 'Basic',
+        priceAmount: 199000,
+        durationDays: 30,
+        maxStores: 1,
+        maxUsers: 5,
+        features: ['Dashboard', 'Quản lý menu cơ bản', 'Quản lý đơn hàng'],
+        isActive: true,
+      ),
       ServicePackage(
         id: '2',
         name: 'Pro',

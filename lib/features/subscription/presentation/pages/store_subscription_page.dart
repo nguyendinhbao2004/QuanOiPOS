@@ -104,6 +104,11 @@ class _StoreSubscriptionPageState extends ConsumerState<StoreSubscriptionPage>
 }
 
 class _SubscriptionContent extends StatelessWidget {
+  static const double _desktopBreakpoint = 900;
+  static const double _largeDesktopBreakpoint = 1400;
+  static const double _mobileCarouselHeight = 560;
+  static const double _desktopPageMaxWidth = 1480;
+
   final SubscriptionState state;
   final Future<void> Function() onRetry;
   final Future<void> Function(ServicePackage plan) onPurchase;
@@ -120,50 +125,121 @@ class _SubscriptionContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppConstants.spacingMd),
-      child: ListView(
-        children: [
-          if (state.pendingPurchase != null) ...[
-            _PendingPaymentCard(
-              pendingPurchase: state.pendingPurchase!,
-              onContinuePayment: onContinuePayment,
-              onCancelPendingPayment: onCancelPendingPayment,
-            ),
-            const SizedBox(height: AppConstants.spacingLg),
-          ],
-          Row(
-            children: [
-              Expanded(
-                child: Text('Gói dịch vụ hệ thống', style: AppTextStyles.h3),
-              ),
-              IconButton(
-                tooltip: 'Tải lại',
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_outlined),
-              ),
-            ],
-          ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = constraints.maxWidth >= _desktopBreakpoint;
 
-          const SizedBox(height: AppConstants.spacingMd),
-          if (state.plans.isEmpty)
-            const SizedBox(
-              height: 260,
-              child: Center(child: _EmptyPackagesView()),
-            )
-          else
-            SizedBox(
-              height: 560,
-              child: _SubscriptionPlanCarousel(
-                plans: state.plans,
-                activeSubscription: state.activeSubscription,
-                status: state.status,
-                purchasingPlanId: state.purchasingPlanId,
-                onPurchase: onPurchase,
+        return ListView(
+          padding: EdgeInsets.all(
+            isDesktop ? AppConstants.spacingLg : AppConstants.spacingMd,
+          ),
+          children: [
+            Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isDesktop ? _desktopPageMaxWidth : double.infinity,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (state.pendingPurchase != null) ...[
+                      _PendingPaymentCard(
+                        pendingPurchase: state.pendingPurchase!,
+                        onContinuePayment: onContinuePayment,
+                        onCancelPendingPayment: onCancelPendingPayment,
+                      ),
+                      const SizedBox(height: AppConstants.spacingLg),
+                    ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Gói dịch vụ hệ thống',
+                            style: AppTextStyles.h3,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Tải lại',
+                          onPressed: onRetry,
+                          icon: const Icon(Icons.refresh_outlined),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppConstants.spacingMd),
+                    if (state.plans.isEmpty)
+                      const SizedBox(
+                        height: 260,
+                        child: Center(child: _EmptyPackagesView()),
+                      )
+                    else
+                      _ResponsiveSubscriptionPlans(
+                        maxWidth: constraints.maxWidth,
+                        desktopBreakpoint: _desktopBreakpoint,
+                        largeDesktopBreakpoint: _largeDesktopBreakpoint,
+                        mobileCarouselHeight: _mobileCarouselHeight,
+                        plans: state.plans,
+                        activeSubscription: state.activeSubscription,
+                        status: state.status,
+                        purchasingPlanId: state.purchasingPlanId,
+                        onPurchase: onPurchase,
+                      ),
+                  ],
+                ),
               ),
             ),
-        ],
-      ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ResponsiveSubscriptionPlans extends StatelessWidget {
+  final double maxWidth;
+  final double desktopBreakpoint;
+  final double largeDesktopBreakpoint;
+  final double mobileCarouselHeight;
+  final List<ServicePackage> plans;
+  final ActiveSubscription? activeSubscription;
+  final SubscriptionStatus status;
+  final String? purchasingPlanId;
+  final Future<void> Function(ServicePackage plan) onPurchase;
+
+  const _ResponsiveSubscriptionPlans({
+    required this.maxWidth,
+    required this.desktopBreakpoint,
+    required this.largeDesktopBreakpoint,
+    required this.mobileCarouselHeight,
+    required this.plans,
+    required this.activeSubscription,
+    required this.status,
+    required this.purchasingPlanId,
+    required this.onPurchase,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (maxWidth < desktopBreakpoint) {
+      return SizedBox(
+        height: mobileCarouselHeight,
+        child: _SubscriptionPlanCarousel(
+          plans: plans,
+          activeSubscription: activeSubscription,
+          status: status,
+          purchasingPlanId: purchasingPlanId,
+          onPurchase: onPurchase,
+        ),
+      );
+    }
+
+    final columns = maxWidth >= largeDesktopBreakpoint ? 3 : 2;
+    return _SubscriptionPlanGrid(
+      columns: columns,
+      plans: plans,
+      activeSubscription: activeSubscription,
+      status: status,
+      purchasingPlanId: purchasingPlanId,
+      onPurchase: onPurchase,
     );
   }
 }
@@ -247,6 +323,54 @@ class _SubscriptionPlanCarouselState extends State<_SubscriptionPlanCarousel> {
           currentIndex: _currentPage,
         ),
       ],
+    );
+  }
+}
+
+class _SubscriptionPlanGrid extends StatelessWidget {
+  final int columns;
+  final List<ServicePackage> plans;
+  final ActiveSubscription? activeSubscription;
+  final SubscriptionStatus status;
+  final String? purchasingPlanId;
+  final Future<void> Function(ServicePackage plan) onPurchase;
+
+  const _SubscriptionPlanGrid({
+    required this.columns,
+    required this.plans,
+    required this.activeSubscription,
+    required this.status,
+    required this.purchasingPlanId,
+    required this.onPurchase,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final spacing = AppConstants.spacingMd;
+        final itemWidth =
+            (constraints.maxWidth - spacing * (columns - 1)) / columns;
+
+        return Wrap(
+          key: const Key('subscription_plan_grid'),
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final plan in plans)
+              SizedBox(
+                width: itemWidth,
+                child: _ServicePackageCard(
+                  package: plan,
+                  activeSubscription: activeSubscription,
+                  status: status,
+                  purchasingPlanId: purchasingPlanId,
+                  onPurchase: onPurchase,
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
