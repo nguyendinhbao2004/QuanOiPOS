@@ -6,9 +6,11 @@ import '../../../../config/router_config.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/index.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../store_invitations/presentation/providers/store_invitation_providers.dart';
 import '../widgets/account_hub_header.dart';
 import '../widgets/account_hub_menu_section.dart';
 import '../widgets/logout_action_button.dart';
+import '../widgets/store_invitation_notification_sheet.dart';
 import '../widgets/system_shell_scaffold.dart';
 import '../widgets/user_profile_card.dart';
 
@@ -33,7 +35,10 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
   Future<void> _bootstrapAccountHub() async {
     setState(() => _state = _AccountHubState.loading);
     await Future<void>.delayed(const Duration(milliseconds: 400));
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
+
     setState(() => _state = _AccountHubState.ready);
   }
 
@@ -41,9 +46,19 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
     context.pushNamed(RouteNames.myStores);
   }
 
+  Future<void> _openNotifications(BuildContext context) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const StoreInvitationNotificationSheet(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
+    final invitationsState = ref.watch(storeInvitationsNotifierProvider);
     final fullName = authState.fullName ?? 'Store User';
     final email = authState.email ?? '';
 
@@ -52,7 +67,11 @@ class _StoreHomePageState extends ConsumerState<StoreHomePage> {
         bottom: false,
         child: Column(
           children: [
-            AccountHubHeader(greeting: 'Xin chào, $fullName'),
+            AccountHubHeader(
+              greeting: 'Xin chào, $fullName',
+              notificationCount: invitationsState.pendingCount,
+              onNotificationTap: () => _openNotifications(context),
+            ),
             Expanded(
               child: Container(
                 color: AppColors.background,

@@ -140,6 +140,12 @@ import '../../features/store_operations/voice_order/data/datasources/voice_order
 import '../../features/store_operations/voice_order/data/repositories/voice_order_repository_impl.dart';
 import '../../features/store_operations/voice_order/domain/repositories/voice_order_repository.dart';
 import '../../features/store_operations/voice_order/domain/usecases/recognize_voice_order_use_case.dart';
+import '../../features/store_invitations/data/datasources/store_invitation_remote_data_source.dart';
+import '../../features/store_invitations/data/repositories/store_invitation_repository_impl.dart';
+import '../../features/store_invitations/domain/repositories/store_invitation_repository.dart';
+import '../../features/store_invitations/domain/usecases/accept_store_invitation_use_case.dart';
+import '../../features/store_invitations/domain/usecases/load_received_store_invitations_use_case.dart';
+import '../../features/store_invitations/domain/usecases/reject_store_invitation_use_case.dart';
 import '../../features/workspace_context/data/datasources/store_access_context_cache_storage.dart';
 import '../../features/workspace_context/data/datasources/store_access_context_cache_storage_impl.dart';
 import '../../features/workspace_context/data/datasources/workspace_remote_data_source.dart';
@@ -798,5 +804,26 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   );
   locator.registerLazySingleton<DeleteStaffRoleUseCase>(
     () => DeleteStaffRoleUseCase(locator<StaffManagementRepository>()),
+  );
+
+  // Store invitations
+  locator.registerLazySingleton<StoreInvitationRemoteDataSource>(
+    () => StoreInvitationRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<StoreInvitationRepository>(
+    () => StoreInvitationRepositoryImpl(
+      locator<StoreInvitationRemoteDataSource>(),
+    ),
+  );
+  locator.registerLazySingleton<LoadReceivedStoreInvitationsUseCase>(
+    () => LoadReceivedStoreInvitationsUseCase(
+      locator<StoreInvitationRepository>(),
+    ),
+  );
+  locator.registerLazySingleton<AcceptStoreInvitationUseCase>(
+    () => AcceptStoreInvitationUseCase(locator<StoreInvitationRepository>()),
+  );
+  locator.registerLazySingleton<RejectStoreInvitationUseCase>(
+    () => RejectStoreInvitationUseCase(locator<StoreInvitationRepository>()),
   );
 }

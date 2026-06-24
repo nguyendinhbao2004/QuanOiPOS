@@ -5,10 +5,14 @@ import '../../../../core/theme/index.dart';
 
 class AccountHubHeader extends StatelessWidget {
   final String greeting;
+  final VoidCallback onNotificationTap;
+  final int notificationCount;
 
   const AccountHubHeader({
     super.key,
     required this.greeting,
+    required this.onNotificationTap,
+    this.notificationCount = 0,
   });
 
   @override
@@ -47,14 +51,55 @@ class AccountHubHeader extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            width: 38,
-            height: 38,
-            decoration: const BoxDecoration(
-              color: AppColors.primaryLight,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.notifications_none, color: AppColors.textSecondary),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              SizedBox(
+                width: 38,
+                height: 38,
+                child: IconButton(
+                  key: const Key('account_hub_notification_button'),
+                  tooltip: 'Thông báo',
+                  onPressed: onNotificationTap,
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.primaryLight,
+                    foregroundColor: notificationCount > 0
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
+                  icon: const Icon(Icons.notifications_none),
+                ),
+              ),
+              if (notificationCount > 0)
+                Positioned(
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    key: const Key('account_hub_notification_badge'),
+                    constraints: const BoxConstraints(minWidth: 18),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppConstants.spacingXs,
+                      vertical: 2,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.rectangle,
+                      borderRadius: BorderRadius.all(Radius.circular(999)),
+                    ),
+                    child: Text(
+                      notificationCount > 99
+                          ? '99+'
+                          : notificationCount.toString(),
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodyXs.copyWith(
+                        color: AppColors.surface,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
