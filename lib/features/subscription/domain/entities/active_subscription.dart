@@ -12,6 +12,7 @@ class ActiveSubscription {
   final int maxStores;
   final int maxUsers;
   final String status;
+  final bool isTrial;
   final bool autoRenew;
   final DateTime? cancelAt;
 
@@ -29,6 +30,7 @@ class ActiveSubscription {
     required this.maxStores,
     required this.maxUsers,
     required this.status,
+    required this.isTrial,
     required this.autoRenew,
     required this.cancelAt,
   });

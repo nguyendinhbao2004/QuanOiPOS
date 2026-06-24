@@ -406,6 +406,7 @@ class SubscriptionNotifier extends AutoDisposeNotifier<SubscriptionState> {
     final activeSubscription = state.activeSubscription;
     return activeSubscription != null &&
         _isActiveSubscription(activeSubscription) &&
+        !activeSubscription.isTrial &&
         activeSubscription.planId.toString() != plan.id;
   }
 

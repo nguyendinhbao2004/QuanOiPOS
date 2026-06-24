@@ -239,6 +239,7 @@ const _activeSubscription = ActiveSubscription(
   maxStores: 1,
   maxUsers: 5,
   status: 'Active',
+  isTrial: false,
   autoRenew: true,
   cancelAt: null,
 );

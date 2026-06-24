@@ -206,6 +206,29 @@ void main() {
     expect(repository.pendingPurchase, isNull);
     expect(state.errorMessage, 'Thanh toán đã hủy');
   });
+  test(
+    'subscription notifier allows purchasing another plan when current plan is trial',
+    () async {
+      final repository = _FakeSubscriptionRepository(
+        activeSubscription: _trialActiveSubscription,
+      );
+      final container = _containerWithRepository(repository);
+      addTearDown(container.dispose);
+      final subscription = _listen(container);
+      addTearDown(subscription.close);
+
+      await _flushMicrotasks();
+
+      await container
+          .read(subscriptionNotifierProvider.notifier)
+          .purchasePlan(_defaultPlans.first);
+
+      final state = container.read(subscriptionNotifierProvider);
+      expect(state.status, SubscriptionStatus.waitingForPayment);
+      expect(state.pendingPurchase, isNotNull);
+      expect(state.errorMessage, isNull);
+    },
+  );
 }
 
 ProviderContainer _containerWithRepository(
@@ -357,7 +380,27 @@ const _defaultActiveSubscription = ActiveSubscription(
   maxStores: 5,
   maxUsers: 50,
   status: 'Active',
+  isTrial: false,
   autoRenew: true,
+  cancelAt: null,
+);
+
+const _trialActiveSubscription = ActiveSubscription(
+  id: 4,
+  accountId: 8,
+  planId: 4,
+  planName: 'Trial',
+  price: 0,
+  startDate: null,
+  endDate: null,
+  daysRemaining: 6,
+  isActive: true,
+  isExpired: false,
+  maxStores: 1,
+  maxUsers: 3,
+  status: 'Active',
+  isTrial: true,
+  autoRenew: false,
   cancelAt: null,
 );
 

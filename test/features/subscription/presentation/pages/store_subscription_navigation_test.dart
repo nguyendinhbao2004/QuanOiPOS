@@ -136,6 +136,30 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('trial subscription still allows buying another plan', (
+    tester,
+  ) async {
+    final container = _buildContainer(
+      AccountType.storeUser,
+      activeSubscription: _trialActiveSubscription,
+    );
+    addTearDown(container.dispose);
+
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    router.go('/store-subscription');
+    await tester.pumpAndSettle();
+
+    final button = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+    expect(button.onPressed, isNotNull);
+  });
+
   testWidgets('SystemAdmin is redirected away from subscription route', (
     tester,
   ) async {
@@ -333,7 +357,27 @@ final _activeSubscription = ActiveSubscription(
   maxStores: 5,
   maxUsers: 50,
   status: 'Active',
+  isTrial: false,
   autoRenew: true,
+  cancelAt: null,
+);
+
+final _trialActiveSubscription = ActiveSubscription(
+  id: 44,
+  accountId: 39,
+  planId: 4,
+  planName: 'Trial',
+  price: 0,
+  startDate: DateTime.utc(2026, 6, 24),
+  endDate: DateTime.utc(2026, 7, 1),
+  daysRemaining: 6,
+  isActive: true,
+  isExpired: false,
+  maxStores: 1,
+  maxUsers: 3,
+  status: 'Active',
+  isTrial: true,
+  autoRenew: false,
   cancelAt: null,
 );
 

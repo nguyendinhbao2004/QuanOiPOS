@@ -328,6 +328,7 @@ class _ServicePackageCardState extends State<_ServicePackageCard> {
     return subscription != null &&
         subscription.isActive &&
         !subscription.isExpired &&
+        !subscription.isTrial &&
         !isCurrentPlan;
   }
 

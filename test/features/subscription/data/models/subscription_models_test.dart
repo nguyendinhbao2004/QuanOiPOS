@@ -67,11 +67,13 @@ void main() {
       expect(subscription.maxStores, 999);
       expect(subscription.maxUsers, 999);
       expect(subscription.status, 'Active');
+      expect(subscription.isTrial, isFalse);
       expect(subscription.autoRenew, isTrue);
       expect(subscription.cancelAt, isNull);
 
       final entity = subscription.toEntity();
       expect(entity.planName, 'Enterprise');
+      expect(entity.isTrial, isFalse);
       expect(entity.endDate, isNotNull);
     });
   });
@@ -486,6 +488,7 @@ const _activeSubscriptionData = {
   'maxStores': 999,
   'maxUsers': 999,
   'status': 'Active',
+  'isTrial': false,
   'autoRenew': true,
   'cancelAt': null,
 };

@@ -80,10 +80,7 @@ class _KitchenReadyView extends ConsumerWidget {
         title: 'Bạn chưa có quyền dùng KDS',
         message:
             'Màn hình bếp cần quyền ${AppPermissionCodes.kitchenAll}. Vui lòng liên hệ quản trị viên cửa hàng.',
-        onBack: () => context.goNamed(
-          RouteNames.storeOverview,
-          pathParameters: {'storeId': access.storeId.toString()},
-        ),
+        onBack: () => context.goNamed(RouteNames.storeHome),
       );
     }
 
@@ -111,10 +108,7 @@ class _KitchenReadyView extends ConsumerWidget {
               title: 'Bạn chưa có quyền dùng KDS',
               message:
                   state.errorMessage ?? 'Vui lòng kiểm tra lại phân quyền.',
-              onBack: () => context.goNamed(
-                RouteNames.storeOverview,
-                pathParameters: {'storeId': access.storeId.toString()},
-              ),
+              onBack: () => context.goNamed(RouteNames.storeHome),
             ),
             KitchenLoadStatus.error => _ErrorView(
               message: state.errorMessage ?? 'Không thể tải danh sách món bếp',
@@ -203,10 +197,7 @@ class _KitchenTopBar extends StatelessWidget {
           children: [
             IconButton(
               tooltip: 'Quay lại',
-              onPressed: () => context.goNamed(
-                RouteNames.storeOverview,
-                pathParameters: {'storeId': access.storeId.toString()},
-              ),
+              onPressed: () => context.goNamed(RouteNames.storeHome),
               icon: const Icon(Icons.arrow_back_rounded),
             ),
             const SizedBox(width: AppConstants.spacingSm),

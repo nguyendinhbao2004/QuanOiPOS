@@ -14,6 +14,7 @@ class ActiveSubscriptionModel {
   final int maxStores;
   final int maxUsers;
   final String status;
+  final bool isTrial;
   final bool autoRenew;
   final DateTime? cancelAt;
 
@@ -31,6 +32,7 @@ class ActiveSubscriptionModel {
     required this.maxStores,
     required this.maxUsers,
     required this.status,
+    required this.isTrial,
     required this.autoRenew,
     required this.cancelAt,
   });
@@ -54,6 +56,7 @@ class ActiveSubscriptionModel {
       maxStores: _intValue(json['maxStores']),
       maxUsers: _intValue(json['maxUsers']),
       status: _stringValue(json['status']),
+      isTrial: _boolValue(json['isTrial']),
       autoRenew: _boolValue(json['autoRenew']),
       cancelAt: _dateValue(json['cancelAt']),
     );
@@ -74,6 +77,7 @@ class ActiveSubscriptionModel {
       maxStores: maxStores,
       maxUsers: maxUsers,
       status: status,
+      isTrial: isTrial,
       autoRenew: autoRenew,
       cancelAt: cancelAt,
     );
