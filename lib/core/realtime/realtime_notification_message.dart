@@ -16,17 +16,18 @@ class RealtimeNotificationMessage {
   });
 
   factory RealtimeNotificationMessage.fromJson(Object? json) {
-    if (json is! Map<String, dynamic>) {
+    if (json is! Map) {
       throw const FormatException('Invalid realtime notification data');
     }
+    final map = json.map((key, value) => MapEntry(key.toString(), value));
 
     return RealtimeNotificationMessage(
-      eventName: _stringValue(json['eventName']),
-      title: _stringValue(json['title']),
-      content: _stringValue(json['content']),
-      audience: _stringValue(json['audience']),
-      payload: _mapValue(json['payload']),
-      occurredAt: _dateValue(json['occurredAt']),
+      eventName: _stringValue(map['eventName'] ?? map['EventName']),
+      title: _stringValue(map['title'] ?? map['Title']),
+      content: _stringValue(map['content'] ?? map['Content']),
+      audience: _stringValue(map['audience'] ?? map['Audience']),
+      payload: _mapValue(map['payload'] ?? map['Payload']),
+      occurredAt: _dateValue(map['occurredAt'] ?? map['OccurredAt']),
     );
   }
 

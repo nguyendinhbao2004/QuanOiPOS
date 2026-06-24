@@ -1,5 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/realtime/realtime_event_names.dart';
+import '../../../../../core/realtime/realtime_notification_message.dart';
+import '../../../../../core/realtime/realtime_providers.dart';
+import '../../data/models/kitchen_order_item_model.dart';
 import '../../domain/entities/kitchen_order_item.dart';
 import '../providers/kitchen_providers.dart';
 import 'kitchen_state.dart';
@@ -12,6 +18,17 @@ class KitchenNotifier
   @override
   KitchenState build(KitchenAccess arg) {
     _access = arg;
+    final realtimeService = ref.read(realtimeNotificationServiceProvider);
+    ref.listen(realtimeNotificationStreamProvider, (previous, next) {
+      final message = next.valueOrNull;
+      if (message != null) {
+        _handleRealtimeMessage(message);
+      }
+    });
+    ref.onDispose(() {
+      unawaited(realtimeService.leaveStore(arg.storeId));
+    });
+    unawaited(realtimeService.joinStore(arg.storeId));
     Future.microtask(load);
     return const KitchenState.initial().copyWith(
       filter: todayVietnamKitchenFilter(),
@@ -178,6 +195,112 @@ class KitchenNotifier
     }
   }
 
+  void _handleRealtimeMessage(RealtimeNotificationMessage message) {
+    final payloadStoreId = _readInt(message.payload, 'storeId');
+    if (payloadStoreId != null && payloadStoreId != _access.storeId) {
+      return;
+    }
+
+    switch (message.eventName) {
+      case RealtimeEventNames.kitchenOrderCreated:
+        _handleKitchenOrderCreated(message.payload);
+      case RealtimeEventNames.kitchenItemStatusChanged:
+      case RealtimeEventNames.kitchenItemCancelled:
+        _handleKitchenItemChanged(message.payload);
+    }
+  }
+
+  void _handleKitchenOrderCreated(Map<String, dynamic> payload) {
+    final rawItems = payload['items'] ?? payload['Items'];
+    if (rawItems is! List) {
+      return;
+    }
+
+    final items = KitchenOrderItemModel.listFromJson(
+      rawItems,
+    ).map((model) => model.toEntity()).where(_matchesCurrentFilter).toList();
+    _upsertRealtimeItems(items);
+  }
+
+  void _handleKitchenItemChanged(Map<String, dynamic> payload) {
+    final rawItem = payload['item'] ?? payload['Item'];
+    if (rawItem == null) {
+      return;
+    }
+
+    final item = KitchenOrderItemModel.fromJson(rawItem).toEntity();
+    if (_matchesCurrentFilter(item)) {
+      _upsertRealtimeItems([item]);
+      return;
+    }
+
+    _removeRealtimeItems({item.orderItemId});
+  }
+
+  void _upsertRealtimeItems(List<KitchenOrderItem> items) {
+    if (items.isEmpty) return;
+
+    final upsertById = {for (final item in items) item.orderItemId: item};
+    final existingIds = state.items.map((item) => item.orderItemId).toSet();
+    final nextItems = [
+      for (final item in state.items)
+        if (upsertById.containsKey(item.orderItemId))
+          upsertById[item.orderItemId]!
+        else
+          item,
+      for (final item in items)
+        if (!existingIds.contains(item.orderItemId)) item,
+    ];
+
+    state = state.copyWith(items: nextItems, clearError: true);
+  }
+
+  void _removeRealtimeItems(Set<int> itemIds) {
+    if (itemIds.isEmpty) return;
+
+    state = state.copyWith(
+      items: state.items
+          .where((item) => !itemIds.contains(item.orderItemId))
+          .toList(),
+      selectedItemIds: state.selectedItemIds
+          .where((id) => !itemIds.contains(id))
+          .toSet(),
+      processingItemIds: state.processingItemIds
+          .where((id) => !itemIds.contains(id))
+          .toSet(),
+      clearError: true,
+    );
+  }
+
+  bool _matchesCurrentFilter(KitchenOrderItem item) {
+    final filter = state.filter;
+
+    if (item.storeId != _access.storeId) return false;
+    if (filter.productId != null && item.productId != filter.productId) {
+      return false;
+    }
+    if (filter.tableId != null && item.tableId != filter.tableId) {
+      return false;
+    }
+    if (filter.tableSessionId != null &&
+        item.tableSessionId != filter.tableSessionId) {
+      return false;
+    }
+    if (filter.status != null && item.status != filter.status) {
+      return false;
+    }
+    if (filter.orderedFrom != null &&
+        !_isAtOrAfter(item.orderedAt, filter.orderedFrom!)) {
+      return false;
+    }
+    if (filter.orderedTo != null &&
+        !_isAtOrBefore(item.orderedAt, filter.orderedTo!)) {
+      return false;
+    }
+
+    return true;
+  }
+
   void _replaceUpdatedItems(List<KitchenOrderItem> updatedItems) {
     if (updatedItems.isEmpty) return;
     final updatedById = {
@@ -215,4 +338,26 @@ class KitchenNotifier
 
 String _cleanError(Object error) {
   return error.toString().replaceFirst('Exception: ', '');
+}
+
+int? _readInt(Map<String, dynamic> json, String key) {
+  final value = json[key] ?? json[_upperFirst(key)];
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
+String _upperFirst(String value) {
+  if (value.isEmpty) return value;
+  return value[0].toUpperCase() + value.substring(1);
+}
+
+bool _isAtOrAfter(DateTime? value, DateTime threshold) {
+  if (value == null) return false;
+  return !value.toUtc().isBefore(threshold.toUtc());
+}
+
+bool _isAtOrBefore(DateTime? value, DateTime threshold) {
+  if (value == null) return false;
+  return !value.toUtc().isAfter(threshold.toUtc());
 }

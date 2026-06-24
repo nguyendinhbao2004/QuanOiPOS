@@ -10,6 +10,10 @@ abstract class RealtimeNotificationService {
   Future<void> stop();
 
   Future<void> restart();
+
+  Future<void> joinStore(int storeId);
+
+  Future<void> leaveStore(int storeId);
 }
 
 class NoopRealtimeNotificationService implements RealtimeNotificationService {
@@ -26,4 +30,10 @@ class NoopRealtimeNotificationService implements RealtimeNotificationService {
 
   @override
   Future<void> restart() async {}
+
+  @override
+  Future<void> joinStore(int storeId) async {}
+
+  @override
+  Future<void> leaveStore(int storeId) async {}
 }

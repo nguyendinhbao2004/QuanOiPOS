@@ -137,6 +137,43 @@ class _KitchenReadyView extends ConsumerWidget {
                   successMessage: 'Đã hủy món',
                 );
               },
+              onUpdateItemsStatus: (items, status) async {
+                await _runGroupedItemAction(
+                  context,
+                  () async {
+                    var updated = 0;
+                    for (final item in items) {
+                      if (item.status == KitchenOrderItemStatus.ready ||
+                          item.status == KitchenOrderItemStatus.cancelled) {
+                        continue;
+                      }
+                      await notifier.updateItemStatus(
+                        orderItemId: item.orderItemId,
+                        status: status,
+                      );
+                      updated++;
+                    }
+                    return updated;
+                  },
+                  successMessage: (updated) =>
+                      status == KitchenOrderItemStatus.ready
+                      ? 'Đã hoàn thành $updated món'
+                      : 'Đã chuyển $updated món sang đang làm',
+                );
+              },
+              onCancelItems: (items) async {
+                await _runGroupedItemAction(context, () async {
+                  var updated = 0;
+                  for (final item in items) {
+                    if (item.status == KitchenOrderItemStatus.cancelled) {
+                      continue;
+                    }
+                    await notifier.cancelItem(item.orderItemId);
+                    updated++;
+                  }
+                  return updated;
+                }, successMessage: (updated) => 'Đã hủy $updated món');
+              },
               onPrepareSelected: () async {
                 await _runBulkAction(context, () => notifier.prepareSelected());
               },
@@ -384,6 +421,9 @@ class _KitchenBoard extends StatelessWidget {
   final Future<void> Function(KitchenOrderItem, KitchenOrderItemStatus)
   onUpdateStatus;
   final Future<void> Function(KitchenOrderItem) onCancel;
+  final Future<void> Function(List<KitchenOrderItem>, KitchenOrderItemStatus)
+  onUpdateItemsStatus;
+  final Future<void> Function(List<KitchenOrderItem>) onCancelItems;
   final Future<void> Function() onPrepareSelected;
   final Future<void> Function() onCompleteSelected;
   final Future<void> Function(List<KitchenOrderItem>) onCompleteTable;
@@ -396,6 +436,8 @@ class _KitchenBoard extends StatelessWidget {
     required this.onToggleSelection,
     required this.onUpdateStatus,
     required this.onCancel,
+    required this.onUpdateItemsStatus,
+    required this.onCancelItems,
     required this.onPrepareSelected,
     required this.onCompleteSelected,
     required this.onCompleteTable,
@@ -428,8 +470,8 @@ class _KitchenBoard extends StatelessWidget {
                     items: items,
                     processingItemIds: state.processingItemIds,
                     onRefresh: onRefresh,
-                    onUpdateStatus: onUpdateStatus,
-                    onCancel: onCancel,
+                    onUpdateStatus: onUpdateItemsStatus,
+                    onCancel: onCancelItems,
                     onCompleteTable: onCompleteTable,
                   )
                 : RefreshIndicator(
@@ -473,9 +515,9 @@ class _KitchenTableBoard extends StatelessWidget {
   final List<KitchenOrderItem> items;
   final Set<int> processingItemIds;
   final RefreshCallback onRefresh;
-  final Future<void> Function(KitchenOrderItem, KitchenOrderItemStatus)
+  final Future<void> Function(List<KitchenOrderItem>, KitchenOrderItemStatus)
   onUpdateStatus;
-  final Future<void> Function(KitchenOrderItem) onCancel;
+  final Future<void> Function(List<KitchenOrderItem>) onCancel;
   final Future<void> Function(List<KitchenOrderItem>) onCompleteTable;
 
   const _KitchenTableBoard({
@@ -539,9 +581,9 @@ class _KitchenTableBoard extends StatelessWidget {
 class _KitchenTableGroupCard extends StatelessWidget {
   final _KitchenTableGroup group;
   final Set<int> processingItemIds;
-  final Future<void> Function(KitchenOrderItem, KitchenOrderItemStatus)
+  final Future<void> Function(List<KitchenOrderItem>, KitchenOrderItemStatus)
   onUpdateStatus;
-  final Future<void> Function(KitchenOrderItem) onCancel;
+  final Future<void> Function(List<KitchenOrderItem>) onCancel;
   final VoidCallback onCompleteTable;
 
   const _KitchenTableGroupCard({
@@ -614,17 +656,21 @@ class _KitchenTableGroupCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (var index = 0; index < group.items.length; index++) ...[
+                  for (
+                    var index = 0;
+                    index < group.itemGroups.length;
+                    index++
+                  ) ...[
                     _KitchenTableItemRow(
-                      item: group.items[index],
-                      isProcessing: processingItemIds.contains(
-                        group.items[index].orderItemId,
+                      group: group.itemGroups[index],
+                      isProcessing: group.itemGroups[index].items.any(
+                        (item) => processingItemIds.contains(item.orderItemId),
                       ),
                       onUpdateStatus: (status) =>
-                          onUpdateStatus(group.items[index], status),
-                      onCancel: () => onCancel(group.items[index]),
+                          onUpdateStatus(group.itemGroups[index].items, status),
+                      onCancel: () => onCancel(group.itemGroups[index].items),
                     ),
-                    if (index != group.items.length - 1)
+                    if (index != group.itemGroups.length - 1)
                       const Divider(height: AppConstants.spacingLg),
                   ],
                   const SizedBox(height: AppConstants.spacingMd),
@@ -650,13 +696,13 @@ class _KitchenTableGroupCard extends StatelessWidget {
 }
 
 class _KitchenTableItemRow extends StatelessWidget {
-  final KitchenOrderItem item;
+  final _KitchenTableItemGroup group;
   final bool isProcessing;
   final ValueChanged<KitchenOrderItemStatus> onUpdateStatus;
   final VoidCallback onCancel;
 
   const _KitchenTableItemRow({
-    required this.item,
+    required this.group,
     required this.isProcessing,
     required this.onUpdateStatus,
     required this.onCancel,
@@ -675,6 +721,7 @@ class _KitchenTableItemRow extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final item = group.item;
         final compact = constraints.maxWidth < 360;
         final details = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -692,7 +739,7 @@ class _KitchenTableItemRow extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
-                  'SL: 1',
+                  'SL: ${group.quantity}',
                   style: AppTextStyles.labelSm.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w800,
@@ -1657,6 +1704,75 @@ class _KitchenTableGroup {
       return leftAt.isBefore(rightAt) ? left : right;
     });
   }
+
+  List<_KitchenTableItemGroup> get itemGroups {
+    final buckets = <String, List<KitchenOrderItem>>{};
+
+    for (final item in items) {
+      buckets.putIfAbsent(_tableItemGroupKey(item), () => []).add(item);
+    }
+
+    final groups = buckets.values.map((items) {
+      final sortedItems = [...items]
+        ..sort((a, b) {
+          final left = a.orderedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final right = b.orderedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return left.compareTo(right);
+        });
+      return _KitchenTableItemGroup(items: sortedItems);
+    }).toList();
+
+    groups.sort((a, b) {
+      final ordered = _compareNullableDate(a.item.orderedAt, b.item.orderedAt);
+      if (ordered != 0) return ordered;
+      return a.item.displayName.compareTo(b.item.displayName);
+    });
+
+    return groups;
+  }
+}
+
+class _KitchenTableItemGroup {
+  final List<KitchenOrderItem> items;
+
+  const _KitchenTableItemGroup({required this.items});
+
+  KitchenOrderItem get item => items.first;
+
+  int get quantity => items.length;
+}
+
+String _tableItemGroupKey(KitchenOrderItem item) {
+  final note = item.note?.trim().toLowerCase() ?? '';
+  return [
+    item.productId,
+    item.variantId ?? 0,
+    item.status.value,
+    note,
+    _toppingsGroupKey(item.toppings),
+  ].join('|');
+}
+
+String _toppingsGroupKey(List<KitchenOrderItemTopping> toppings) {
+  if (toppings.isEmpty) return '';
+  final parts =
+      toppings
+          .map(
+            (topping) => [
+              topping.toppingId,
+              topping.toppingName.trim().toLowerCase(),
+              topping.quantity,
+            ].join(':'),
+          )
+          .toList()
+        ..sort();
+  return parts.join(',');
+}
+
+int _compareNullableDate(DateTime? left, DateTime? right) {
+  final leftAt = left ?? DateTime.fromMillisecondsSinceEpoch(0);
+  final rightAt = right ?? DateTime.fromMillisecondsSinceEpoch(0);
+  return leftAt.compareTo(rightAt);
 }
 
 List<_KitchenTableGroup> _groupItemsByTable(List<KitchenOrderItem> items) {
@@ -1766,6 +1882,23 @@ Future<void> _runBulkAction(
       failed == 0
           ? 'Đã cập nhật $updated món'
           : 'Đã cập nhật $updated món, $failed món lỗi',
+    );
+  } catch (error) {
+    if (context.mounted) _showSnack(context, _cleanError(error));
+  }
+}
+
+Future<void> _runGroupedItemAction(
+  BuildContext context,
+  Future<int> Function() action, {
+  required String Function(int updated) successMessage,
+}) async {
+  try {
+    final updated = await action();
+    if (!context.mounted) return;
+    _showSnack(
+      context,
+      updated == 0 ? 'Không có món cần cập nhật' : successMessage(updated),
     );
   } catch (error) {
     if (context.mounted) _showSnack(context, _cleanError(error));
