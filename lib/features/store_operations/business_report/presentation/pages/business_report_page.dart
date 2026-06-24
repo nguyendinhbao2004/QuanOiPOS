@@ -119,11 +119,11 @@ class _ReadyView extends ConsumerWidget {
           onPickRange: () => _pickRange(context, reportState, notifier),
         ),
         if (reportState.status == BusinessReportStatus.loading) ...[
-          const SizedBox(height: AppConstants.spacingLg),
-          const LinearProgressIndicator(minHeight: 2),
+          const SizedBox(height: AppConstants.spacingMd),
+          _GeneratingBanner(),
         ],
         if (reportState.status == BusinessReportStatus.error) ...[
-          const SizedBox(height: AppConstants.spacingLg),
+          const SizedBox(height: AppConstants.spacingMd),
           _ErrorCard(
             message:
                 reportState.errorMessage ??
@@ -151,7 +151,6 @@ class _ReadyView extends ConsumerWidget {
       lastDate: DateTime.now(),
       initialDateRange: DateTimeRange(start: state.fromDate, end: state.toDate),
     );
-
     if (range != null) {
       notifier.changeDateRange(range.start, range.end);
     }
@@ -165,19 +164,43 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text(
-          store.storeName,
-          style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryDark],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          ),
+          child: const Icon(
+            Icons.auto_awesome_rounded,
+            color: AppColors.surface,
+            size: 24,
+          ),
         ),
-        const SizedBox(height: AppConstants.spacingXs),
-        Text(
-          'Phân tích doanh thu, lợi nhuận, giờ cao điểm và tồn kho',
-          style: AppTextStyles.bodySm,
+        const SizedBox(width: AppConstants.spacingMd),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                store.storeName,
+                style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Phân tích doanh thu · Lợi nhuận · Giờ cao điểm · Tồn kho',
+                style: AppTextStyles.bodyXs,
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -188,7 +211,10 @@ class _FilterPanel extends StatelessWidget {
   final BusinessReportState state;
   final VoidCallback onPickRange;
 
-  const _FilterPanel({required this.state, required this.onPickRange});
+  const _FilterPanel({
+    required this.state,
+    required this.onPickRange,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -199,11 +225,51 @@ class _FilterPanel extends StatelessWidget {
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: state.isLoading ? null : onPickRange,
-            style: OutlinedButton.styleFrom(minimumSize: const Size(0, 52)),
-            icon: const Icon(Icons.date_range_outlined),
-            label: Text(_formatRange(state.fromDate, state.toDate)),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 48),
+              alignment: Alignment.centerLeft,
+            ),
+            icon: const Icon(Icons.date_range_outlined, size: 18),
+            label: Text(
+              _formatRange(state.fromDate, state.toDate),
+              style: AppTextStyles.labelSm,
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _GeneratingBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.spacingMd,
+        vertical: AppConstants.spacingSm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: AppConstants.spacingSm),
+          Text(
+            'AI đang phân tích dữ liệu kinh doanh...',
+            style: AppTextStyles.bodySm.copyWith(color: AppColors.primary),
+          ),
+        ],
       ),
     );
   }
@@ -221,22 +287,58 @@ class _ReportContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (report.createdAt != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppConstants.spacingMd),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.update_rounded,
+                  size: 14,
+                  color: AppColors.textMuted,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Báo cáo lúc ${DateFormat('HH:mm, dd/MM/yyyy').format(report.createdAt!.toLocal())}',
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
+          ),
         _KpiGrid(metrics: metrics),
         const SizedBox(height: AppConstants.spacingLg),
         _AiContentCard(content: report.content),
         const SizedBox(height: AppConstants.spacingLg),
         _HourlyOrdersChart(items: metrics.hourlyOrders),
         const SizedBox(height: AppConstants.spacingLg),
-        _TopProductsTable(items: metrics.topProducts),
+        _TopProductsSection(items: metrics.topProducts),
         const SizedBox(height: AppConstants.spacingLg),
-        _HourlyProductSalesTable(items: metrics.hourlyProductSales),
+        _HourlyProductSalesSection(items: metrics.hourlyProductSales),
         const SizedBox(height: AppConstants.spacingLg),
         _InventorySummaryCard(summary: metrics.inventorySummary),
         const SizedBox(height: AppConstants.spacingLg),
-        _InventoryRecommendationsTable(items: metrics.inventoryRecommendations),
+        _InventoryRecommendationsSection(
+          items: metrics.inventoryRecommendations,
+        ),
       ],
     );
   }
+}
+
+class _KpiItem {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color accentColor;
+  final String? subtitle;
+
+  const _KpiItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.accentColor,
+    this.subtitle,
+  });
 }
 
 class _KpiGrid extends StatelessWidget {
@@ -248,34 +350,49 @@ class _KpiGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       _KpiItem(
-        'Doanh thu',
-        _formatMoney(metrics.revenueSummary.totalRevenue),
-        Icons.payments_outlined,
+        label: 'Tổng doanh thu',
+        value: _formatMoney(metrics.revenueSummary.totalRevenue),
+        icon: Icons.payments_outlined,
+        accentColor: AppColors.primary,
+        subtitle:
+            'Thực thu: ${_formatMoney(metrics.revenueSummary.paidRevenue)}',
       ),
       _KpiItem(
-        'Đã thu',
-        _formatMoney(metrics.revenueSummary.paidRevenue),
-        Icons.account_balance_wallet_outlined,
+        label: 'Lợi nhuận gộp',
+        value: _formatMoney(metrics.profitSummary.grossProfit),
+        icon: Icons.trending_up_rounded,
+        accentColor: AppColors.success,
+        subtitle:
+            'Biên LN: ${_formatPercent(metrics.profitSummary.grossProfitMargin)}',
       ),
       _KpiItem(
-        'Lợi nhuận gộp',
-        _formatMoney(metrics.profitSummary.grossProfit),
-        Icons.trending_up_rounded,
+        label: 'Đơn hoàn tất',
+        value: metrics.revenueSummary.completedOrderCount.toString(),
+        icon: Icons.receipt_long_outlined,
+        accentColor: AppColors.info,
+        subtitle:
+            'TB/đơn: ${_formatMoney(metrics.revenueSummary.averageOrderValue)}',
       ),
       _KpiItem(
-        'Biên lợi nhuận',
-        _formatPercent(metrics.profitSummary.grossProfitMargin),
-        Icons.percent_rounded,
+        label: 'Giá vốn',
+        value: _formatMoney(metrics.profitSummary.totalCost),
+        icon: Icons.price_check_outlined,
+        accentColor: AppColors.warning,
+        subtitle: null,
       ),
       _KpiItem(
-        'Chi phí nhập',
-        _formatMoney(metrics.purchaseSummary.totalPurchaseCost),
-        Icons.inventory_rounded,
+        label: 'Chi phí nhập hàng',
+        value: _formatMoney(metrics.purchaseSummary.totalPurchaseCost),
+        icon: Icons.inventory_rounded,
+        accentColor: AppColors.chart3,
+        subtitle: '${metrics.purchaseSummary.purchaseMovementCount} lần nhập',
       ),
       _KpiItem(
-        'Đơn hoàn tất',
-        metrics.revenueSummary.completedOrderCount.toString(),
-        Icons.receipt_long_outlined,
+        label: 'Đơn hủy',
+        value: metrics.revenueSummary.cancelledOrderCount.toString(),
+        icon: Icons.cancel_outlined,
+        accentColor: AppColors.error,
+        subtitle: null,
       ),
     ];
 
@@ -286,7 +403,7 @@ class _KpiGrid extends StatelessWidget {
             : constraints.maxWidth >= 560
             ? 2
             : 1;
-        final spacing = AppConstants.spacingMd;
+        const spacing = AppConstants.spacingMd;
         final width =
             (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
@@ -317,31 +434,47 @@ class _KpiCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(AppConstants.spacingMd),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppColors.primaryLight,
+                color: item.accentColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppTheme.radiusLg),
               ),
-              child: Icon(item.icon, color: AppColors.primary),
+              child: Icon(item.icon, color: item.accentColor, size: 22),
             ),
             const SizedBox(width: AppConstants.spacingMd),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.label, style: AppTextStyles.caption),
-                  const SizedBox(height: AppConstants.spacingXs),
+                  Text(
+                    item.label,
+                    style: AppTextStyles.bodyXs,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     item.value,
                     style: AppTextStyles.h4.copyWith(
                       fontWeight: FontWeight.w700,
+                      color: item.accentColor,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (item.subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.subtitle!,
+                      style: AppTextStyles.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -362,10 +495,158 @@ class _AiContentCard extends StatelessWidget {
     return _SectionCard(
       title: 'Nhận định AI',
       icon: Icons.auto_awesome_rounded,
-      child: Text(
-        content.isEmpty ? 'AI chưa trả nội dung phân tích.' : content,
-        style: AppTextStyles.bodyBase,
+      iconColor: AppColors.primary,
+      headerTrailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        ),
+        child: Text(
+          'AI Generated',
+          style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+        ),
       ),
+      child: content.isEmpty
+          ? const _InlineEmptyState(message: 'AI chưa trả nội dung phân tích.')
+          : _AiContentBody(content: content),
+    );
+  }
+}
+
+class _AiContentBody extends StatefulWidget {
+  final String content;
+
+  const _AiContentBody({required this.content});
+
+  @override
+  State<_AiContentBody> createState() => _AiContentBodyState();
+}
+
+class _AiContentBodyState extends State<_AiContentBody> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = widget.content.split('\n');
+    final hasMore = lines.length > 8;
+    final displayText = _expanded || !hasMore
+        ? widget.content
+        : lines.take(8).join('\n');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _MarkdownLikeText(text: displayText),
+        if (hasMore) ...[
+          const SizedBox(height: AppConstants.spacingSm),
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Text(
+              _expanded ? 'Thu gọn ▲' : 'Xem đầy đủ phân tích ▼',
+              style: AppTextStyles.labelSm.copyWith(color: AppColors.primary),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _MarkdownLikeText extends StatelessWidget {
+  final String text;
+
+  const _MarkdownLikeText({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: text.split('\n').map(_buildLine).toList(),
+    );
+  }
+
+  Widget _buildLine(String line) {
+    if (line.startsWith('### ')) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 12, bottom: 4),
+        child: Text(
+          line.substring(4),
+          style: AppTextStyles.labelSm.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      );
+    }
+    if (line.trim().isEmpty) return const SizedBox(height: 4);
+
+    String processedLine = line;
+    bool isBullet = false;
+    if (RegExp(r'^\*\s+').hasMatch(line)) {
+      processedLine = line.replaceFirst(RegExp(r'^\*\s+'), '');
+      isBullet = true;
+    }
+
+    final spans = <InlineSpan>[];
+    final boldPattern = RegExp(r'\*\*(.*?)\*\*');
+    int lastEnd = 0;
+    for (final match in boldPattern.allMatches(processedLine)) {
+      if (match.start > lastEnd) {
+        spans.add(
+          TextSpan(
+            text: processedLine.substring(lastEnd, match.start),
+            style: AppTextStyles.bodySm,
+          ),
+        );
+      }
+      spans.add(
+        TextSpan(
+          text: match.group(1),
+          style: AppTextStyles.bodySm.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      );
+      lastEnd = match.end;
+    }
+    if (lastEnd < processedLine.length) {
+      spans.add(
+        TextSpan(
+          text: processedLine.substring(lastEnd),
+          style: AppTextStyles.bodySm,
+        ),
+      );
+    }
+
+    final textWidget = RichText(text: TextSpan(children: spans));
+    if (isBullet) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 8, bottom: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: textWidget),
+          ],
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: textWidget,
     );
   }
 }
@@ -380,14 +661,21 @@ class _HourlyOrdersChart extends StatelessWidget {
     final buckets = _normalizeHourlyOrders(items);
     final maxRevenue = buckets.fold<double>(
       0,
-      (value, item) => item.revenue > value ? item.revenue : value,
+      (v, i) => i.revenue > v ? i.revenue : v,
     );
+    final peakHour = maxRevenue > 0
+        ? buckets.reduce((a, b) => a.revenue > b.revenue ? a : b)
+        : null;
 
     return _SectionCard(
       title: 'Doanh thu theo giờ',
       icon: Icons.query_stats_rounded,
+      iconColor: AppColors.info,
+      headerTrailing: peakHour != null && peakHour.revenue > 0
+          ? _PeakBadge(hour: peakHour.hour)
+          : null,
       child: SizedBox(
-        height: 260,
+        height: 240,
         child: maxRevenue <= 0
             ? const _InlineEmptyState(
                 message: 'Chưa có đơn hoàn tất trong khung ngày này.',
@@ -395,7 +683,13 @@ class _HourlyOrdersChart extends StatelessWidget {
             : BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
-                  gridData: const FlGridData(show: false),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: maxRevenue / 4,
+                    getDrawingHorizontalLine: (_) =>
+                        const FlLine(color: AppColors.border, strokeWidth: 1),
+                  ),
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
                     topTitles: const AxisTitles(
@@ -410,14 +704,12 @@ class _HourlyOrdersChart extends StatelessWidget {
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 32,
+                        reservedSize: 28,
                         getTitlesWidget: (value, meta) {
                           final hour = value.toInt();
-                          if (hour % 3 != 0) {
-                            return const SizedBox.shrink();
-                          }
+                          if (hour % 4 != 0) return const SizedBox.shrink();
                           return Padding(
-                            padding: const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.only(top: 6),
                             child: Text('$hour', style: AppTextStyles.caption),
                           );
                         },
@@ -426,12 +718,15 @@ class _HourlyOrdersChart extends StatelessWidget {
                   ),
                   barTouchData: BarTouchData(
                     touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (_) => AppColors.textPrimary,
+                      tooltipBorderRadius: BorderRadius.circular(
+                        AppTheme.radiusMd,
+                      ),
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         final item = buckets[group.x.toInt()];
+                        if (item.orderCount == 0) return null;
                         return BarTooltipItem(
-                          '${item.hour}:00 - ${item.hour}:59\n'
-                          '${item.orderCount} đơn\n'
-                          '${_formatMoney(item.revenue)}',
+                          '${item.hour}:00–${item.hour}:59\n${item.orderCount} đơn\n${_formatMoney(item.revenue)}',
                           AppTextStyles.caption.copyWith(
                             color: AppColors.surface,
                           ),
@@ -446,11 +741,20 @@ class _HourlyOrdersChart extends StatelessWidget {
                         barRods: [
                           BarChartRodData(
                             toY: item.revenue,
-                            width: 9,
-                            borderRadius: BorderRadius.circular(
-                              AppTheme.radiusSm,
+                            width: 10,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(4),
                             ),
-                            color: AppColors.primary,
+                            gradient: LinearGradient(
+                              colors: item.hour == peakHour?.hour
+                                  ? [AppColors.primary, AppColors.primaryDark]
+                                  : [
+                                      AppColors.primary.withValues(alpha: 0.55),
+                                      AppColors.primary.withValues(alpha: 0.35),
+                                    ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
                           ),
                         ],
                       ),
@@ -462,86 +766,229 @@ class _HourlyOrdersChart extends StatelessWidget {
   }
 }
 
-class _TopProductsTable extends StatelessWidget {
+class _PeakBadge extends StatelessWidget {
+  final int hour;
+
+  const _PeakBadge({required this.hour});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.bolt_rounded, size: 13, color: AppColors.warning),
+          const SizedBox(width: 3),
+          Text(
+            'Cao điểm $hour:00',
+            style: AppTextStyles.caption.copyWith(color: AppColors.warning),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopProductsSection extends StatelessWidget {
   final List<TopProductMetric> items;
 
-  const _TopProductsTable({required this.items});
+  const _TopProductsSection({required this.items});
 
   @override
   Widget build(BuildContext context) {
     return _SectionCard(
       title: 'Top món bán chạy',
-      icon: Icons.local_fire_department_outlined,
+      icon: Icons.local_fire_department_rounded,
+      iconColor: AppColors.error,
       child: items.isEmpty
           ? const _InlineEmptyState(
               message: 'Chưa có món bán chạy để hiển thị.',
             )
-          : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Món')),
-                  DataColumn(label: Text('SL')),
-                  DataColumn(label: Text('Doanh thu')),
-                  DataColumn(label: Text('Giá vốn')),
-                  DataColumn(label: Text('Lợi nhuận')),
-                  DataColumn(label: Text('Biên LN')),
-                ],
-                rows: [
-                  for (final item in items)
-                    DataRow(
-                      cells: [
-                        DataCell(Text(item.productName)),
-                        DataCell(Text(_formatQuantity(item.quantitySold))),
-                        DataCell(Text(_formatMoney(item.revenue))),
-                        DataCell(Text(_formatMoney(item.cost))),
-                        DataCell(Text(_formatMoney(item.grossProfit))),
-                        DataCell(Text(_formatPercent(item.grossProfitMargin))),
-                      ],
-                    ),
-                ],
-              ),
+          : Column(
+              children: [
+                for (int i = 0; i < items.length; i++)
+                  _TopProductRow(
+                    item: items[i],
+                    rank: i + 1,
+                    isLast: i == items.length - 1,
+                  ),
+              ],
             ),
     );
   }
 }
 
-class _HourlyProductSalesTable extends StatelessWidget {
+class _TopProductRow extends StatelessWidget {
+  final TopProductMetric item;
+  final int rank;
+  final bool isLast;
+
+  const _TopProductRow({
+    required this.item,
+    required this.rank,
+    required this.isLast,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rankColor = switch (rank) {
+      1 => const Color(0xFFFFB800),
+      2 => const Color(0xFF9B9B9B),
+      3 => const Color(0xFFCD7F32),
+      _ => AppColors.textMuted,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppConstants.spacingSm),
+      decoration: !isLast
+          ? const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            )
+          : null,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 28,
+            child: Text(
+              '#$rank',
+              style: AppTextStyles.labelSm.copyWith(color: rankColor),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.productName,
+                  style: AppTextStyles.labelSm,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${_formatQuantity(item.quantitySold)} phần · ${_formatMoney(item.revenue)}',
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppConstants.spacingSm),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _formatMoney(item.grossProfit),
+                style: AppTextStyles.labelSm.copyWith(
+                  color: item.grossProfit > 0
+                      ? AppColors.success
+                      : AppColors.textMuted,
+                ),
+              ),
+              Text(
+                _formatPercent(item.grossProfitMargin),
+                style: AppTextStyles.caption,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HourlyProductSalesSection extends StatelessWidget {
   final List<HourlyProductSaleMetric> items;
 
-  const _HourlyProductSalesTable({required this.items});
+  const _HourlyProductSalesSection({required this.items});
 
   @override
   Widget build(BuildContext context) {
     return _SectionCard(
       title: 'Món mạnh theo giờ',
       icon: Icons.schedule_rounded,
+      iconColor: AppColors.chart2,
       child: items.isEmpty
           ? const _InlineEmptyState(message: 'Chưa có dữ liệu theo khung giờ.')
-          : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Giờ')),
-                  DataColumn(label: Text('Món')),
-                  DataColumn(label: Text('SL')),
-                  DataColumn(label: Text('Doanh thu')),
-                  DataColumn(label: Text('Lợi nhuận')),
-                ],
-                rows: [
-                  for (final item in items)
-                    DataRow(
-                      cells: [
-                        DataCell(Text('${item.hour}:00')),
-                        DataCell(Text(item.productName)),
-                        DataCell(Text(_formatQuantity(item.quantitySold))),
-                        DataCell(Text(_formatMoney(item.revenue))),
-                        DataCell(Text(_formatMoney(item.grossProfit))),
-                      ],
-                    ),
-                ],
-              ),
+          : Column(
+              children: [
+                for (int i = 0; i < items.length; i++)
+                  _HourlyProductRow(
+                    item: items[i],
+                    isLast: i == items.length - 1,
+                  ),
+              ],
             ),
+    );
+  }
+}
+
+class _HourlyProductRow extends StatelessWidget {
+  final HourlyProductSaleMetric item;
+  final bool isLast;
+
+  const _HourlyProductRow({required this.item, required this.isLast});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppConstants.spacingSm),
+      decoration: !isLast
+          ? const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            )
+          : null,
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.chart2.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            ),
+            child: Text(
+              '${item.hour}:00',
+              style: AppTextStyles.caption.copyWith(color: AppColors.chart2),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(width: AppConstants.spacingMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.productName,
+                  style: AppTextStyles.labelSm,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${_formatQuantity(item.quantitySold)} phần',
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(_formatMoney(item.revenue), style: AppTextStyles.labelSm),
+              Text(
+                'LN: ${_formatMoney(item.grossProfit)}',
+                style: AppTextStyles.caption.copyWith(
+                  color: item.grossProfit > 0
+                      ? AppColors.success
+                      : AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -556,96 +1003,280 @@ class _InventorySummaryCard extends StatelessWidget {
     return _SectionCard(
       title: 'Tồn kho cần chú ý',
       icon: Icons.warehouse_outlined,
+      iconColor: AppColors.warning,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            spacing: AppConstants.spacingMd,
-            runSpacing: AppConstants.spacingMd,
+          Row(
             children: [
-              _InventoryCountChip(
-                label: 'Sắp hết',
-                value: summary.lowStockCount,
-                color: AppColors.warning,
+              Expanded(
+                child: _InventoryStatTile(
+                  label: 'Sắp hết',
+                  value: summary.lowStockCount,
+                  color: AppColors.warning,
+                  icon: Icons.warning_amber_rounded,
+                ),
               ),
-              _InventoryCountChip(
-                label: 'Hết hàng',
-                value: summary.outOfStockCount,
-                color: AppColors.error,
+              const SizedBox(width: AppConstants.spacingSm),
+              Expanded(
+                child: _InventoryStatTile(
+                  label: 'Hết hàng',
+                  value: summary.outOfStockCount,
+                  color: AppColors.error,
+                  icon: Icons.remove_shopping_cart_outlined,
+                ),
               ),
-              _InventoryCountChip(
-                label: 'Thiếu công thức',
-                value: summary.missingRecipeProductCount,
-                color: AppColors.info,
+              const SizedBox(width: AppConstants.spacingSm),
+              Expanded(
+                child: _InventoryStatTile(
+                  label: 'Thiếu Công Thức',
+                  value: summary.missingRecipeProductCount,
+                  color: AppColors.info,
+                  icon: Icons.receipt_outlined,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: AppConstants.spacingMd),
-          ...[
-            for (final item in [
-              ...summary.outOfStockItems,
-              ...summary.lowStockItems,
-            ])
-              _InventoryItemRow(item: item),
+          if (summary.outOfStockItems.isNotEmpty ||
+              summary.lowStockItems.isNotEmpty) ...[
+            const SizedBox(height: AppConstants.spacingMd),
+            const Divider(),
+            const SizedBox(height: AppConstants.spacingMd),
+            for (final item in summary.outOfStockItems)
+              _InventoryAttentionRow(item: item, isOutOfStock: true),
+            for (final item in summary.lowStockItems)
+              _InventoryAttentionRow(item: item, isOutOfStock: false),
+          ] else ...[
+            const SizedBox(height: AppConstants.spacingMd),
+            const _InlineEmptyState(message: 'Tất cả sản phẩm đủ hàng.'),
           ],
-          if (summary.lowStockItems.isEmpty && summary.outOfStockItems.isEmpty)
-            const _InlineEmptyState(message: 'Chưa có item tồn kho cần chú ý.'),
         ],
       ),
     );
   }
 }
 
-class _InventoryRecommendationsTable extends StatelessWidget {
+class _InventoryStatTile extends StatelessWidget {
+  final String label;
+  final int value;
+  final Color color;
+  final IconData icon;
+
+  const _InventoryStatTile({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.spacingSm,
+        vertical: AppConstants.spacingMd,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 4),
+          Text(
+            value.toString(),
+            style: AppTextStyles.h3.copyWith(
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: AppTextStyles.caption,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InventoryAttentionRow extends StatelessWidget {
+  final InventoryAttentionItem item;
+  final bool isOutOfStock;
+
+  const _InventoryAttentionRow({
+    required this.item,
+    required this.isOutOfStock,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isOutOfStock ? AppColors.error : AppColors.warning;
+    final statusText = isOutOfStock ? 'Hết hàng' : 'Sắp hết';
+    final progressValue = item.minimumStock > 0
+        ? (item.quantity / item.minimumStock).clamp(0.0, 1.0)
+        : 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppConstants.spacingSm),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            ),
+            child: Text(
+              statusText,
+              style: AppTextStyles.caption.copyWith(color: color),
+            ),
+          ),
+          const SizedBox(width: AppConstants.spacingSm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.itemName,
+                  style: AppTextStyles.labelSm,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: progressValue,
+                    minHeight: 4,
+                    backgroundColor: AppColors.border,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppConstants.spacingSm),
+          Text(
+            '${_formatQuantity(item.quantity)}/${_formatQuantity(item.minimumStock)} ${item.unit}',
+            style: AppTextStyles.caption,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InventoryRecommendationsSection extends StatelessWidget {
   final List<InventoryRecommendation> items;
 
-  const _InventoryRecommendationsTable({required this.items});
+  const _InventoryRecommendationsSection({required this.items});
 
   @override
   Widget build(BuildContext context) {
     return _SectionCard(
-      title: 'Khuyến nghị kho',
-      icon: Icons.recommend_outlined,
+      title: 'Khuyến nghị nhập kho',
+      icon: Icons.recommend_rounded,
+      iconColor: AppColors.success,
       child: items.isEmpty
           ? const _InlineEmptyState(message: 'Chưa có khuyến nghị kho.')
-          : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Loại')),
-                  DataColumn(label: Text('Item')),
-                  DataColumn(label: Text('Tồn hiện tại')),
-                  DataColumn(label: Text('Tối thiểu')),
-                  DataColumn(label: Text('Tiêu thụ')),
-                  DataColumn(label: Text('Đã nhập')),
-                  DataColumn(label: Text('Lý do')),
-                ],
-                rows: [
-                  for (final item in items)
-                    DataRow(
-                      cells: [
-                        DataCell(_RecommendationBadge(item: item)),
-                        DataCell(Text(item.itemName)),
-                        DataCell(
-                          Text(
-                            '${_formatQuantity(item.currentQuantity)} ${item.unit}',
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            '${_formatQuantity(item.minimumStock)} ${item.unit}',
-                          ),
-                        ),
-                        DataCell(Text(_formatQuantity(item.consumedQuantity))),
-                        DataCell(Text(_formatQuantity(item.importedQuantity))),
-                        DataCell(
-                          SizedBox(width: 240, child: Text(item.reason)),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
+          : Column(
+              children: [
+                for (int i = 0; i < items.length; i++)
+                  _RecommendationRow(
+                    item: items[i],
+                    isLast: i == items.length - 1,
+                  ),
+              ],
             ),
+    );
+  }
+}
+
+class _RecommendationRow extends StatelessWidget {
+  final InventoryRecommendation item;
+  final bool isLast;
+
+  const _RecommendationRow({required this.item, required this.isLast});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = item.isRestock ? AppColors.warning : AppColors.success;
+    final label = item.isRestock ? 'Cần nhập' : 'Giảm nhập';
+    final icon = item.isRestock
+        ? Icons.add_shopping_cart_rounded
+        : Icons.remove_shopping_cart_outlined;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppConstants.spacingSm),
+      decoration: !isLast
+          ? const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppColors.border)),
+            )
+          : null,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: AppConstants.spacingMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.itemName,
+                        style: AppTextStyles.labelSm,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: AppConstants.spacingXs),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                      ),
+                      child: Text(
+                        label,
+                        style: AppTextStyles.caption.copyWith(color: color),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Tồn: ${_formatQuantity(item.currentQuantity)} | Tối thiểu: ${_formatQuantity(item.minimumStock)} | Tiêu thụ: ${_formatQuantity(item.consumedQuantity)} ${item.unit}',
+                  style: AppTextStyles.caption,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.reason,
+                  style: AppTextStyles.bodyXs,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -653,12 +1284,16 @@ class _InventoryRecommendationsTable extends StatelessWidget {
 class _SectionCard extends StatelessWidget {
   final String title;
   final IconData icon;
+  final Color iconColor;
   final Widget child;
+  final Widget? headerTrailing;
 
   const _SectionCard({
     required this.title,
     required this.icon,
     required this.child,
+    this.iconColor = AppColors.primary,
+    this.headerTrailing,
   });
 
   @override
@@ -671,7 +1306,15 @@ class _SectionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, color: AppColors.primary),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 18),
+                ),
                 const SizedBox(width: AppConstants.spacingSm),
                 Expanded(
                   child: Text(
@@ -681,6 +1324,7 @@ class _SectionCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                ?headerTrailing,
               ],
             ),
             const SizedBox(height: AppConstants.spacingMd),
@@ -688,91 +1332,6 @@ class _SectionCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _InventoryCountChip extends StatelessWidget {
-  final String label;
-  final int value;
-  final Color color;
-
-  const _InventoryCountChip({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppConstants.spacingMd,
-        vertical: AppConstants.spacingSm,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-      ),
-      child: Text(
-        '$label: $value',
-        style: AppTextStyles.labelSm.copyWith(color: color),
-      ),
-    );
-  }
-}
-
-class _InventoryItemRow extends StatelessWidget {
-  final InventoryAttentionItem item;
-
-  const _InventoryItemRow({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppConstants.spacingXs),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              item.itemName,
-              style: AppTextStyles.bodySm,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: AppConstants.spacingMd),
-          Text(
-            '${_formatQuantity(item.quantity)} / '
-            '${_formatQuantity(item.minimumStock)} ${item.unit}',
-            style: AppTextStyles.caption,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RecommendationBadge extends StatelessWidget {
-  final InventoryRecommendation item;
-
-  const _RecommendationBadge({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = item.isRestock ? AppColors.warning : AppColors.success;
-    final label = item.isRestock ? 'Cần nhập' : 'Giảm nhập';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppConstants.spacingSm,
-        vertical: AppConstants.spacingXs,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      ),
-      child: Text(label, style: AppTextStyles.caption.copyWith(color: color)),
     );
   }
 }
@@ -785,7 +1344,7 @@ class _InlineEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(AppConstants.spacingMd),
+      padding: const EdgeInsets.symmetric(vertical: AppConstants.spacingMd),
       child: Center(
         child: Text(
           message,
@@ -806,25 +1365,45 @@ class _EmptyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(AppConstants.spacingLg),
+        padding: const EdgeInsets.all(AppConstants.spacingXl),
         child: Column(
           children: [
-            const Icon(
-              Icons.auto_graph_rounded,
-              color: AppColors.primary,
-              size: 44,
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.15),
+                    AppColors.primary.withValues(alpha: 0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.auto_graph_rounded,
+                color: AppColors.primary,
+                size: 36,
+              ),
             ),
             const SizedBox(height: AppConstants.spacingMd),
             Text(
-              'Chọn khoảng ngày và tạo báo cáo để xem phân tích AI.',
-              style: AppTextStyles.bodyBase,
+              'Chưa có báo cáo',
+              style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: AppConstants.spacingXs),
+            Text(
+              'Chọn khoảng ngày và nhấn “Tạo báo cáo” để AI phân tích dữ liệu kinh doanh.',
+              style: AppTextStyles.bodySm,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppConstants.spacingMd),
+            const SizedBox(height: AppConstants.spacingLg),
             ElevatedButton.icon(
               onPressed: onCreate,
               icon: const Icon(Icons.auto_awesome_rounded),
-              label: const Text('Tạo báo cáo'),
+              label: const Text('Tạo báo cáo ngay'),
             ),
           ],
         ),
@@ -841,17 +1420,30 @@ class _ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.spacingMd),
-        child: Row(
-          children: [
-            const Icon(Icons.error_outline_rounded, color: AppColors.error),
-            const SizedBox(width: AppConstants.spacingSm),
-            Expanded(child: Text(message, style: AppTextStyles.bodySm)),
-            TextButton(onPressed: onRetry, child: const Text('Thử lại')),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(AppConstants.spacingMd),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppColors.error,
+            size: 20,
+          ),
+          const SizedBox(width: AppConstants.spacingSm),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTextStyles.bodySm.copyWith(color: AppColors.error),
+            ),
+          ),
+          const SizedBox(width: AppConstants.spacingXs),
+          TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+        ],
       ),
     );
   }
@@ -914,14 +1506,6 @@ class _LoadingView extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(child: CircularProgressIndicator());
   }
-}
-
-class _KpiItem {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _KpiItem(this.label, this.value, this.icon);
 }
 
 List<HourlyOrderMetric> _normalizeHourlyOrders(List<HourlyOrderMetric> items) {
