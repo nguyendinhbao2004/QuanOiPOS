@@ -13,8 +13,8 @@ import '../../domain/entities/session_invoice.dart';
 import '../controllers/order_notifiers.dart';
 import '../controllers/order_states.dart';
 import '../providers/order_management_providers.dart';
+import '../widgets/manual_payment_confirmation_dialog.dart';
 import '../widgets/payment_method_dialog.dart';
-import '../widgets/qr_payment_dialog.dart';
 
 class OrderDetailPage extends ConsumerWidget {
   final int storeId;
@@ -81,7 +81,7 @@ class OrderDetailPage extends ConsumerWidget {
                   paymentState.isProcessing
                       ? _paymentStatusLabel(paymentState.status)
                       : paymentState.invoice?.isQrPayment == true
-                      ? 'Xem lại QR'
+                      ? 'Xác nhận thanh toán'
                       : 'Thanh toán đơn',
                 ),
               ),
@@ -172,7 +172,14 @@ Future<void> _payOrder(
   OrderPaymentState currentState,
 ) async {
   if (currentState.invoice?.isQrPayment == true) {
-    await showQrPaymentDialog(context, currentState.invoice!);
+    final confirmed = await showManualPaymentConfirmationDialog(context);
+    if (!confirmed || !context.mounted) return;
+    await notifier.confirmPendingPayment();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Thanh toán đơn thành công')));
+    context.pop(true);
     return;
   }
 
@@ -182,13 +189,16 @@ Future<void> _payOrder(
   if (method == null || !context.mounted) return;
 
   try {
-    await notifier.pay(method);
-    if (!context.mounted) return;
-    final state = ref.read(orderPaymentNotifierProvider(access));
-    if (method == PaymentMethod.qr && state.invoice != null) {
-      await showQrPaymentDialog(context, state.invoice!);
-      return;
+    if (method == PaymentMethod.qr) {
+      await notifier.pay(method, confirmImmediately: false);
+      if (!context.mounted) return;
+      final confirmed = await showManualPaymentConfirmationDialog(context);
+      if (!confirmed || !context.mounted) return;
+      await notifier.confirmPendingPayment();
+    } else {
+      await notifier.pay(method);
     }
+    if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Thanh toán đơn thành công')));
@@ -223,7 +233,7 @@ Future<void> _payOrder(
 String _paymentStatusLabel(OrderPaymentStatus status) => switch (status) {
   OrderPaymentStatus.creatingInvoice => 'Đang tạo hóa đơn...',
   OrderPaymentStatus.confirmingPayment => 'Đang xác nhận...',
-  OrderPaymentStatus.awaitingQrPayment => 'Chờ thanh toán QR',
+  OrderPaymentStatus.awaitingQrPayment => 'Chờ xác nhận nhận tiền',
   _ => 'Đang xử lý...',
 };
 

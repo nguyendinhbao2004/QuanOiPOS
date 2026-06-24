@@ -70,7 +70,10 @@ class SessionCheckoutNotifier
     return const SessionCheckoutState.idle();
   }
 
-  Future<void> checkout(PaymentMethod method) async {
+  Future<void> checkout(
+    PaymentMethod method, {
+    bool confirmImmediately = true,
+  }) async {
     if (state.isProcessing) return;
     if (!_access.isSessionOpen ||
         !_access.canViewOrder ||
@@ -88,7 +91,7 @@ class SessionCheckoutNotifier
         method: method,
       );
 
-      if (method == PaymentMethod.qr) {
+      if (!confirmImmediately) {
         state = state.copyWith(
           status: SessionCheckoutStatus.awaitingQrPayment,
           invoice: invoice,
@@ -99,6 +102,35 @@ class SessionCheckoutNotifier
       state = state.copyWith(
         status: SessionCheckoutStatus.confirmingPayment,
         invoice: invoice,
+      );
+      await ref.read(confirmPaymentUseCaseProvider)(invoice.paymentId);
+
+      state = state.copyWith(
+        status: SessionCheckoutStatus.closingSession,
+        paymentConfirmed: true,
+      );
+      await ref.read(closeTableSessionUseCaseProvider)(_access.tableSessionId);
+      state = state.copyWith(
+        status: SessionCheckoutStatus.completed,
+        clearError: true,
+      );
+    } catch (error) {
+      state = state.copyWith(
+        status: SessionCheckoutStatus.error,
+        errorMessage: _cleanError(error),
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> confirmPendingPayment() async {
+    final invoice = state.invoice;
+    if (state.isProcessing || invoice == null) return;
+
+    try {
+      state = state.copyWith(
+        status: SessionCheckoutStatus.confirmingPayment,
+        clearError: true,
       );
       await ref.read(confirmPaymentUseCaseProvider)(invoice.paymentId);
 
@@ -190,7 +222,10 @@ class OrderPaymentNotifier
     return const OrderPaymentState.idle();
   }
 
-  Future<void> pay(PaymentMethod method) async {
+  Future<void> pay(
+    PaymentMethod method, {
+    bool confirmImmediately = true,
+  }) async {
     if (state.isProcessing) return;
     if (!_access.canViewOrder) {
       throw Exception('Bạn chưa có quyền thanh toán đơn hàng');
@@ -209,7 +244,7 @@ class OrderPaymentNotifier
         );
       }
 
-      if (method == PaymentMethod.qr) {
+      if (!confirmImmediately) {
         state = state.copyWith(
           status: OrderPaymentStatus.awaitingQrPayment,
           invoice: invoice,
@@ -220,6 +255,29 @@ class OrderPaymentNotifier
       state = state.copyWith(
         status: OrderPaymentStatus.confirmingPayment,
         invoice: invoice,
+      );
+      await ref.read(confirmPaymentUseCaseProvider)(invoice.paymentId);
+      state = state.copyWith(
+        status: OrderPaymentStatus.completed,
+        clearError: true,
+      );
+    } catch (error) {
+      state = state.copyWith(
+        status: OrderPaymentStatus.error,
+        errorMessage: _cleanError(error),
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> confirmPendingPayment() async {
+    final invoice = state.invoice;
+    if (state.isProcessing || invoice == null) return;
+
+    try {
+      state = state.copyWith(
+        status: OrderPaymentStatus.confirmingPayment,
+        clearError: true,
       );
       await ref.read(confirmPaymentUseCaseProvider)(invoice.paymentId);
       state = state.copyWith(
