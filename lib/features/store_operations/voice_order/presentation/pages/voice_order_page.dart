@@ -9,6 +9,7 @@ import '../../../../../core/theme/index.dart';
 import '../../../../workspace_context/presentation/controllers/store_access_state.dart';
 import '../../../../workspace_context/presentation/providers/workspace_context_providers.dart';
 import '../../../product_management/domain/entities/product.dart';
+import '../../../product_management/domain/entities/inventory_deduction_mode.dart';
 import '../../../product_management/domain/entities/product_topping.dart';
 import '../../../product_management/domain/entities/product_variant_draft.dart';
 import '../../../table_management/domain/entities/dining_table.dart';
@@ -1208,7 +1209,16 @@ class _EditOrderItemSheetState extends State<_EditOrderItemSheet> {
                 spacing: AppConstants.spacingSm,
                 runSpacing: AppConstants.spacingSm,
                 children: [
-                  for (final variant in product.variants)
+                  if (product.inventoryDeductionMode ==
+                      InventoryDeductionMode.productOnly)
+                    ChoiceChip(
+                      label: const Text('Giá sản phẩm'),
+                      selected: _selectedVariant == null,
+                      onSelected: (_) {
+                        setState(() => _selectedVariant = null);
+                      },
+                    ),
+                  for (final variant in _activeVariants(product))
                     ChoiceChip(
                       label: Text(variant.name),
                       selected: _sameVariant(_selectedVariant, variant),
@@ -1286,7 +1296,7 @@ class _EditOrderItemSheetState extends State<_EditOrderItemSheet> {
     setState(() {
       _selectedProduct = product;
       _productText = product.name;
-      _selectedVariant = _defaultVariant(product.variants);
+      _selectedVariant = _initialVariant(product);
       _toppingQuantities = {};
     });
   }
@@ -1295,6 +1305,22 @@ class _EditOrderItemSheetState extends State<_EditOrderItemSheet> {
     final exactProduct = _selectedProduct ?? _findProductByName(_productText);
     final selectedProduct = exactProduct;
     final selectedVariant = selectedProduct == null ? null : _selectedVariant;
+    if (selectedProduct?.inventoryDeductionMode ==
+            InventoryDeductionMode.variantOnly &&
+        selectedVariant == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn phiên bản cho món này.')),
+      );
+      return;
+    }
+    if (selectedProduct != null &&
+        selectedVariant != null &&
+        !_isActiveVariant(selectedVariant, _activeVariants(selectedProduct))) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Phiên bản đã ngừng bán.')));
+      return;
+    }
     final toppings = selectedProduct == null
         ? const <VoiceOrderTopping>[]
         : [
@@ -1440,7 +1466,8 @@ ProductVariantDraft? _findVariant(VoiceOrderItem item, Product? product) {
     return null;
   }
 
-  for (final variant in product.variants) {
+  final activeVariants = _activeVariants(product);
+  for (final variant in activeVariants) {
     if (item.variantId != null && variant.id == item.variantId) {
       return variant;
     }
@@ -1448,14 +1475,27 @@ ProductVariantDraft? _findVariant(VoiceOrderItem item, Product? product) {
 
   final variantName = item.variantName?.trim().toLowerCase();
   if (variantName != null && variantName.isNotEmpty) {
-    for (final variant in product.variants) {
+    for (final variant in activeVariants) {
       if (variant.name.trim().toLowerCase() == variantName) {
         return variant;
       }
     }
   }
 
-  return _defaultVariant(product.variants);
+  return _initialVariant(product);
+}
+
+List<ProductVariantDraft> _activeVariants(Product product) {
+  return product.variants
+      .where((variant) => variant.isActive && variant.id != null)
+      .toList(growable: false);
+}
+
+ProductVariantDraft? _initialVariant(Product product) {
+  if (product.inventoryDeductionMode == InventoryDeductionMode.productOnly) {
+    return null;
+  }
+  return _defaultVariant(_activeVariants(product));
 }
 
 ProductVariantDraft? _defaultVariant(List<ProductVariantDraft> variants) {
@@ -1482,6 +1522,13 @@ bool _sameVariant(ProductVariantDraft? left, ProductVariantDraft right) {
   }
 
   return left.name == right.name;
+}
+
+bool _isActiveVariant(
+  ProductVariantDraft variant,
+  List<ProductVariantDraft> activeVariants,
+) {
+  return activeVariants.any((active) => _sameVariant(variant, active));
 }
 
 Map<int, int> _initialToppingQuantities(VoiceOrderItem item) {

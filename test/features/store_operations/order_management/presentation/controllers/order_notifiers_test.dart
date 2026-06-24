@@ -11,6 +11,7 @@ import 'package:quan_oi/features/store_operations/order_management/domain/usecas
 import 'package:quan_oi/features/store_operations/order_management/domain/usecases/load_orders_by_table_session_use_case.dart';
 import 'package:quan_oi/features/store_operations/order_management/presentation/controllers/order_states.dart';
 import 'package:quan_oi/features/store_operations/order_management/presentation/providers/order_management_providers.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_deduction_mode.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_category.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
@@ -94,6 +95,90 @@ void main() {
     expect(orderRepository.createdDraft?.items.length, 2);
     expect(orderRepository.createdDraft?.items.first.variantId, 201);
     expect(orderRepository.createdDraft?.items.first.note, 'Ít đá');
+  });
+
+  test(
+    'create notifier sends null variant for ProductOnly without selection',
+    () async {
+      final orderRepository = _FakeOrderRepository();
+      final productRepository = _FakeProductRepository(
+        product: _product.copyWith(
+          inventoryDeductionMode: InventoryDeductionMode.productOnly,
+        ),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          loadProductsUseCaseProvider.overrideWithValue(
+            LoadProductsUseCase(productRepository),
+          ),
+          loadProductCategoriesUseCaseProvider.overrideWithValue(
+            LoadProductCategoriesUseCase(productRepository),
+          ),
+          createOrderUseCaseProvider.overrideWithValue(
+            CreateOrderUseCase(orderRepository),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      const access = OrderSessionAccess(
+        storeId: 5,
+        tableSessionId: 501,
+        isSessionOpen: true,
+        canViewOrder: true,
+        canCreateOrder: true,
+      );
+      final notifier = container.read(
+        orderCreateNotifierProvider(access).notifier,
+      );
+      await notifier.load();
+      notifier.addConfiguredItem(
+        OrderCartItem(key: '', product: productRepository.product),
+      );
+
+      await notifier.submit();
+
+      expect(orderRepository.createdDraft?.items.single.variantId, isNull);
+    },
+  );
+
+  test('create notifier rejects VariantOnly item without variant', () async {
+    final orderRepository = _FakeOrderRepository();
+    final productRepository = _FakeProductRepository(
+      product: _product.copyWith(
+        inventoryDeductionMode: InventoryDeductionMode.variantOnly,
+      ),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        loadProductsUseCaseProvider.overrideWithValue(
+          LoadProductsUseCase(productRepository),
+        ),
+        loadProductCategoriesUseCaseProvider.overrideWithValue(
+          LoadProductCategoriesUseCase(productRepository),
+        ),
+        createOrderUseCaseProvider.overrideWithValue(
+          CreateOrderUseCase(orderRepository),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    const access = OrderSessionAccess(
+      storeId: 5,
+      tableSessionId: 501,
+      isSessionOpen: true,
+      canViewOrder: true,
+      canCreateOrder: true,
+    );
+    final notifier = container.read(
+      orderCreateNotifierProvider(access).notifier,
+    );
+    await notifier.load();
+    notifier.addConfiguredItem(
+      OrderCartItem(key: '', product: productRepository.product),
+    );
+
+    await expectLater(notifier.submit(), throwsA(isA<Exception>()));
+    expect(orderRepository.createdDraft, isNull);
   });
 
   test('create notifier rejects empty cart', () async {
@@ -459,29 +544,28 @@ class _CheckoutTableRepository implements TableManagementRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+const _product = Product(
+  id: 101,
+  storeId: 5,
+  categoryId: 12,
+  categoryName: 'Đồ uống',
+  name: 'Trà sữa',
+  imageUrl: '',
+  description: '',
+  preparationTime: 5,
+  price: 30000,
+  type: ProductType.drink,
+  variants: [
+    ProductVariantDraft(id: 201, name: 'Size L', price: 35000, isDefault: true),
+  ],
+  isSell: true,
+  isDeleted: false,
+);
+
 class _FakeProductRepository implements ProductManagementRepository {
-  final Product product = const Product(
-    id: 101,
-    storeId: 5,
-    categoryId: 12,
-    categoryName: 'Đồ uống',
-    name: 'Trà sữa',
-    imageUrl: '',
-    description: '',
-    preparationTime: 5,
-    price: 30000,
-    type: ProductType.drink,
-    variants: [
-      ProductVariantDraft(
-        id: 201,
-        name: 'Size L',
-        price: 35000,
-        isDefault: true,
-      ),
-    ],
-    isSell: true,
-    isDeleted: false,
-  );
+  final Product product;
+
+  _FakeProductRepository({this.product = _product});
 
   @override
   Future<List<Product>> loadProducts(int storeId) async => [product];

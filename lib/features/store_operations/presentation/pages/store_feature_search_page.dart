@@ -438,13 +438,17 @@ List<_FeatureSearchItem> _featureCatalog(
       ),
     ),
     _FeatureSearchItem(
-      id: 'cashflow',
-      title: 'Thu chi',
-      icon: Icons.swap_horiz_rounded,
+      id: 'kitchen',
+      title: 'Khu bếp',
+      icon: Icons.kitchen_outlined,
       iconColor: AppColors.info,
-      keywords: const ['thu chi', 'cashflow', 'payment', 'expense'],
+      keywords: const ['bep', 'kitchen', 'kds', 'che bien'],
       isSuggested: true,
-      onTap: () => _showComingSoon(context, 'Thu chi'),
+      isEnabled: state.can(AppPermissionCodes.kitchenAll),
+      onTap: () => context.goNamed(
+        RouteNames.storeKitchen,
+        pathParameters: {'storeId': storeId.toString()},
+      ),
     ),
     _FeatureSearchItem(
       id: 'reports',
@@ -453,7 +457,11 @@ List<_FeatureSearchItem> _featureCatalog(
       iconColor: AppColors.success,
       keywords: const ['bao cao', 'thong ke', 'doanh thu', 'report'],
       isSuggested: true,
-      onTap: () => _showComingSoon(context, 'Báo cáo'),
+      isEnabled: state.can(AppPermissionCodes.dashboardView),
+      onTap: () => context.goNamed(
+        RouteNames.storeBusinessReport,
+        pathParameters: {'storeId': storeId.toString()},
+      ),
     ),
     _FeatureSearchItem(
       id: 'inventory',

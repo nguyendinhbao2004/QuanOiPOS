@@ -91,6 +91,10 @@ import '../../features/store_operations/owner_dashboard/data/datasources/owner_d
 import '../../features/store_operations/owner_dashboard/data/repositories/owner_dashboard_repository_impl.dart';
 import '../../features/store_operations/owner_dashboard/domain/repositories/owner_dashboard_repository.dart';
 import '../../features/store_operations/owner_dashboard/domain/usecases/load_owner_dashboard_insight_use_case.dart';
+import '../../features/store_operations/business_report/data/datasources/business_report_remote_data_source.dart';
+import '../../features/store_operations/business_report/data/repositories/business_report_repository_impl.dart';
+import '../../features/store_operations/business_report/domain/repositories/business_report_repository.dart';
+import '../../features/store_operations/business_report/domain/usecases/create_business_report_use_case.dart';
 import '../../features/store_operations/product_management/data/datasources/product_management_remote_data_source.dart';
 import '../../features/store_operations/product_management/data/repositories/product_management_repository_impl.dart';
 import '../../features/store_operations/product_management/domain/repositories/product_management_repository.dart';
@@ -104,6 +108,7 @@ import '../../features/store_operations/product_management/domain/usecases/delet
 import '../../features/store_operations/product_management/domain/usecases/delete_product_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/load_product_management_detail_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_ingredient_inventory_settings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_product_inventory_settings_use_case.dart';
@@ -111,6 +116,7 @@ import '../../features/store_operations/product_management/domain/usecases/load_
 import '../../features/store_operations/product_management/domain/usecases/load_product_toppings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/load_products_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/replace_product_recipe_use_case.dart';
+import '../../features/store_operations/product_management/domain/usecases/save_product_management_detail_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_ingredient_inventory_settings_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_category_use_case.dart';
 import '../../features/store_operations/product_management/domain/usecases/update_product_inventory_settings_use_case.dart';
@@ -600,6 +606,18 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
     () => LoadOwnerDashboardInsightUseCase(locator<OwnerDashboardRepository>()),
   );
 
+  // Business report
+  locator.registerLazySingleton<BusinessReportRemoteDataSource>(
+    () => BusinessReportRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<BusinessReportRepository>(
+    () =>
+        BusinessReportRepositoryImpl(locator<BusinessReportRemoteDataSource>()),
+  );
+  locator.registerLazySingleton<CreateBusinessReportUseCase>(
+    () => CreateBusinessReportUseCase(locator<BusinessReportRepository>()),
+  );
+
   // Product management
   locator.registerLazySingleton<ProductManagementRemoteDataSource>(
     () => ProductManagementRemoteDataSource(locator<DioClient>(), Dio()),
@@ -729,11 +747,21 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
   locator.registerLazySingleton<LoadProductDetailUseCase>(
     () => LoadProductDetailUseCase(locator<ProductManagementRepository>()),
   );
+  locator.registerLazySingleton<LoadProductManagementDetailUseCase>(
+    () => LoadProductManagementDetailUseCase(
+      locator<ProductManagementRepository>(),
+    ),
+  );
   locator.registerLazySingleton<LoadProductRecipesUseCase>(
     () => LoadProductRecipesUseCase(locator<ProductManagementRepository>()),
   );
   locator.registerLazySingleton<UpdateProductUseCase>(
     () => UpdateProductUseCase(locator<ProductManagementRepository>()),
+  );
+  locator.registerLazySingleton<SaveProductManagementDetailUseCase>(
+    () => SaveProductManagementDetailUseCase(
+      locator<ProductManagementRepository>(),
+    ),
   );
   locator.registerLazySingleton<UpdateProductInventorySettingsUseCase>(
     () => UpdateProductInventorySettingsUseCase(

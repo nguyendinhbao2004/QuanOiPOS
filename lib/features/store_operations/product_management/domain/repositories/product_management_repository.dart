@@ -4,6 +4,7 @@ import '../entities/product_image_upload.dart';
 import '../entities/product_ingredient.dart';
 import '../entities/inventory_deduction_mode.dart';
 import '../entities/inventory_item_settings.dart';
+import '../entities/product_management_detail.dart';
 import '../entities/product_recipe_draft.dart';
 import '../entities/product_topping.dart';
 import '../entities/product_type.dart';
@@ -80,6 +81,8 @@ abstract class ProductManagementRepository {
 
   Future<Product> loadProductDetail(int productId);
 
+  Future<ProductManagementDetail> loadProductManagementDetail(int productId);
+
   Future<List<ProductRecipeDraft>> loadProductRecipes(int productId);
 
   Future<Product> createProduct({
@@ -123,6 +126,26 @@ abstract class ProductManagementRepository {
     required ProductType type,
     List<ProductVariantDraft>? variants,
     required List<int> toppingIds,
+  });
+
+  Future<ProductManagementDetail> saveProductManagementDetail({
+    required int productId,
+    required int storeId,
+    required int categoryId,
+    required String name,
+    required String existingImageUrl,
+    ProductImageUpload? imageUpload,
+    required String description,
+    required int preparationTime,
+    required int price,
+    required int costPrice,
+    required ProductType type,
+    required List<ProductVariantDraft> variants,
+    required List<ProductRecipeDraft> recipes,
+    required List<int> toppingIds,
+    required double minimumStock,
+    required bool isTrackInventory,
+    required InventoryDeductionMode inventoryDeductionMode,
   });
 
   Future<void> updateProductSellStatus({

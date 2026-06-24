@@ -1,6 +1,7 @@
 enum InventoryDeductionMode {
   recipeOnly('RecipeOnly', 'Chỉ trừ nguyên liệu'),
   productOnly('ProductOnly', 'Chỉ trừ thành phẩm'),
+  variantOnly('VariantOnly', 'Trừ tồn theo tùy chọn'),
   both('Both', 'Trừ thành phẩm và nguyên liệu');
 
   final String apiValue;

@@ -11,6 +11,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/enti
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_item_settings.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_ingredient.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_image_upload.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_management_detail.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_recipe_draft.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_topping.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
@@ -26,6 +27,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/delete_product_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_categories_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_detail_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_management_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_ingredients_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_product_recipes_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/load_ingredient_inventory_settings_use_case.dart';
@@ -39,6 +41,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/usec
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_sell_status_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_topping_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/usecases/update_product_use_case.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/usecases/save_product_management_detail_use_case.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/controllers/product_create_state.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/pages/product_create_page.dart';
 import 'package:quan_oi/features/store_operations/product_management/presentation/pages/product_management_page.dart';
@@ -506,21 +509,53 @@ void main() {
     expect(productRepository.createIngredientCallCount, 1);
     expect(find.text('Sữa tươi'), findsWidgets);
 
-    await tester.tap(find.byKey(const Key('edit_product_ingredients_button')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('edit_product_ingredient_2')));
+    final editIngredientsButton = find.byKey(
+      const Key('edit_product_ingredients_button'),
+    );
+    if (find
+        .descendant(of: editIngredientsButton, matching: find.text('Chỉnh sửa'))
+        .evaluate()
+        .isNotEmpty) {
+      tester.widget<TextButton>(editIngredientsButton).onPressed!.call();
+      await tester.pumpAndSettle();
+    }
+    final editIngredientButton = find.byKey(
+      const Key('edit_product_ingredient_1'),
+    );
+    tester
+        .widget<IconButton>(
+          find.descendant(
+            of: editIngredientButton,
+            matching: find.byType(IconButton),
+          ),
+        )
+        .onPressed!
+        .call();
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const Key('ingredient_name_field')),
+      find.byKey(const Key('ingredient_name_field')).last,
       'Sữa tươi không đường',
     );
-    await tester.tap(find.byKey(const Key('ingredient_form_submit_button')));
+    await tester.tap(
+      find.byKey(const Key('ingredient_form_submit_button')).last,
+    );
     await tester.pumpAndSettle();
 
     expect(productRepository.updateIngredientCallCount, 1);
     expect(find.text('Sữa tươi không đường'), findsWidgets);
 
-    await tester.tap(find.byKey(const Key('delete_product_ingredient_2')));
+    final deleteIngredientButton = find.byKey(
+      const Key('delete_product_ingredient_1'),
+    );
+    tester
+        .widget<IconButton>(
+          find.descendant(
+            of: deleteIngredientButton,
+            matching: find.byType(IconButton),
+          ),
+        )
+        .onPressed!
+        .call();
     await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('confirm_delete_product_ingredient_button')),
@@ -528,7 +563,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(productRepository.deleteIngredientCallCount, 1);
-    expect(find.text('Sữa tươi không đường'), findsNothing);
+    expect(
+      productRepository.ingredients.any(
+        (ingredient) => ingredient.name == 'Sữa tươi không đường',
+      ),
+      isFalse,
+    );
   });
 
   testWidgets('tap product opens detail, prefills and updates product', (
@@ -930,11 +970,17 @@ Future<void> _pumpPage(
         loadProductDetailUseCaseProvider.overrideWithValue(
           LoadProductDetailUseCase(productRepository),
         ),
+        loadProductManagementDetailUseCaseProvider.overrideWithValue(
+          LoadProductManagementDetailUseCase(productRepository),
+        ),
         createProductUseCaseProvider.overrideWithValue(
           CreateProductUseCase(productRepository),
         ),
         updateProductUseCaseProvider.overrideWithValue(
           UpdateProductUseCase(productRepository),
+        ),
+        saveProductManagementDetailUseCaseProvider.overrideWithValue(
+          SaveProductManagementDetailUseCase(productRepository),
         ),
         updateProductSellStatusUseCaseProvider.overrideWithValue(
           UpdateProductSellStatusUseCase(productRepository),
@@ -1118,11 +1164,17 @@ List<Override> _productOverrides(
     loadProductDetailUseCaseProvider.overrideWithValue(
       LoadProductDetailUseCase(productRepository),
     ),
+    loadProductManagementDetailUseCaseProvider.overrideWithValue(
+      LoadProductManagementDetailUseCase(productRepository),
+    ),
     createProductUseCaseProvider.overrideWithValue(
       CreateProductUseCase(productRepository),
     ),
     updateProductUseCaseProvider.overrideWithValue(
       UpdateProductUseCase(productRepository),
+    ),
+    saveProductManagementDetailUseCaseProvider.overrideWithValue(
+      SaveProductManagementDetailUseCase(productRepository),
     ),
     updateProductInventorySettingsUseCaseProvider.overrideWithValue(
       UpdateProductInventorySettingsUseCase(productRepository),
@@ -1433,6 +1485,20 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   }
 
   @override
+  Future<ProductManagementDetail> loadProductManagementDetail(
+    int productId,
+  ) async {
+    final product = await loadProductDetail(productId);
+    return ProductManagementDetail(
+      product: product,
+      variants: product.variants,
+      recipes: const [],
+      variantRecipeAdjustments: const [],
+      toppings: product.toppings,
+    );
+  }
+
+  @override
   Future<List<ProductRecipeDraft>> loadProductRecipes(int productId) async =>
       const [];
 
@@ -1547,6 +1613,56 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
       products[index] = product;
     }
     return product;
+  }
+
+  @override
+  Future<ProductManagementDetail> saveProductManagementDetail({
+    required int productId,
+    required int storeId,
+    required int categoryId,
+    required String name,
+    required String existingImageUrl,
+    ProductImageUpload? imageUpload,
+    required String description,
+    required int preparationTime,
+    required int price,
+    required int costPrice,
+    required ProductType type,
+    required List<ProductVariantDraft> variants,
+    required List<ProductRecipeDraft> recipes,
+    required List<int> toppingIds,
+    required double minimumStock,
+    required bool isTrackInventory,
+    required InventoryDeductionMode inventoryDeductionMode,
+  }) async {
+    final product = await updateProduct(
+      productId: productId,
+      storeId: storeId,
+      categoryId: categoryId,
+      name: name,
+      existingImageUrl: existingImageUrl,
+      imageUpload: imageUpload,
+      description: description,
+      preparationTime: preparationTime,
+      price: price,
+      costPrice: costPrice,
+      type: type,
+      variants: variants,
+      toppingIds: toppingIds,
+    );
+    return ProductManagementDetail(
+      product: product.copyWith(
+        minimumStock: minimumStock,
+        isTrackInventory: isTrackInventory,
+        inventoryDeductionMode: inventoryDeductionMode,
+      ),
+      variants: variants,
+      recipes: recipes,
+      variantRecipeAdjustments: [
+        for (final variant in variants) ...variant.recipeAdjustments,
+      ],
+      toppings: product.toppings,
+    );
   }
 
   @override

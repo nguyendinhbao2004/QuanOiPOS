@@ -5,6 +5,7 @@ import 'package:quan_oi/features/store_operations/product_management/domain/enti
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/inventory_item_settings.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_ingredient.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_image_upload.dart';
+import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_management_detail.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_recipe_draft.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_topping.dart';
 import 'package:quan_oi/features/store_operations/product_management/domain/entities/product_type.dart';
@@ -416,6 +417,20 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
   }
 
   @override
+  Future<ProductManagementDetail> loadProductManagementDetail(
+    int productId,
+  ) async {
+    final product = await loadProductDetail(productId);
+    return ProductManagementDetail(
+      product: product,
+      variants: product.variants,
+      recipes: const [],
+      variantRecipeAdjustments: const [],
+      toppings: product.toppings,
+    );
+  }
+
+  @override
   Future<List<ProductRecipeDraft>> loadProductRecipes(int productId) async =>
       const [];
 
@@ -484,6 +499,56 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
       variants: variants ?? const [],
       isSell: true,
       isDeleted: false,
+    );
+  }
+
+  @override
+  Future<ProductManagementDetail> saveProductManagementDetail({
+    required int productId,
+    required int storeId,
+    required int categoryId,
+    required String name,
+    required String existingImageUrl,
+    ProductImageUpload? imageUpload,
+    required String description,
+    required int preparationTime,
+    required int price,
+    required int costPrice,
+    required ProductType type,
+    required List<ProductVariantDraft> variants,
+    required List<ProductRecipeDraft> recipes,
+    required List<int> toppingIds,
+    required double minimumStock,
+    required bool isTrackInventory,
+    required InventoryDeductionMode inventoryDeductionMode,
+  }) async {
+    final product = await updateProduct(
+      productId: productId,
+      storeId: storeId,
+      categoryId: categoryId,
+      name: name,
+      existingImageUrl: existingImageUrl,
+      imageUpload: imageUpload,
+      description: description,
+      preparationTime: preparationTime,
+      price: price,
+      costPrice: costPrice,
+      type: type,
+      variants: variants,
+      toppingIds: toppingIds,
+    );
+    return ProductManagementDetail(
+      product: product.copyWith(
+        minimumStock: minimumStock,
+        isTrackInventory: isTrackInventory,
+        inventoryDeductionMode: inventoryDeductionMode,
+      ),
+      variants: variants,
+      recipes: recipes,
+      variantRecipeAdjustments: [
+        for (final variant in variants) ...variant.recipeAdjustments,
+      ],
+      toppings: product.toppings,
     );
   }
 

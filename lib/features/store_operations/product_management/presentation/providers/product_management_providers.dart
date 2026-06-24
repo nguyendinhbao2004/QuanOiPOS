@@ -13,6 +13,7 @@ import '../../domain/usecases/delete_product_topping_use_case.dart';
 import '../../domain/usecases/delete_product_use_case.dart';
 import '../../domain/usecases/load_product_categories_use_case.dart';
 import '../../domain/usecases/load_product_detail_use_case.dart';
+import '../../domain/usecases/load_product_management_detail_use_case.dart';
 import '../../domain/usecases/load_product_ingredients_use_case.dart';
 import '../../domain/usecases/load_ingredient_inventory_settings_use_case.dart';
 import '../../domain/usecases/load_product_inventory_settings_use_case.dart';
@@ -20,6 +21,7 @@ import '../../domain/usecases/load_product_recipes_use_case.dart';
 import '../../domain/usecases/load_product_toppings_use_case.dart';
 import '../../domain/usecases/load_products_use_case.dart';
 import '../../domain/usecases/replace_product_recipe_use_case.dart';
+import '../../domain/usecases/save_product_management_detail_use_case.dart';
 import '../../domain/usecases/update_ingredient_inventory_settings_use_case.dart';
 import '../../domain/usecases/update_product_category_use_case.dart';
 import '../../domain/usecases/update_product_inventory_settings_use_case.dart';
@@ -134,6 +136,11 @@ final loadProductDetailUseCaseProvider = Provider<LoadProductDetailUseCase>((
   return locator<LoadProductDetailUseCase>();
 });
 
+final loadProductManagementDetailUseCaseProvider =
+    Provider<LoadProductManagementDetailUseCase>((ref) {
+      return locator<LoadProductManagementDetailUseCase>();
+    });
+
 final loadProductRecipesUseCaseProvider = Provider<LoadProductRecipesUseCase>((
   ref,
 ) {
@@ -143,6 +150,11 @@ final loadProductRecipesUseCaseProvider = Provider<LoadProductRecipesUseCase>((
 final updateProductUseCaseProvider = Provider<UpdateProductUseCase>((ref) {
   return locator<UpdateProductUseCase>();
 });
+
+final saveProductManagementDetailUseCaseProvider =
+    Provider<SaveProductManagementDetailUseCase>((ref) {
+      return locator<SaveProductManagementDetailUseCase>();
+    });
 
 final updateProductInventorySettingsUseCaseProvider =
     Provider<UpdateProductInventorySettingsUseCase>((ref) {

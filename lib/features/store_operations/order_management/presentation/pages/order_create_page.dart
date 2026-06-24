@@ -9,6 +9,7 @@ import '../../../../../core/theme/index.dart';
 import '../../../../workspace_context/presentation/controllers/store_access_state.dart';
 import '../../../../workspace_context/presentation/providers/workspace_context_providers.dart';
 import '../../../product_management/domain/entities/product.dart';
+import '../../../product_management/domain/entities/inventory_deduction_mode.dart';
 import '../../../product_management/domain/entities/product_topping.dart';
 import '../../../product_management/domain/entities/product_variant_draft.dart';
 import '../controllers/order_notifiers.dart';
@@ -357,8 +358,7 @@ class _ConfigureItemSheetState extends State<_ConfigureItemSheet> {
   @override
   void initState() {
     super.initState();
-    _variant =
-        widget.existing?.variant ?? _defaultVariant(widget.product.variants);
+    _variant = widget.existing?.variant ?? _initialVariant(widget.product);
     _toppingQuantities = {
       for (final selected in widget.existing?.toppings ?? const [])
         selected.topping.id: selected.quantity,
@@ -374,6 +374,11 @@ class _ConfigureItemSheetState extends State<_ConfigureItemSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final activeVariants = _activeVariants(widget.product);
+    final canUseProductPrice =
+        widget.product.inventoryDeductionMode ==
+        InventoryDeductionMode.productOnly;
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
         AppConstants.spacingMd,
@@ -386,7 +391,7 @@ class _ConfigureItemSheetState extends State<_ConfigureItemSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.product.name, style: AppTextStyles.h3),
-            if (widget.product.variants.isNotEmpty) ...[
+            if (activeVariants.isNotEmpty) ...[
               const SizedBox(height: AppConstants.spacingLg),
               Text('Chọn phiên bản', style: AppTextStyles.h4),
               const SizedBox(height: AppConstants.spacingSm),
@@ -394,12 +399,20 @@ class _ConfigureItemSheetState extends State<_ConfigureItemSheet> {
                 spacing: AppConstants.spacingSm,
                 runSpacing: AppConstants.spacingSm,
                 children: [
-                  for (final variant in widget.product.variants)
+                  if (canUseProductPrice)
+                    ChoiceChip(
+                      label: Text(
+                        'Giá sản phẩm • ${_currency(widget.product.price)}',
+                      ),
+                      selected: _variant == null,
+                      onSelected: (_) => setState(() => _variant = null),
+                    ),
+                  for (final variant in activeVariants)
                     ChoiceChip(
                       label: Text(
                         '${variant.name} • ${_currency(variant.price)}',
                       ),
-                      selected: identical(_variant, variant),
+                      selected: _sameVariant(_variant, variant),
                       onSelected: (_) => setState(() => _variant = variant),
                     ),
                 ],
@@ -436,14 +449,33 @@ class _ConfigureItemSheetState extends State<_ConfigureItemSheet> {
               child: ElevatedButton(
                 key: const Key('confirm_order_item'),
                 onPressed: () {
-                  if (widget.product.variants.isNotEmpty &&
-                      _variant?.id == null) {
+                  if (widget.product.inventoryDeductionMode ==
+                          InventoryDeductionMode.variantOnly &&
+                      _variant == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Variant chưa có ID từ backend.'),
+                        content: Text('Vui lòng chọn phiên bản cho món này.'),
                       ),
                     );
                     return;
+                  }
+                  if (_variant != null) {
+                    if (!_isActiveVariant(_variant!, activeVariants)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Phiên bản đã ngừng bán.'),
+                        ),
+                      );
+                      return;
+                    }
+                    if (_variant?.id == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Variant chưa có ID từ backend.'),
+                        ),
+                      );
+                      return;
+                    }
                   }
                   Navigator.of(context).pop(
                     OrderCartItem(
@@ -640,12 +672,38 @@ class _CreateMessage extends StatelessWidget {
   }
 }
 
+List<ProductVariantDraft> _activeVariants(Product product) {
+  return product.variants
+      .where((variant) => variant.isActive && variant.id != null)
+      .toList(growable: false);
+}
+
+ProductVariantDraft? _initialVariant(Product product) {
+  if (product.inventoryDeductionMode == InventoryDeductionMode.productOnly) {
+    return null;
+  }
+  return _defaultVariant(_activeVariants(product));
+}
+
 ProductVariantDraft? _defaultVariant(List<ProductVariantDraft> variants) {
   if (variants.isEmpty) return null;
   for (final variant in variants) {
     if (variant.isDefault) return variant;
   }
   return variants.first;
+}
+
+bool _sameVariant(ProductVariantDraft? left, ProductVariantDraft right) {
+  if (left == null) return false;
+  if (left.id != null && right.id != null) return left.id == right.id;
+  return left.name == right.name;
+}
+
+bool _isActiveVariant(
+  ProductVariantDraft variant,
+  List<ProductVariantDraft> activeVariants,
+) {
+  return activeVariants.any((active) => _sameVariant(variant, active));
 }
 
 String _currency(int value) =>
