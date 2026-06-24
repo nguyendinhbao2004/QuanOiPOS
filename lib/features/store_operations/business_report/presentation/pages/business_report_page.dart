@@ -117,7 +117,6 @@ class _ReadyView extends ConsumerWidget {
         _FilterPanel(
           state: reportState,
           onPickRange: () => _pickRange(context, reportState, notifier),
-          onCreate: notifier.createReport,
         ),
         if (reportState.status == BusinessReportStatus.loading) ...[
           const SizedBox(height: AppConstants.spacingLg),
@@ -188,52 +187,22 @@ class _Header extends StatelessWidget {
 class _FilterPanel extends StatelessWidget {
   final BusinessReportState state;
   final VoidCallback onPickRange;
-  final VoidCallback onCreate;
 
-  const _FilterPanel({
-    required this.state,
-    required this.onPickRange,
-    required this.onCreate,
-  });
+  const _FilterPanel({required this.state, required this.onPickRange});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppConstants.spacingMd),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 560;
-            final rangeButton = OutlinedButton.icon(
-              onPressed: state.isLoading ? null : onPickRange,
-              icon: const Icon(Icons.date_range_outlined),
-              label: Text(_formatRange(state.fromDate, state.toDate)),
-            );
-            final createButton = ElevatedButton.icon(
-              onPressed: state.isLoading ? null : onCreate,
-              icon: const Icon(Icons.auto_awesome_rounded),
-              label: Text(state.isLoading ? 'Đang tạo...' : 'Tạo báo cáo'),
-            );
-
-            if (compact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  rangeButton,
-                  const SizedBox(height: AppConstants.spacingSm),
-                  createButton,
-                ],
-              );
-            }
-
-            return Row(
-              children: [
-                Expanded(child: rangeButton),
-                const SizedBox(width: AppConstants.spacingMd),
-                createButton,
-              ],
-            );
-          },
+        child: SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: state.isLoading ? null : onPickRange,
+            style: OutlinedButton.styleFrom(minimumSize: const Size(0, 52)),
+            icon: const Icon(Icons.date_range_outlined),
+            label: Text(_formatRange(state.fromDate, state.toDate)),
+          ),
         ),
       ),
     );
