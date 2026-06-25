@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../config/router_config.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_permission_codes.dart';
 import '../../../../core/theme/index.dart';
 import '../../../workspace_context/presentation/controllers/store_access_state.dart';
 import '../../../workspace_context/presentation/providers/workspace_context_providers.dart';
-import '../providers/store_inventory_stock_mock_provider.dart';
+import '../../inventory_stock/domain/entities/inventory_stock.dart';
+import '../../inventory_stock/presentation/controllers/inventory_stock_notifiers.dart';
+import '../../inventory_stock/presentation/controllers/inventory_stock_state.dart';
+import '../../inventory_stock/presentation/providers/inventory_stock_providers.dart';
 
 class StoreInventoryStockPage extends ConsumerWidget {
   final int storeId;
@@ -17,10 +22,15 @@ class StoreInventoryStockPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accessState = ref.watch(storeAccessNotifierProvider(storeId));
+    final canUseInventory = accessState.can(AppPermissionCodes.inventoryView);
+    final canCreateInventory = accessState.can(
+      AppPermissionCodes.inventoryImport,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      floatingActionButton: accessState.status == StoreAccessStatus.ready
+      floatingActionButton:
+          accessState.status == StoreAccessStatus.ready && canCreateInventory
           ? FloatingActionButton(
               onPressed: () => _showInventoryStockCreateMenu(context, storeId),
               backgroundColor: AppColors.primary,
@@ -52,7 +62,20 @@ class StoreInventoryStockPage extends ConsumerWidget {
                 .read(storeAccessNotifierProvider(storeId).notifier)
                 .loadAccess(),
           ),
-          StoreAccessStatus.ready => _ReadyView(storeId: storeId),
+          StoreAccessStatus.ready =>
+            canUseInventory
+                ? _ReadyView(storeId: storeId)
+                : _BlockedView(
+                    icon: Icons.lock_outline_rounded,
+                    title: 'Bạn chưa có quyền xem tồn kho',
+                    message:
+                        'Vui lòng liên hệ quản lý cửa hàng để được cấp quyền.',
+                    actionLabel: 'Về quản lý kho',
+                    onAction: () => context.goNamed(
+                      RouteNames.storeInventoryManagement,
+                      pathParameters: {'storeId': storeId.toString()},
+                    ),
+                  ),
         },
       ),
     );
@@ -66,33 +89,23 @@ class _ReadyView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // TODO: Gate this page with AppPermissionCodes.inventoryView when PBAC is
-    // enabled for inventory stock.
-    final items = ref.watch(storeInventoryStockMockProvider);
+    final args = InventoryStockListArgs(storeId: storeId);
+    final state = ref.watch(inventoryStockListNotifierProvider(args));
 
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
         child: Column(
           children: [
-            _InventoryStockHeader(storeId: storeId),
-            const _InventoryStockFilters(),
-            const _InventoryStockSummary(
-              totalQuantity: 158,
-              totalValue: '84.000',
+            _InventoryStockHeader(storeId: storeId, args: args),
+            _InventoryStockTypeTabs(args: args, selected: state.selectedType),
+            _InventoryStockFilters(args: args, state: state),
+            _InventoryStockSummary(
+              totalQuantity: state.visibleQuantityTotal,
+              totalValue: state.visibleValueTotal,
             ),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.only(bottom: AppConstants.spacingXxl),
-                itemBuilder: (context, index) {
-                  return _InventoryStockTile(item: items[index]);
-                },
-                separatorBuilder: (context, index) => const Divider(
-                  indent: AppConstants.spacingMd,
-                  endIndent: AppConstants.spacingMd,
-                ),
-                itemCount: items.length,
-              ),
+              child: _InventoryStockList(storeId: storeId, state: state),
             ),
           ],
         ),
@@ -103,8 +116,9 @@ class _ReadyView extends ConsumerWidget {
 
 class _InventoryStockHeader extends StatelessWidget {
   final int storeId;
+  final InventoryStockListArgs args;
 
-  const _InventoryStockHeader({required this.storeId});
+  const _InventoryStockHeader({required this.storeId, required this.args});
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +140,7 @@ class _InventoryStockHeader extends StatelessWidget {
               pathParameters: {'storeId': storeId.toString()},
             ),
           ),
-          const Expanded(child: _InventorySearchField()),
+          Expanded(child: _InventorySearchField(args: args)),
           const SizedBox(width: AppConstants.spacingXs),
           IconButton(
             tooltip: 'Kho',
@@ -140,17 +154,22 @@ class _InventoryStockHeader extends StatelessWidget {
   }
 }
 
-class _InventorySearchField extends StatelessWidget {
-  const _InventorySearchField();
+class _InventorySearchField extends ConsumerWidget {
+  final InventoryStockListArgs args;
+
+  const _InventorySearchField({required this.args});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SizedBox(
       height: 44,
       child: TextField(
-        enabled: false,
+        key: const Key('inventory_stock_search_field'),
+        onChanged: (value) => ref
+            .read(inventoryStockListNotifierProvider(args).notifier)
+            .setSearchQuery(value),
         decoration: InputDecoration(
-          hintText: 'Tìm tên, mã SKU, ...',
+          hintText: 'Tìm tên tồn kho...',
           prefixIcon: const Icon(Icons.search_rounded),
           suffixIcon: IconButton(
             tooltip: 'Quét mã',
@@ -167,8 +186,53 @@ class _InventorySearchField extends StatelessWidget {
   }
 }
 
+class _InventoryStockTypeTabs extends ConsumerWidget {
+  final InventoryStockListArgs args;
+  final InventoryStockItemType selected;
+
+  const _InventoryStockTypeTabs({required this.args, required this.selected});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      color: AppColors.surface,
+      padding: const EdgeInsets.fromLTRB(
+        AppConstants.spacingMd,
+        AppConstants.spacingXs,
+        AppConstants.spacingMd,
+        AppConstants.spacingSm,
+      ),
+      child: SegmentedButton<InventoryStockItemType>(
+        segments: const [
+          ButtonSegment(
+            value: InventoryStockItemType.product,
+            icon: Icon(Icons.inventory_2_outlined),
+            label: Text('Sản phẩm'),
+          ),
+          ButtonSegment(
+            value: InventoryStockItemType.ingredient,
+            icon: Icon(Icons.grass_outlined),
+            label: Text('Nguyên liệu'),
+          ),
+        ],
+        selected: {selected},
+        onSelectionChanged: (values) => ref
+            .read(inventoryStockListNotifierProvider(args).notifier)
+            .setType(values.first),
+        style: ButtonStyle(
+          visualDensity: VisualDensity.compact,
+          textStyle: WidgetStateProperty.all(AppTextStyles.labelSm),
+        ),
+      ),
+    );
+  }
+}
+
 class _InventoryStockFilters extends StatelessWidget {
-  const _InventoryStockFilters();
+  final InventoryStockListArgs args;
+  final InventoryStockListState state;
+
+  const _InventoryStockFilters({required this.args, required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -176,30 +240,61 @@ class _InventoryStockFilters extends StatelessWidget {
       color: AppColors.surface,
       padding: const EdgeInsets.symmetric(
         horizontal: AppConstants.spacingMd,
-        vertical: AppConstants.spacingMd,
+        vertical: AppConstants.spacingSm,
       ),
       child: Row(
-        children: const [
-          Expanded(child: _FilterChipButton(label: 'Danh mục')),
-          SizedBox(width: AppConstants.spacingSm),
-          Expanded(child: _FilterChipButton(label: 'Trạng thái')),
-          SizedBox(width: AppConstants.spacingSm),
-          Expanded(child: _FilterChipButton(label: 'Sắp xếp')),
+        children: [
+          Expanded(
+            child: _FilterChipButton(
+              label: 'Danh mục',
+              onPressed: () => _showComingSoon(context, 'Danh mục'),
+            ),
+          ),
+          const SizedBox(width: AppConstants.spacingSm),
+          Expanded(
+            child: _StatusFilterButton(
+              args: args,
+              selected: state.selectedStatus,
+            ),
+          ),
+          const SizedBox(width: AppConstants.spacingSm),
+          Expanded(
+            child: _FilterChipButton(
+              label: 'Sắp xếp',
+              onPressed: () => _showComingSoon(context, 'Sắp xếp'),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
+class _StatusFilterButton extends ConsumerWidget {
+  final InventoryStockListArgs args;
+  final InventoryStockStatus selected;
+
+  const _StatusFilterButton({required this.args, required this.selected});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _FilterChipButton(
+      label: selected.label,
+      onPressed: () => _showStatusFilter(context, ref, args),
+    );
+  }
+}
+
 class _FilterChipButton extends StatelessWidget {
   final String label;
+  final VoidCallback onPressed;
 
-  const _FilterChipButton({required this.label});
+  const _FilterChipButton({required this.label, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
-      onPressed: () => _showComingSoon(context, label),
+      onPressed: onPressed,
       icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
       label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       style: OutlinedButton.styleFrom(
@@ -215,8 +310,8 @@ class _FilterChipButton extends StatelessWidget {
 }
 
 class _InventoryStockSummary extends StatelessWidget {
-  final int totalQuantity;
-  final String totalValue;
+  final double totalQuantity;
+  final double totalValue;
 
   const _InventoryStockSummary({
     required this.totalQuantity,
@@ -234,10 +329,16 @@ class _InventoryStockSummary extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: _SummaryText(label: 'Số lượng', value: '$totalQuantity'),
+            child: _SummaryText(
+              label: 'Số lượng',
+              value: _formatQuantity(totalQuantity),
+            ),
           ),
           Expanded(
-            child: _SummaryText(label: 'Giá trị tồn', value: totalValue),
+            child: _SummaryText(
+              label: 'Giá trị tồn',
+              value: _formatMoney(totalValue),
+            ),
           ),
         ],
       ),
@@ -271,17 +372,124 @@ class _SummaryText extends StatelessWidget {
   }
 }
 
+class _InventoryStockList extends StatelessWidget {
+  final int storeId;
+  final InventoryStockListState state;
+
+  const _InventoryStockList({required this.storeId, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.status == InventoryStockLoadStatus.loading ||
+        state.status == InventoryStockLoadStatus.initial) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (state.status == InventoryStockLoadStatus.error) {
+      return _InventoryStockError(
+        args: InventoryStockListArgs(storeId: storeId),
+        state: state,
+      );
+    }
+
+    final items = state.visibleItems;
+    if (items.isEmpty) {
+      final message = state.searchQuery.trim().isEmpty
+          ? 'Chưa có dữ liệu tồn kho.'
+          : 'Không tìm thấy mặt hàng phù hợp.';
+      return _EmptyInventoryStock(message: message);
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: AppConstants.spacingXxl),
+      itemBuilder: (context, index) {
+        return _InventoryStockTile(item: items[index]);
+      },
+      separatorBuilder: (context, index) => const Divider(
+        indent: AppConstants.spacingMd,
+        endIndent: AppConstants.spacingMd,
+      ),
+      itemCount: items.length,
+    );
+  }
+}
+
+class _InventoryStockError extends ConsumerWidget {
+  final InventoryStockListArgs args;
+  final InventoryStockListState state;
+
+  const _InventoryStockError({required this.args, required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _BlockedView(
+      icon: Icons.error_outline_rounded,
+      title: 'Không thể tải tồn kho',
+      message: state.errorMessage ?? 'Vui lòng thử lại sau.',
+      actionLabel: 'Thử lại',
+      onAction: () =>
+          ref.read(inventoryStockListNotifierProvider(args).notifier).load(),
+    );
+  }
+}
+
+class _EmptyInventoryStock extends StatelessWidget {
+  final String message;
+
+  const _EmptyInventoryStock({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.spacingLg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.textMuted,
+              size: 44,
+            ),
+            const SizedBox(height: AppConstants.spacingMd),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySm.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _InventoryStockTile extends StatelessWidget {
-  final StoreInventoryStockMockItem item;
+  final InventoryStockItem item;
 
   const _InventoryStockTile({required this.item});
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = item.isOutOfStock
+        ? AppColors.error
+        : item.isLowStock
+        ? AppColors.warning
+        : AppColors.textSecondary;
+    final statusLabel = item.isOutOfStock
+        ? 'Hết hàng'
+        : item.isLowStock
+        ? 'Sắp hết'
+        : item.isTrackInventory
+        ? 'Đang theo dõi'
+        : 'Không theo dõi';
+
     return Material(
       color: AppColors.surface,
       child: InkWell(
-        onTap: () => _showComingSoon(context, item.name),
+        onTap: () => _showMovementSheet(context, item),
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppConstants.spacingMd,
@@ -289,7 +497,7 @@ class _InventoryStockTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const _ProductThumbnail(),
+              _ProductThumbnail(type: item.type),
               const SizedBox(width: AppConstants.spacingSm),
               Expanded(
                 child: Column(
@@ -304,7 +512,9 @@ class _InventoryStockTile extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      item.sku,
+                      _itemSubtitle(item),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.labelSm.copyWith(
                         color: AppColors.textMuted,
                         fontWeight: FontWeight.w600,
@@ -318,17 +528,17 @@ class _InventoryStockTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'Kho: ${item.stockText}',
+                    'Kho: ${_formatQuantity(item.quantity)} / ${_formatQuantity(item.minimumStock)} ${item.displayUnit}',
                     style: AppTextStyles.label.copyWith(
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
-                    item.secondaryQuantity,
+                    statusLabel,
                     style: AppTextStyles.bodySm.copyWith(
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w600,
+                      color: statusColor,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -342,7 +552,9 @@ class _InventoryStockTile extends StatelessWidget {
 }
 
 class _ProductThumbnail extends StatelessWidget {
-  const _ProductThumbnail();
+  final InventoryStockItemType type;
+
+  const _ProductThumbnail({required this.type});
 
   @override
   Widget build(BuildContext context) {
@@ -353,10 +565,205 @@ class _ProductThumbnail extends StatelessWidget {
         color: AppColors.muted,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       ),
-      child: const Icon(
-        Icons.image_outlined,
+      child: Icon(
+        type == InventoryStockItemType.product
+            ? Icons.inventory_2_outlined
+            : Icons.grass_outlined,
         color: AppColors.textDisabled,
-        size: 28,
+        size: 24,
+      ),
+    );
+  }
+}
+
+class _MovementSheet extends ConsumerWidget {
+  final InventoryStockItem item;
+
+  const _MovementSheet({required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final args = InventoryMovementArgs(type: item.type, itemId: item.id);
+    final state = ref.watch(inventoryMovementNotifierProvider(args));
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppConstants.spacingMd,
+          AppConstants.spacingMd,
+          AppConstants.spacingMd,
+          AppConstants.spacingLg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.h4.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Đóng',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            Text(
+              'Lịch sử biến động 30 ngày gần nhất',
+              style: AppTextStyles.bodySm.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppConstants.spacingMd),
+            _MovementSheetBody(args: args, state: state),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MovementSheetBody extends ConsumerWidget {
+  final InventoryMovementArgs args;
+  final InventoryMovementState state;
+
+  const _MovementSheetBody({required this.args, required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (state.status == InventoryStockLoadStatus.loading ||
+        state.status == InventoryStockLoadStatus.initial) {
+      return const SizedBox(
+        height: 180,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (state.status == InventoryStockLoadStatus.error) {
+      return SizedBox(
+        height: 180,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                state.errorMessage ?? 'Không thể tải lịch sử tồn kho.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodySm,
+              ),
+              const SizedBox(height: AppConstants.spacingSm),
+              OutlinedButton(
+                onPressed: () => ref
+                    .read(inventoryMovementNotifierProvider(args).notifier)
+                    .load(),
+                child: const Text('Thử lại'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (state.movements.isEmpty) {
+      return SizedBox(
+        height: 160,
+        child: Center(
+          child: Text(
+            'Chưa có biến động trong 30 ngày gần nhất.',
+            style: AppTextStyles.bodySm.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 360),
+      child: ListView.separated(
+        shrinkWrap: true,
+        itemCount: state.movements.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) =>
+            _MovementTile(movement: state.movements[index]),
+      ),
+    );
+  }
+}
+
+class _MovementTile extends StatelessWidget {
+  final InventoryMovement movement;
+
+  const _MovementTile({required this.movement});
+
+  @override
+  Widget build(BuildContext context) {
+    final isImport = movement.type.toLowerCase() == 'import';
+    final quantityPrefix = isImport ? '+' : '-';
+    final color = isImport ? AppColors.success : AppColors.warning;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppConstants.spacingSm),
+      child: Row(
+        children: [
+          Icon(
+            isImport ? Icons.south_west_rounded : Icons.north_east_rounded,
+            color: color,
+            size: 20,
+          ),
+          const SizedBox(width: AppConstants.spacingSm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  movement.reason.isEmpty ? movement.type : movement.reason,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.labelSm.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  _movementDescription(movement),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyXs.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppConstants.spacingSm),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$quantityPrefix${_formatQuantity(movement.quantity)}',
+                style: AppTextStyles.label.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                _formatDateTime(movement.occurredAt),
+                style: AppTextStyles.bodyXs.copyWith(
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -462,6 +869,46 @@ enum _InventoryStockCreateAction {
     required this.label,
     required this.key,
   });
+}
+
+Future<void> _showStatusFilter(
+  BuildContext context,
+  WidgetRef ref,
+  InventoryStockListArgs args,
+) async {
+  final selected = await showModalBottomSheet<InventoryStockStatus>(
+    context: context,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListTile(title: Text('Trạng thái tồn kho')),
+          for (final status in InventoryStockStatus.values)
+            ListTile(
+              title: Text(status.label),
+              onTap: () => Navigator.of(context).pop(status),
+            ),
+        ],
+      ),
+    ),
+  );
+
+  if (selected == null) return;
+  await ref
+      .read(inventoryStockListNotifierProvider(args).notifier)
+      .setStatus(selected);
+}
+
+Future<void> _showMovementSheet(
+  BuildContext context,
+  InventoryStockItem item,
+) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => _MovementSheet(item: item),
+  );
 }
 
 Future<void> _showInventoryStockCreateMenu(
@@ -626,6 +1073,43 @@ class _InventoryStockCreateMenuItem extends StatelessWidget {
       ),
     );
   }
+}
+
+String _itemSubtitle(InventoryStockItem item) {
+  if (item.type == InventoryStockItemType.ingredient) {
+    return 'Nguyên liệu • Đơn vị ${item.displayUnit}';
+  }
+  final mode = item.inventoryDeductionMode;
+  return mode == null || mode.isEmpty ? 'Sản phẩm' : 'Sản phẩm • $mode';
+}
+
+String _movementDescription(InventoryMovement movement) {
+  final parts = <String>[
+    if (movement.note != null) movement.note!,
+    if (movement.destinationName != null) 'Đến ${movement.destinationName}',
+    if (movement.shortageQuantity > 0)
+      'Thiếu ${_formatQuantity(movement.shortageQuantity)}',
+  ];
+  if (parts.isEmpty) return 'Giá trị ${_formatMoney(movement.totalCost)}';
+  return parts.join(' • ');
+}
+
+String _formatQuantity(double value) {
+  if (value == value.roundToDouble()) {
+    return value.toStringAsFixed(0);
+  }
+  return value
+      .toStringAsFixed(2)
+      .replaceFirst(RegExp(r'0+$'), '')
+      .replaceFirst(RegExp(r'\.$'), '');
+}
+
+String _formatMoney(double value) =>
+    NumberFormat.decimalPattern('vi_VN').format(value.round());
+
+String _formatDateTime(DateTime? value) {
+  if (value == null) return '—';
+  return DateFormat('dd/MM HH:mm').format(value.toLocal());
 }
 
 void _showComingSoon(BuildContext context, String feature) {

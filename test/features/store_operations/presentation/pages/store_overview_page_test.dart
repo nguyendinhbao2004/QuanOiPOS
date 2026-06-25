@@ -9,6 +9,10 @@ import 'package:quan_oi/features/auth/domain/entities/account_type.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_notifier.dart';
 import 'package:quan_oi/features/auth/presentation/controllers/auth_state.dart';
 import 'package:quan_oi/features/auth/presentation/providers/auth_providers.dart';
+import 'package:quan_oi/features/store_operations/inventory_stock/domain/entities/inventory_stock.dart';
+import 'package:quan_oi/features/store_operations/inventory_stock/domain/repositories/inventory_stock_repository.dart';
+import 'package:quan_oi/features/store_operations/inventory_stock/domain/usecases/inventory_stock_use_cases.dart';
+import 'package:quan_oi/features/store_operations/inventory_stock/presentation/providers/inventory_stock_providers.dart';
 import 'package:quan_oi/features/store_operations/presentation/pages/store_feature_search_page.dart';
 import 'package:quan_oi/features/store_operations/presentation/pages/store_overview_page.dart';
 import 'package:quan_oi/features/store_operations/owner_dashboard/presentation/pages/owner_dashboard_page.dart';
@@ -454,71 +458,56 @@ void main() {
     expect(find.text('Bạn chưa có quyền dùng order giọng nói'), findsOneWidget);
   });
 
-  testWidgets(
-    'inventory tile navigates to mock stock page without permission',
-    (tester) async {
-      final repository = const _FakeWorkspaceRepository(
-        permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
-      );
-      final container = _buildRouterContainer(repository);
-      addTearDown(container.dispose);
+  testWidgets('inventory tile blocks stock page without INVENTORY.VIEW', (
+    tester,
+  ) async {
+    final repository = const _FakeWorkspaceRepository(
+      permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
+    );
+    final container = _buildRouterContainer(repository);
+    addTearDown(container.dispose);
 
-      final router = container.read(routerProvider);
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp.router(
-            theme: AppTheme.light,
-            routerConfig: router,
-          ),
-        ),
-      );
+    final router = container.read(routerProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
 
-      router.go('/stores/5');
-      await tester.pumpAndSettle();
+    router.go('/stores/5');
+    await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Quản lý kho'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Quản lý kho'));
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Quản lý kho'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Quản lý kho'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Quản lý kho'), findsOneWidget);
-      expect(find.text('Nhập kho'), findsOneWidget);
-      expect(find.text('Xuất kho'), findsOneWidget);
-      expect(find.text('Sổ kho'), findsOneWidget);
-      expect(find.text('Kiểm kho'), findsOneWidget);
-      expect(find.text('Tồn kho'), findsOneWidget);
-      expect(find.text('In mã vạch'), findsOneWidget);
+    expect(find.text('Quản lý kho'), findsOneWidget);
+    expect(find.text('Nhập kho'), findsOneWidget);
+    expect(find.text('Xuất kho'), findsOneWidget);
+    expect(find.text('Sổ kho'), findsOneWidget);
+    expect(find.text('Kiểm kho'), findsOneWidget);
+    expect(find.text('Tồn kho'), findsOneWidget);
+    expect(find.text('In mã vạch'), findsOneWidget);
 
-      await tester.tap(find.text('Tồn kho'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Tồn kho'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Tìm tên, mã SKU, ...'), findsOneWidget);
-      expect(find.text('Sản phẩm'), findsNothing);
-      expect(find.text('Tồn kho'), findsNothing);
-      expect(find.text('Bán kèm'), findsNothing);
-      expect(find.text('Danh mục'), findsOneWidget);
-      expect(find.text('Trạng thái'), findsOneWidget);
-      expect(find.text('Sắp xếp'), findsOneWidget);
-      expect(
-        find.textContaining('Số lượng 158', findRichText: true),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('Giá trị tồn 84.000', findRichText: true),
-        findsOneWidget,
-      );
-      expect(find.text('Thăng Long'), findsOneWidget);
-      expect(find.text('SP0048'), findsOneWidget);
-      expect(find.text('Kho: 9/9'), findsOneWidget);
-    },
-  );
+    expect(find.text('Bạn chưa có quyền xem tồn kho'), findsOneWidget);
+    expect(find.text('Tìm tên tồn kho...'), findsNothing);
+    expect(find.text('Coca'), findsNothing);
+  });
 
   testWidgets('inventory stock FAB opens create menu and routes actions', (
     tester,
   ) async {
     final repository = const _FakeWorkspaceRepository(
-      permissions: [StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW')],
+      permissions: [
+        StorePermission(permissionId: 1, code: 'DASHBOARD.VIEW'),
+        StorePermission(permissionId: 2, code: 'INVENTORY.VIEW'),
+        StorePermission(permissionId: 3, code: 'INVENTORY.IMPORT'),
+      ],
     );
     final container = _buildRouterContainer(repository);
     addTearDown(container.dispose);
@@ -2252,6 +2241,12 @@ ProviderContainer _buildRouterContainer(
       loadMyStoresUseCaseProvider.overrideWithValue(
         LoadMyStoresUseCase(repository),
       ),
+      loadInventoryStockItemsUseCaseProvider.overrideWithValue(
+        LoadInventoryStockItemsUseCase(_FakeInventoryStockRepository()),
+      ),
+      loadInventoryMovementsUseCaseProvider.overrideWithValue(
+        LoadInventoryMovementsUseCase(_FakeInventoryStockRepository()),
+      ),
       ..._lastActiveStoreOverrides(storeStorage),
     ],
   );
@@ -2279,6 +2274,61 @@ class _FixedAuthNotifier extends AuthNotifier {
   @override
   AuthState build() {
     return fixedState;
+  }
+}
+
+class _FakeInventoryStockRepository implements InventoryStockRepository {
+  @override
+  Future<List<InventoryStockItem>> loadItems({
+    required int storeId,
+    required InventoryStockItemType type,
+    required InventoryStockStatus status,
+  }) async {
+    return const [
+      InventoryStockItem(
+        type: InventoryStockItemType.product,
+        id: 20,
+        storeId: 5,
+        name: 'Coca',
+        unit: 'sp',
+        quantity: 4,
+        minimumStock: 2,
+        averageUnitCost: 7000,
+        lastImportUnitCost: 7500,
+        isTrackInventory: true,
+        inventoryDeductionMode: 'ProductOnly',
+        isLowStock: false,
+        isOutOfStock: false,
+      ),
+    ];
+  }
+
+  @override
+  Future<List<InventoryMovement>> loadMovements({
+    required InventoryStockItemType type,
+    required int itemId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    return [
+      InventoryMovement(
+        id: 1,
+        ingredientId: null,
+        productId: itemId,
+        type: 'Import',
+        reason: 'Purchase',
+        quantity: 4,
+        requestedQuantity: 4,
+        shortageQuantity: 0,
+        unitCost: 7000,
+        totalCost: 28000,
+        orderId: null,
+        orderItemId: null,
+        note: null,
+        destinationName: null,
+        occurredAt: DateTime(2026, 6, 25),
+      ),
+    ];
   }
 }
 

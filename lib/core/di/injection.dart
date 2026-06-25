@@ -129,6 +129,10 @@ import '../../features/store_operations/inventory_documents/data/datasources/inv
 import '../../features/store_operations/inventory_documents/data/repositories/inventory_document_repository_impl.dart';
 import '../../features/store_operations/inventory_documents/domain/repositories/inventory_document_repository.dart';
 import '../../features/store_operations/inventory_documents/domain/usecases/inventory_document_use_cases.dart';
+import '../../features/store_operations/inventory_stock/data/datasources/inventory_stock_remote_data_source.dart';
+import '../../features/store_operations/inventory_stock/data/repositories/inventory_stock_repository_impl.dart';
+import '../../features/store_operations/inventory_stock/domain/repositories/inventory_stock_repository.dart';
+import '../../features/store_operations/inventory_stock/domain/usecases/inventory_stock_use_cases.dart';
 import '../../features/store_operations/staff_management/data/datasources/staff_management_remote_data_source.dart';
 import '../../features/store_operations/staff_management/data/repositories/staff_management_repository_impl.dart';
 import '../../features/store_operations/staff_management/domain/repositories/staff_management_repository.dart';
@@ -680,6 +684,22 @@ Future<void> setupDependencies({bool enableLogging = false}) async {
     () =>
         CancelInventoryDocumentUseCase(locator<InventoryDocumentRepository>()),
   );
+
+  // Inventory stock
+  locator.registerLazySingleton<InventoryStockRemoteDataSource>(
+    () => InventoryStockRemoteDataSource(locator<DioClient>()),
+  );
+  locator.registerLazySingleton<InventoryStockRepository>(
+    () =>
+        InventoryStockRepositoryImpl(locator<InventoryStockRemoteDataSource>()),
+  );
+  locator.registerLazySingleton<LoadInventoryStockItemsUseCase>(
+    () => LoadInventoryStockItemsUseCase(locator<InventoryStockRepository>()),
+  );
+  locator.registerLazySingleton<LoadInventoryMovementsUseCase>(
+    () => LoadInventoryMovementsUseCase(locator<InventoryStockRepository>()),
+  );
+
   locator.registerLazySingleton<ProductManagementRepository>(
     () => ProductManagementRepositoryImpl(
       locator<ProductManagementRemoteDataSource>(),
