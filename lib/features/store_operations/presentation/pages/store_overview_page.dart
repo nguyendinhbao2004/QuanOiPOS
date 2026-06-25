@@ -22,71 +22,85 @@ class StoreOverviewPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(storeAccessNotifierProvider(storeId));
     final accessContext = state.context;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isWide = screenWidth > 600;
 
+    final isReady =
+        state.status == StoreAccessStatus.ready &&
+        state.can(AppPermissionCodes.dashboardView);
+
+    // Nav items shared by both bottom nav (mobile) and side rail (web)
+    List<StoreBottomNavItemData> navItems() => [
+      const StoreBottomNavItemData(
+        title: 'Tổng quan',
+        icon: Icons.home_rounded,
+        isActive: true,
+        isEnabled: true,
+      ),
+      StoreBottomNavItemData(
+        title: 'Báo cáo',
+        icon: Icons.bar_chart_rounded,
+        isEnabled: state.can(AppPermissionCodes.dashboardView),
+        onTap: () => _openBusinessReport(context, storeId),
+      ),
+      StoreBottomNavItemData(
+        title: 'Sản phẩm',
+        icon: Icons.inventory_2_outlined,
+        isEnabled: state.can(AppPermissionCodes.productView),
+        onTap: () => context.goNamed(
+          RouteNames.storeProductManagement,
+          pathParameters: {'storeId': storeId.toString()},
+        ),
+      ),
+    ];
+
+    final bodyContent = SafeArea(
+      bottom: false,
+      child: switch (state.status) {
+        StoreAccessStatus.initial ||
+        StoreAccessStatus.loading => const _LoadingView(),
+        StoreAccessStatus.forbidden => _BlockedView(
+          icon: Icons.lock_outline_rounded,
+          title: 'Không có quyền truy cập',
+          message:
+              state.errorMessage ??
+              'Tài khoản của bạn không có quyền truy cập cửa hàng này.',
+        ),
+        StoreAccessStatus.error => _ErrorView(
+          message: state.errorMessage ?? 'Không thể tải thông tin cửa hàng',
+          onRetry: () => ref
+              .read(storeAccessNotifierProvider(storeId).notifier)
+              .loadAccess(),
+          onBackToStores: () => context.goNamed(RouteNames.myStores),
+        ),
+        StoreAccessStatus.ready => _ReadyView(state: state),
+      },
+    );
+
+    // Web/desktop: side rail layout
+    if (isWide && isReady) {
+      return Scaffold(
+        drawer: accessContext != null
+            ? StoreWorkspaceDrawer(activeStoreId: accessContext.store.id)
+            : null,
+        body: Row(
+          children: [
+            _SideNavRail(items: navItems()),
+            const VerticalDivider(width: 1, color: AppColors.border),
+            Expanded(child: bodyContent),
+          ],
+        ),
+      );
+    }
+
+    // Mobile: bottom nav layout
     return Scaffold(
       drawer: state.status == StoreAccessStatus.ready && accessContext != null
           ? StoreWorkspaceDrawer(activeStoreId: accessContext.store.id)
           : null,
-      body: SafeArea(
-        bottom: false,
-        child: switch (state.status) {
-          StoreAccessStatus.initial ||
-          StoreAccessStatus.loading => const _LoadingView(),
-          StoreAccessStatus.forbidden => _BlockedView(
-            icon: Icons.lock_outline_rounded,
-            title: 'Không có quyền truy cập',
-            message:
-                state.errorMessage ??
-                'Tài khoản của bạn không có quyền truy cập cửa hàng này.',
-          ),
-          StoreAccessStatus.error => _ErrorView(
-            message: state.errorMessage ?? 'Không thể tải thông tin cửa hàng',
-            onRetry: () => ref
-                .read(storeAccessNotifierProvider(storeId).notifier)
-                .loadAccess(),
-            onBackToStores: () => context.goNamed(RouteNames.myStores),
-          ),
-          StoreAccessStatus.ready => _ReadyView(state: state),
-        },
-      ),
-      bottomNavigationBar:
-          state.status == StoreAccessStatus.ready &&
-              state.can(AppPermissionCodes.dashboardView)
-          ? StoreBottomNavigationBar(
-              items: [
-                const StoreBottomNavItemData(
-                  title: 'Tổng quan',
-                  icon: Icons.home_rounded,
-                  isActive: true,
-                  isEnabled: true,
-                ),
-                StoreBottomNavItemData(
-                  title: 'Bán hàng',
-                  icon: Icons.shopping_cart_outlined,
-                  onTap: () => _showComingSoon(context, 'Bán hàng'),
-                ),
-                StoreBottomNavItemData(
-                  title: 'Báo cáo',
-                  icon: Icons.bar_chart_rounded,
-                  isEnabled: state.can(AppPermissionCodes.dashboardView),
-                  onTap: () => _openBusinessReport(context, storeId),
-                ),
-                StoreBottomNavItemData(
-                  title: 'Sản phẩm',
-                  icon: Icons.inventory_2_outlined,
-                  isEnabled: state.can(AppPermissionCodes.productView),
-                  onTap: () => context.goNamed(
-                    RouteNames.storeProductManagement,
-                    pathParameters: {'storeId': storeId.toString()},
-                  ),
-                ),
-                StoreBottomNavItemData(
-                  title: 'Thêm',
-                  icon: Icons.more_horiz,
-                  onTap: () => _showComingSoon(context, 'Thêm'),
-                ),
-              ],
-            )
+      body: bodyContent,
+      bottomNavigationBar: isReady
+          ? StoreBottomNavigationBar(items: navItems())
           : null,
     );
   }
@@ -119,6 +133,11 @@ class _ReadyView extends ConsumerWidget {
     final authState = ref.watch(authNotifierProvider);
     final greetingTarget = authState.fullName ?? authState.email ?? 'bạn';
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = screenWidth > 600
+        ? AppConstants.spacingLg
+        : AppConstants.spacingMd;
+
     return Container(
       color: AppColors.background,
       child: RefreshIndicator(
@@ -126,10 +145,10 @@ class _ReadyView extends ConsumerWidget {
             .read(storeAccessNotifierProvider(accessContext.store.id).notifier)
             .loadAccess(),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
             AppConstants.spacingMd,
-            AppConstants.spacingMd,
-            AppConstants.spacingMd,
+            horizontalPadding,
             AppConstants.spacingXxl,
           ),
           children: [
@@ -353,21 +372,22 @@ class _FeatureGrid extends StatelessWidget {
       _FeatureItemData(
         'Báo cáo',
         Icons.bar_chart_rounded,
+        isEnabled: true,
         onTap: () => context.goNamed(
           RouteNames.storeBusinessReport,
           pathParameters: {'storeId': storeId.toString()},
         ),
       ),
-      _FeatureItemData(
-        'Khu bếp',
-        Icons.kitchen_outlined,
-        isEnabled: canManageKitchen,
-        disabledMessage: 'Bạn chưa có quyền dùng KDS',
-        onTap: () => context.goNamed(
-          RouteNames.storeKitchen,
-          pathParameters: {'storeId': storeId.toString()},
-        ),
-      ),
+      // _FeatureItemData(
+      //   'Khu bếp',
+      //   Icons.kitchen_outlined,
+      //   isEnabled: canManageKitchen,
+      //   disabledMessage: 'Bạn chưa có quyền dùng KDS',
+      //   onTap: () => context.goNamed(
+      //     RouteNames.storeKitchen,
+      //     pathParameters: {'storeId': storeId.toString()},
+      //   ),
+      // ),
       _FeatureItemData(
         'Quản lý kho',
         Icons.apps_rounded,
@@ -389,17 +409,36 @@ class _FeatureGrid extends StatelessWidget {
       ),
     ];
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: AppConstants.spacingMd,
-        crossAxisSpacing: AppConstants.spacingMd,
-        childAspectRatio: 1.08,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) => _FeatureTile(item: items[index]),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final int crossAxisCount;
+        final double childAspectRatio;
+
+        if (width >= 700) {
+          crossAxisCount = 4;
+          childAspectRatio = 1.1;
+        } else if (width >= 460) {
+          crossAxisCount = 3;
+          childAspectRatio = 1.05;
+        } else {
+          crossAxisCount = 2;
+          childAspectRatio = 1.08;
+        }
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: AppConstants.spacingMd,
+            crossAxisSpacing: AppConstants.spacingMd,
+            childAspectRatio: childAspectRatio,
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, index) => _FeatureTile(item: items[index]),
+        );
+      },
     );
   }
 }
@@ -463,6 +502,110 @@ class _FeatureTile extends StatelessWidget {
     );
   }
 }
+
+// ─── Web Side Rail Navigation ─────────────────────────────────────────────────
+
+class _SideNavRail extends StatelessWidget {
+  final List<StoreBottomNavItemData> items;
+
+  const _SideNavRail({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 80,
+      color: AppColors.surface,
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: AppConstants.spacingMd),
+            ...items.map(
+              (item) => _SideNavRailItem(
+                title: item.title,
+                icon: item.icon,
+                isActive: item.isActive,
+                isEnabled: item.isEnabled,
+                onTap: item.onTap,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SideNavRailItem extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final bool isActive;
+  final bool isEnabled;
+  final VoidCallback? onTap;
+
+  const _SideNavRailItem({
+    required this.title,
+    required this.icon,
+    this.isActive = false,
+    this.isEnabled = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foregroundColor = isActive
+        ? AppColors.primary
+        : isEnabled
+        ? AppColors.textSecondary
+        : AppColors.textMuted;
+
+    return Tooltip(
+      message: title,
+      preferBelow: false,
+      child: InkWell(
+        onTap: isEnabled && !isActive ? onTap : null,
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppConstants.spacingSm,
+            horizontal: AppConstants.spacingXs,
+          ),
+          child: SizedBox(
+            width: 72,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppColors.primaryLight
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+                  ),
+                  child: Icon(icon, color: foregroundColor, size: 22),
+                ),
+                const SizedBox(height: AppConstants.spacingXs),
+                Text(
+                  title,
+                  style: AppTextStyles.bodyXs.copyWith(
+                    color: foregroundColor,
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 class _BlockedView extends StatelessWidget {
   final IconData icon;
