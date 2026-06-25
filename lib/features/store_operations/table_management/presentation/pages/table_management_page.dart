@@ -187,14 +187,19 @@ class _ReadyContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sections = _buildSections(state);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isWide = screenWidth > 600;
+    final horizontalPadding = isWide
+        ? AppConstants.spacingLg
+        : AppConstants.spacingMd;
 
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
           AppConstants.spacingMd,
-          AppConstants.spacingMd,
-          AppConstants.spacingMd,
+          horizontalPadding,
           AppConstants.spacingXxl,
         ),
         children: [
@@ -205,9 +210,15 @@ class _ReadyContent extends StatelessWidget {
             onManageAreasTap: () => _showAreaManagement(context, access),
           ),
           const SizedBox(height: AppConstants.spacingLg),
-          QuickActionGrid(
-            onTakeAwayTap: () => _showComingSoon(context, 'Mang về'),
-            onDeliveryTap: () => _showComingSoon(context, 'Giao hàng'),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: QuickActionGrid(
+                onTakeAwayTap: () => _showComingSoon(context, 'Mang về'),
+                onDeliveryTap: () => _showComingSoon(context, 'Giao hàng'),
+              ),
+            ),
           ),
           const SizedBox(height: AppConstants.spacingLg),
           if (state.areas.isEmpty)

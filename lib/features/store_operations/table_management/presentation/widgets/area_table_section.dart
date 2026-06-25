@@ -50,26 +50,45 @@ class AreaTableSection extends StatelessWidget {
         if (!canViewTables)
           const _PermissionHint()
         else
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: AppConstants.spacingMd,
-              crossAxisSpacing: AppConstants.spacingMd,
-              childAspectRatio: 1.22,
-            ),
-            itemCount: tables.length + 1,
-            itemBuilder: (context, index) {
-              if (index == tables.length) {
-                return AddTableTile(
-                  isEnabled: canCreateTable,
-                  onTap: () => onAddTableTap(area),
-                );
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final int crossAxisCount;
+              final double childAspectRatio;
+
+              if (width >= 800) {
+                crossAxisCount = 4;
+                childAspectRatio = 1.3;
+              } else if (width >= 500) {
+                crossAxisCount = 3;
+                childAspectRatio = 1.25;
+              } else {
+                crossAxisCount = 2;
+                childAspectRatio = 1.22;
               }
 
-              final table = tables[index];
-              return TableTile(table: table, onTap: () => onTableTap(table));
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: AppConstants.spacingMd,
+                  crossAxisSpacing: AppConstants.spacingMd,
+                  childAspectRatio: childAspectRatio,
+                ),
+                itemCount: tables.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == tables.length) {
+                    return AddTableTile(
+                      isEnabled: canCreateTable,
+                      onTap: () => onAddTableTap(area),
+                    );
+                  }
+
+                  final table = tables[index];
+                  return TableTile(table: table, onTap: () => onTableTap(table));
+                },
+              );
             },
           ),
       ],
